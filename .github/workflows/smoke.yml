@@ -1,0 +1,36 @@
+name: Bootstrap smoke
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python -m pytest tests/smoke
+      - run: uv run ruff check backend
+      - run: uv run mypy backend/src
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.9.0"
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.4.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r test --if-present

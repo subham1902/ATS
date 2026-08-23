@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "boundaries": [
+    {
+      "name": "Contracts / Kernel",
+      "owner_stream": "A",
+      "paths": ["backend/src/ats/contracts/**", "backend/src/ats/kernel/**"]
+    },
+    {
+      "name": "Data / Forecast / Kronos",
+      "owner_stream": "B",
+      "paths": [
+        "backend/src/ats/market/**",
+        "backend/src/ats/forecast/**",
+        "backend/src/ats/kronos_worker/**"
+      ]
+    },
+    {
+      "name": "Execution / Portfolio / Events",
+      "owner_stream": "C",
+      "paths": [
+        "backend/src/ats/execution/**",
+        "backend/src/ats/portfolio/**",
+        "backend/src/ats/events/**"
+      ]
+    },
+    {
+      "name": "Intelligence",
+      "owner_stream": "D",
+      "paths": ["backend/src/ats/intelligence/**"]
+    },
+    {
+      "name": "Dashboard",
+      "owner_stream": "E",
+      "paths": ["frontend/**", "backend/src/ats/api/**"]
+    },
+    {
+      "name": "QA / Failure",
+      "owner_stream": "F",
+      "paths": ["tests/**", "benchmarks/**", "backend/src/ats/observability/**"]
+    }
+  ]
+}

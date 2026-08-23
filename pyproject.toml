@@ -1,0 +1,38 @@
+[project]
+name = "ats-bootstrap"
+version = "0.0.0"
+description = "ATS M010-00 repository bootstrap"
+requires-python = "==3.11.15"
+dependencies = ["ats"]
+
+[dependency-groups]
+dev = [
+  "mypy==1.17.1",
+  "pytest==8.4.2",
+  "ruff==0.12.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+ats = { workspace = true }
+
+[tool.uv.workspace]
+members = ["backend"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["backend/src"]
