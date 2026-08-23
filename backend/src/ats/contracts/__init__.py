@@ -1,4 +1,4 @@
-"""Public common and frozen domain contracts; event schemas remain deferred to A03."""
+"""Public common, frozen domain, and frozen event contracts."""
 
 from ats.contracts.common import (
     ATSBaseModel,
@@ -35,6 +35,17 @@ from ats.contracts.domain import (
     payload_preimage,
 )
 from ats.contracts.enums import ATSStringEnum
+from ats.contracts.events import (
+    EVENT_PAYLOAD_MODELS,
+    EVENT_REGISTRY,
+    EVENT_REGISTRY_ENTRIES,
+    EventEnvelope,
+    EventPayload,
+    EventRegistryEntry,
+    EventType,
+    create_event,
+    validate_event_chain,
+)
 from ats.contracts.hashing import canonical_json_bytes, canonical_sha256, canonicalize
 from ats.contracts.ids import ATS_FIXTURE_NAMESPACE, OpaqueId, fixture_id, new_opaque_id
 
@@ -57,6 +68,15 @@ __all__ = [
     "decimal_from_string",
     "fixture_id",
     "new_opaque_id",
+    "EVENT_PAYLOAD_MODELS",
+    "EVENT_REGISTRY",
+    "EVENT_REGISTRY_ENTRIES",
+    "EventEnvelope",
+    "EventPayload",
+    "EventRegistryEntry",
+    "EventType",
+    "create_event",
+    "validate_event_chain",
     "AuditEvent",
     "AutonomyToken",
     "ConfidenceEvidence",
