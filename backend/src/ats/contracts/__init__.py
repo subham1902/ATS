@@ -1,4 +1,4 @@
-"""Public common contract foundation; domain and event schemas remain deferred."""
+"""Public common and frozen domain contracts; event schemas remain deferred to A03."""
 
 from ats.contracts.common import (
     ATSBaseModel,
@@ -11,6 +11,29 @@ from ats.contracts.common import (
     UTCDateTime,
     decimal_from_string,
 )
+from ats.contracts.domain import (
+    DOMAIN_CONTRACTS,
+    AuditEvent,
+    AutonomyToken,
+    ConfidenceEvidence,
+    DecisionPacket,
+    ExitIntent,
+    FeatureBundle,
+    Fill,
+    ForecastBundle,
+    MarketSnapshot,
+    OrderIntent,
+    PaperOrder,
+    Position,
+    RiskDecision,
+    RiskFacts,
+    StrategyPolicy,
+    StrategyPolicyDraft,
+    SupervisorAdvisory,
+    TradeReview,
+    compute_payload_hash,
+    payload_preimage,
+)
 from ats.contracts.enums import ATSStringEnum
 from ats.contracts.hashing import canonical_json_bytes, canonical_sha256, canonicalize
 from ats.contracts.ids import ATS_FIXTURE_NAMESPACE, OpaqueId, fixture_id, new_opaque_id
@@ -20,6 +43,7 @@ __all__ = [
     "ATSStringEnum",
     "ATS_FIXTURE_NAMESPACE",
     "ClockProtocol",
+    "DOMAIN_CONTRACTS",
     "FiniteDecimal",
     "FiniteFloat",
     "OpaqueId",
@@ -33,4 +57,24 @@ __all__ = [
     "decimal_from_string",
     "fixture_id",
     "new_opaque_id",
+    "AuditEvent",
+    "AutonomyToken",
+    "ConfidenceEvidence",
+    "DecisionPacket",
+    "ExitIntent",
+    "FeatureBundle",
+    "Fill",
+    "ForecastBundle",
+    "MarketSnapshot",
+    "OrderIntent",
+    "PaperOrder",
+    "Position",
+    "RiskDecision",
+    "RiskFacts",
+    "StrategyPolicy",
+    "StrategyPolicyDraft",
+    "SupervisorAdvisory",
+    "TradeReview",
+    "compute_payload_hash",
+    "payload_preimage",
 ]

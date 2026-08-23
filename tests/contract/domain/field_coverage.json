@@ -1,0 +1,95 @@
+{
+  "catalogue_row_total": 274,
+  "contracts": {
+    "MarketSnapshot": {
+      "catalogue_rows": 17,
+      "concrete_fields": ["schema_version", "snapshot_id", "instrument_id", "exchange", "segment", "timeframe", "bar_timestamp", "received_at", "open", "high", "low", "close", "volume", "sequence", "quality_state", "quality_flags", "source", "source_version", "session_state", "payload_hash"],
+      "compound_rows": {"open/high/low/close": ["open", "high", "low", "close"]}
+    },
+    "FeatureBundle": {
+      "catalogue_rows": 8,
+      "concrete_fields": ["schema_version", "feature_bundle_id", "snapshot_id", "feature_version", "features", "quality_flags", "computed_at", "input_hash"],
+      "compound_rows": {}
+    },
+    "ForecastBundle": {
+      "catalogue_rows": 20,
+      "concrete_fields": ["schema_version", "forecast_id", "feature_bundle_id", "model_id", "model_version", "checkpoint_hash", "data_version", "horizon_bars", "event_definition_id", "raw_evidence", "forecast_paths", "raw_probability", "calibrated_probability", "calibrator_version", "uncertainty", "baseline_results", "seed", "status", "started_at", "completed_at", "payload_hash"],
+      "compound_rows": {"started_at/completed_at": ["started_at", "completed_at"]}
+    },
+    "ConfidenceEvidence": {
+      "catalogue_rows": 20,
+      "concrete_fields": ["schema_version", "confidence_id", "forecast_id", "event_definition_id", "horizon_bars", "raw_probability", "calibrated_probability", "calibrator_version", "support_count", "reliability_bin", "brier_score", "confidence_interval", "regime_label", "regime_familiarity", "data_quality_state", "ensemble_agreement", "baseline_agreement", "eligibility_status", "reason_codes", "computed_at"],
+      "compound_rows": {}
+    },
+    "StrategyPolicyDraft": {
+      "catalogue_rows": 12,
+      "concrete_fields": ["schema_version", "draft_id", "source_instruction_hash", "compiler_model_id", "compiler_model_version", "requested_autonomy", "proposed_policy", "ambiguities", "unsafe_requests", "executable", "created_at", "payload_hash"],
+      "compound_rows": {}
+    },
+    "StrategyPolicy": {
+      "catalogue_rows": 34,
+      "concrete_fields": ["schema_version", "policy_id", "policy_version", "owner_subject", "lifecycle_status", "autonomy_level", "universe", "timeframe", "data_requirements", "event_definition_id", "forecast_horizon_bars", "confidence_threshold", "minimum_calibration_support", "entry_predicates", "sizing_rules", "maximum_loss", "minimum_reward_risk", "stop_rules", "target_rules", "trailing_rules", "time_exit", "portfolio_constraints", "daily_loss_limit", "drawdown_limit", "after_loss_state_machine", "cooldown_rule", "valid_from", "valid_until", "compatible_model_versions", "compatible_calibrator_versions", "created_at", "activated_at", "source_instruction_hash", "validation_report_hash", "payload_hash"],
+      "compound_rows": {"valid_from/valid_until": ["valid_from", "valid_until"]}
+    },
+    "RiskFacts": {
+      "catalogue_rows": 20,
+      "concrete_fields": ["schema_version", "risk_facts_id", "snapshot_sequence", "portfolio_version", "policy_id", "policy_version", "data_quality_state", "price_age_ms", "gross_exposure", "net_exposure", "open_position_count", "available_cash", "realized_pnl_today", "unrealized_pnl", "drawdown_fraction", "consecutive_losses", "loss_state", "liquidity_measure", "proposed_maximum_loss", "expected_reward", "measured_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"], "gross_exposure/net_exposure": ["gross_exposure", "net_exposure"]}
+    },
+    "RiskDecision": {
+      "catalogue_rows": 13,
+      "concrete_fields": ["schema_version", "risk_decision_id", "decision", "policy_id", "policy_version", "snapshot_sequence", "risk_facts_id", "applicable_rule_ids", "measured_values", "limits", "loss_state", "reason_codes", "decided_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"]}
+    },
+    "DecisionPacket": {
+      "catalogue_rows": 11,
+      "concrete_fields": ["schema_version", "packet_id", "candidate_id", "snapshot_id", "forecast_id", "confidence_id", "policy_id", "policy_version", "risk_decision_id", "bounded_evidence", "created_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"]}
+    },
+    "SupervisorAdvisory": {
+      "catalogue_rows": 11,
+      "concrete_fields": ["schema_version", "advisory_id", "packet_id", "recommendation", "evidence_refs", "reason_codes", "uncertainty_flags", "model_id", "model_version", "latency_ms", "created_at", "payload_hash"],
+      "compound_rows": {"model_id/model_version": ["model_id", "model_version"]}
+    },
+    "AutonomyToken": {
+      "catalogue_rows": 12,
+      "concrete_fields": ["schema_version", "token_id", "scope", "candidate_id", "policy_id", "policy_version", "risk_decision_id", "advisory_id", "system_state_version", "issued_at", "expires_at", "nonce", "consumed_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"], "issued_at/expires_at": ["issued_at", "expires_at"]}
+    },
+    "OrderIntent": {
+      "catalogue_rows": 20,
+      "concrete_fields": ["schema_version", "intent_id", "instrument_id", "side", "quantity", "order_type", "entry_conditions", "limit_price", "stop_price", "target_price", "maximum_permitted_loss", "expected_reward", "policy_id", "policy_version", "forecast_id", "risk_decision_id", "supervisor_advisory_id", "autonomy_token_id", "idempotency_key", "created_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"]}
+    },
+    "PaperOrder": {
+      "catalogue_rows": 13,
+      "concrete_fields": ["schema_version", "paper_order_id", "intent_id", "status", "instrument_id", "side", "quantity", "order_type", "limit_price", "stop_price", "filled_quantity", "average_fill_price", "rejection_reason", "broker_model_version", "accepted_at", "updated_at", "idempotency_key", "version"],
+      "compound_rows": {"instrument_id/side/quantity/order_type": ["instrument_id", "side", "quantity", "order_type"], "limit_price/stop_price": ["limit_price", "stop_price"], "accepted_at/updated_at": ["accepted_at", "updated_at"]}
+    },
+    "Fill": {
+      "catalogue_rows": 11,
+      "concrete_fields": ["schema_version", "fill_id", "paper_order_id", "instrument_id", "side", "quantity", "price", "fees", "taxes", "slippage", "cost_model_version", "filled_at", "idempotency_key", "payload_hash"],
+      "compound_rows": {"instrument_id/side": ["instrument_id", "side"], "fees/taxes/slippage": ["fees", "taxes", "slippage"]}
+    },
+    "Position": {
+      "catalogue_rows": 15,
+      "concrete_fields": ["schema_version", "position_id", "portfolio_id", "instrument_id", "net_quantity", "average_entry_price", "mark_price", "realized_pnl", "unrealized_pnl", "cash_effect", "policy_id", "policy_version", "opened_at", "updated_at", "closed_at", "status", "version", "last_fill_id", "payload_hash"],
+      "compound_rows": {"realized_pnl/unrealized_pnl": ["realized_pnl", "unrealized_pnl"], "policy_id/policy_version": ["policy_id", "policy_version"], "opened_at/updated_at/closed_at": ["opened_at", "updated_at", "closed_at"]}
+    },
+    "ExitIntent": {
+      "catalogue_rows": 12,
+      "concrete_fields": ["schema_version", "exit_intent_id", "position_id", "position_version", "reason", "quantity", "order_type", "limit_price", "stop_price", "risk_decision_id", "autonomy_token_id", "idempotency_key", "created_at", "payload_hash"],
+      "compound_rows": {"position_id/position_version": ["position_id", "position_version"], "limit_price/stop_price": ["limit_price", "stop_price"]}
+    },
+    "TradeReview": {
+      "catalogue_rows": 12,
+      "concrete_fields": ["schema_version", "review_id", "position_id", "policy_id", "policy_version", "forecast_id", "confidence_id", "outcome_metrics", "attribution", "lessons", "policy_change_proposals", "reviewer_model_id", "reviewer_model_version", "created_at", "payload_hash"],
+      "compound_rows": {"policy_id/policy_version": ["policy_id", "policy_version"], "forecast_id/confidence_id": ["forecast_id", "confidence_id"], "reviewer_model_id/reviewer_model_version": ["reviewer_model_id", "reviewer_model_version"]}
+    },
+    "AuditEvent": {
+      "catalogue_rows": 13,
+      "concrete_fields": ["schema_version", "audit_event_id", "event_id", "actor_type", "actor_id", "action", "object_type", "object_id", "decision_refs", "before_hash", "after_hash", "result", "reason_codes", "occurred_at", "trace_id", "record_hash"],
+      "compound_rows": {"actor_type/actor_id": ["actor_type", "actor_id"], "object_type/object_id": ["object_type", "object_id"], "before_hash/after_hash": ["before_hash", "after_hash"]}
+    }
+  }
+}
