@@ -12,7 +12,7 @@ browser trading, or A3+ capabilities.
 
 ## Bootstrap validation
 
-Pinned tools are Python 3.11.15, Node 26.4.0, uv 0.12.1, and pnpm 11.9.0.
+Pinned tools are Python 3.11.15, Node 24.19.0, uv 0.12.1, and pnpm 11.9.0.
 
 ```text
 uv sync --frozen
