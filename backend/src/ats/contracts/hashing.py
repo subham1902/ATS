@@ -7,16 +7,23 @@ Rules:
 * UUIDs use lowercase hyphenated text;
 * aware datetimes normalize to UTC and use six fractional digits plus ``Z``;
 * finite Decimals use normalized, non-exponent decimal text;
+* finite floats remain JSON numbers and use pinned Python 3.11's shortest
+  correctly-round-trippable binary64 representation as emitted by ``json``;
+* float exponent notation follows that representation and negative zero is
+  normalized to ``0.0``;
+* Decimal and float remain distinct: Decimal is a JSON string while float is a
+  JSON number, with contract field typing providing the authority boundary;
 * string enums use their declared values;
 * ``None`` is retained as JSON ``null``;
 * nested Pydantic models use aliases and include null fields;
-* floats, naive datetimes, sets, callables, and unknown objects are rejected.
+* non-finite floats, naive datetimes, sets, callables, and unknown objects are rejected.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -26,7 +33,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-JSONScalar: TypeAlias = None | bool | int | str
+JSONScalar: TypeAlias = None | bool | int | float | str
 JSONValue: TypeAlias = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
 
 
@@ -68,7 +75,9 @@ def canonicalize(value: Any) -> JSONValue:
     if value is None or isinstance(value, bool | int | str):
         return value
     if isinstance(value, float):
-        raise TypeError("binary floating-point values are not canonical ATS values")
+        if not math.isfinite(value):
+            raise ValueError("float value must be finite")
+        return 0.0 if value == 0.0 else value
     if isinstance(value, Mapping):
         result: dict[str, JSONValue] = {}
         for key, item in value.items():

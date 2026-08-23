@@ -14,6 +14,7 @@ from ats.contracts import (
     ATSBaseModel,
     ATSStringEnum,
     FiniteDecimal,
+    FiniteFloat,
     OpaqueId,
     UTCDateTime,
     canonical_json_bytes,
@@ -37,6 +38,23 @@ class SerializationFixture(ATSBaseModel):
     state: FixtureState
     nested: NestedFixture
     optional_note: str | None = None
+
+
+class FloatNestedFixture(ATSBaseModel):
+    values: tuple[FiniteFloat, ...]
+
+
+class MixedNumericFixture(ATSBaseModel):
+    financial_value: FiniteDecimal
+    analytical_value: FiniteFloat
+    identity: OpaqueId
+    timestamp: UTCDateTime
+    state: FixtureState
+    nested: FloatNestedFixture
+
+
+class FeatureCompatibilityFixture(ATSBaseModel):
+    features: dict[str, FiniteFloat]
 
 
 def fixture() -> SerializationFixture:
@@ -88,8 +106,82 @@ def test_decimal_representation_is_stable() -> None:
     assert canonical_json_bytes(Decimal("-0.00")) == b'"0"'
     with pytest.raises(ValueError):
         canonical_json_bytes(Decimal("NaN"))
-    with pytest.raises(TypeError):
-        canonical_json_bytes(0.1)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0.0, b"0.0"),
+        (-0.0, b"0.0"),
+        (1.0, b"1.0"),
+        (-1.0, b"-1.0"),
+        (0.1, b"0.1"),
+        (1.5, b"1.5"),
+        (1e-12, b"1e-12"),
+        (1e12, b"1000000000000.0"),
+        (1.2345678901234567, b"1.2345678901234567"),
+    ],
+)
+def test_finite_float_canonical_goldens(value: float, expected: bytes) -> None:
+    assert canonical_json_bytes(value) == expected
+    assert canonical_json_bytes(value) == expected
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_float_canonicalization_fails(value: float) -> None:
+    with pytest.raises(ValueError):
+        canonical_json_bytes(value)
+
+
+def test_nested_float_payload_matches_committed_golden() -> None:
+    first = {"feature_a": 0.125, "feature_b": -2.75}
+    second = {"feature_b": -2.75, "feature_a": 0.125}
+    expected = b'{"feature_a":0.125,"feature_b":-2.75}'
+    expected_hash = "06b19a1d4be1892f79a2398012b5b2be053dc8dc2ecbdc8eaf67d8a33ba004b8"
+    assert canonical_json_bytes(first) == expected
+    assert canonical_json_bytes(second) == expected
+    assert canonical_sha256(first) == expected_hash
+    assert canonical_sha256(second) == expected_hash
+
+
+def test_changed_float_changes_hash() -> None:
+    assert canonical_sha256({"feature": 0.125}) != canonical_sha256({"feature": 0.126})
+
+
+def test_decimal_and_float_have_distinct_canonical_json_types() -> None:
+    assert canonical_json_bytes(Decimal("1")) == b'"1"'
+    assert canonical_json_bytes(1.0) == b"1.0"
+
+
+def test_mixed_numeric_payload_matches_committed_golden() -> None:
+    value = MixedNumericFixture(
+        financial_value=Decimal("10.500"),
+        analytical_value=0.1,
+        identity=UUID("12345678-1234-5678-9234-567812345678"),
+        timestamp=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        state=FixtureState.READY,
+        nested=FloatNestedFixture(values=(0.125, -2.75)),
+    )
+    expected = (
+        b'{"analytical_value":0.1,"financial_value":"10.5",'
+        b'"identity":"12345678-1234-5678-9234-567812345678",'
+        b'"nested":{"values":[0.125,-2.75]},"state":"ready",'
+        b'"timestamp":"2026-01-02T03:04:05.000000Z"}'
+    )
+    assert canonical_json_bytes(value) == expected
+    assert canonical_sha256(value) == "c6bb983577c4a76f8645b9027c0de782a9a61a992cb6c83c55f30ac4806ca39d"
+
+
+def test_feature_compatibility_fixture_validates_and_hashes_repeatably() -> None:
+    value = FeatureCompatibilityFixture(
+        features={"momentum": 0.125, "volatility": 1.75}
+    )
+    expected = b'{"features":{"momentum":0.125,"volatility":1.75}}'
+    assert canonical_json_bytes(value) == expected
+    assert FeatureCompatibilityFixture.model_validate_json(value.model_dump_json()) == value
+    first_hash = canonical_sha256(value)
+    assert first_hash == "1af826337970ddd811592f9ffe6c49f49d9e926969194ac8001a3d6f5ffc336a"
+    assert canonical_sha256(value) == first_hash
 
 
 def test_equivalent_utc_instants_are_stable() -> None:

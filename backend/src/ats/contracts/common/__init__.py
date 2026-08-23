@@ -4,11 +4,13 @@ Aware timestamps supplied with a non-UTC offset are normalized to UTC. Naive
 timestamps are rejected. Decimal fields accept :class:`~decimal.Decimal` values
 only during Python validation; callers converting text must do so explicitly via
 ``decimal_from_string``. JSON validation accepts Decimal values only as strings
-in that same grammar. Binary floating-point input is never accepted.
+in that same grammar. Binary floating-point input is never accepted by Decimal
+fields; ``FiniteFloat`` is the explicit finite analytical binary64 boundary.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
@@ -19,6 +21,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
+    Strict,
     StringConstraints,
     ValidationInfo,
 )
@@ -91,6 +94,21 @@ Probability = Annotated[
 ]
 
 
+def _require_finite_float(value: object) -> float:
+    if type(value) is not float:
+        raise ValueError("FiniteFloat requires an explicit Python float")
+    if not math.isfinite(value):
+        raise ValueError("float value must be finite")
+    return value
+
+
+FiniteFloat = Annotated[
+    float,
+    Strict(),
+    BeforeValidator(_require_finite_float),
+]
+
+
 def decimal_from_string(value: str) -> Decimal:
     """Explicitly parse a finite decimal from the documented numeric grammar."""
 
@@ -124,6 +142,7 @@ __all__ = [
     "ATSBaseModel",
     "ClockProtocol",
     "FiniteDecimal",
+    "FiniteFloat",
     "Probability",
     "SchemaVersion",
     "SystemClock",

@@ -15,6 +15,7 @@ from ats.contracts import (
     ATSStringEnum,
     ClockProtocol,
     FiniteDecimal,
+    FiniteFloat,
     OpaqueId,
     Probability,
     SchemaVersion,
@@ -36,6 +37,11 @@ class CommonFixture(ATSBaseModel):
 
 class ExampleState(ATSStringEnum):
     READY = auto()
+
+
+class NumericBoundaryFixture(ATSBaseModel):
+    financial_value: FiniteDecimal
+    analytical_value: FiniteFloat
 
 
 def valid_fixture() -> CommonFixture:
@@ -100,6 +106,45 @@ def test_decimal_rules_are_explicit_and_finite() -> None:
         payload["amount"] = value
         with pytest.raises(ValidationError):
             CommonFixture.model_validate(payload)
+
+
+@pytest.mark.parametrize("value", [0.0, -2.5, 1.0, 0.1, 1.2345678901234567])
+def test_finite_float_accepts_explicit_finite_binary64(value: float) -> None:
+    fixture = NumericBoundaryFixture(
+        financial_value=Decimal("10.25"),
+        analytical_value=value,
+    )
+    assert fixture.analytical_value == value
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_finite_float_rejects_non_finite_values(value: float) -> None:
+    with pytest.raises(ValidationError):
+        NumericBoundaryFixture(
+            financial_value=Decimal("10.25"),
+            analytical_value=value,
+        )
+
+
+@pytest.mark.parametrize("value", [True, 1, "1.0", Decimal("1.0")])
+def test_finite_float_rejects_implicit_coercion(value: object) -> None:
+    with pytest.raises(ValidationError):
+        NumericBoundaryFixture(
+            financial_value=Decimal("10.25"),
+            analytical_value=value,  # type: ignore[arg-type]
+        )
+
+
+def test_decimal_and_finite_float_authority_boundary() -> None:
+    valid = NumericBoundaryFixture(
+        financial_value=Decimal("10.25"),
+        analytical_value=0.125,
+    )
+    assert valid.financial_value == Decimal("10.25")
+    assert valid.analytical_value == 0.125
+
+    with pytest.raises(ValidationError):
+        NumericBoundaryFixture(financial_value=10.25, analytical_value=0.125)
 
 
 def test_probability_accepts_boundaries_and_rejects_invalid_values() -> None:
