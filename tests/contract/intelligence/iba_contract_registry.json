@@ -1,0 +1,24 @@
+{
+  "contracts": {
+    "InstrumentSpec": {"namespace":"intelligence","persistence":"VERSIONED_MASTER","authority":"CONTROL_REFERENCE","owner":"Market Registry","producer":"market adapter configuration","consumers":["Market Engine","Market Governor","execution adapter later","cost engine later","dashboard later"]},
+    "MarketContext": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Market Context","producer":"deterministic Market Context Builder","consumers":["Regime Engine","Analogue Engine","Forecast Engine","Market Governor"]},
+    "RegimeEvidence": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Regime Intelligence","producer":"Regime Engine","consumers":["Analogue Engine","Ensemble Engine","Calibration Engine","Thesis Synthesizer","Strategy Lab"]},
+    "AnalogueEvidence": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Historical Intelligence","producer":"Historical Intelligence Engine","consumers":["Thesis","research","dashboard","future ensemble"]},
+    "EnsembleForecast": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Forecast Intelligence","producer":"Ensemble Engine","consumers":["Calibration Engine"]},
+    "CalibratedOutcomeDistribution": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Calibration","producer":"Calibration Engine","consumers":["Thesis","Opportunity Governor","A04 later"]},
+    "MarketThesis": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Thesis Intelligence","producer":"Thesis Synthesizer","consumers":["Analyst","Opportunity Governor","Position Governor","dashboard"]},
+    "AnalystAssessment": {"namespace":"intelligence","persistence":"DECISION_EVIDENCE","authority":"ADVISORY_ONLY","owner":"Market Analyst","producer":"LLM Market Analyst","consumers":["Opportunity Governor","dashboard"]},
+    "TradingCampaign": {"namespace":"governance","persistence":"CONTROL_RECORD","authority":"CONTROL_CONSTRAINT","owner":"Campaign Service","producer":"Campaign Service","consumers":["Market Governor","Opportunity Governor","A04 later"]},
+    "CampaignState": {"namespace":"governance","persistence":"RUNTIME_SNAPSHOT","authority":"CONTROL_CONSTRAINT","owner":"Campaign Service","producer":"Campaign Service","consumers":["Market Governor","Opportunity Governor","A04 later","dashboard later"]},
+    "OpportunityCandidate": {"namespace":"governance","persistence":"DECISION_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Opportunity Governor","producer":"Opportunity Governor","consumers":["A04 later"]},
+    "PositionThesis": {"namespace":"governance","persistence":"DECISION_EVIDENCE","authority":"ADVISORY_ONLY","owner":"Position Governor","producer":"Position Governor","consumers":["A04 later","Position Monitor","dashboard"]},
+    "GovernanceContext": {"namespace":"governance","persistence":"DECISION_EVIDENCE","authority":"KERNEL_INPUT","owner":"Governance Context","producer":"DETERMINISTIC Governance Context Builder ONLY","consumers":["A04 later"]},
+    "StrategyDefinition": {"namespace":"intelligence","persistence":"VERSIONED_MASTER","authority":"CONTROL_REFERENCE","owner":"Strategy Lab","producer":"Strategy Lab","consumers":["StrategyExperiment","Campaign Service later"]},
+    "FormulaDefinition": {"namespace":"intelligence","persistence":"VERSIONED_MASTER","authority":"EVIDENCE_ONLY","owner":"Strategy Lab","producer":"Strategy Lab","consumers":["Formula evaluator later","StrategyDefinition","StrategyExperiment","Strategy Lab"]},
+    "StrategyExperiment": {"namespace":"intelligence","persistence":"RESEARCH_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Strategy Lab","producer":"Strategy Lab","consumers":["Evaluation Engine","Promotion Gate"]},
+    "StrategyScorecard": {"namespace":"intelligence","persistence":"RESEARCH_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Evaluation Engine","producer":"Evaluation Engine","consumers":["Promotion Gate","Performance Intelligence","dashboard later"]},
+    "PromotionDecision": {"namespace":"intelligence","persistence":"RESEARCH_EVIDENCE","authority":"RESEARCH_CONTROL","owner":"Deterministic Promotion Gate","producer":"Deterministic Promotion Gate","consumers":["Strategy Registry","Campaign Service later","dashboard later"]},
+    "PerformanceAttribution": {"namespace":"intelligence","persistence":"RESEARCH_EVIDENCE","authority":"EVIDENCE_ONLY","owner":"Performance Intelligence","producer":"Performance Intelligence","consumers":["Strategy Lab","Explanation Service","dashboard"]},
+    "ExplanationEvidence": {"namespace":"intelligence","persistence":"EXPLANATION_RECORD","authority":"READ_ONLY","owner":"Explanation Service","producer":"Explanation Service","consumers":["Dashboard Answering Agent"]}
+  }
+}
