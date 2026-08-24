@@ -1,3 +1,5 @@
-export default function BootstrapPage() {
-  return <main>ATS M010-00 bootstrap</main>;
+import { Dashboard } from "../components/Dashboard";
+
+export default function Page() {
+  return <Dashboard />;
 }
