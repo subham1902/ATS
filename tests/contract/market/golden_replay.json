@@ -1,0 +1,30 @@
+{
+  "dataset_content_sha256": "182078ad14a46c8c2a92e7cf6838a62c838789820568f25b8c45c6063f62aaba",
+  "received_delay_ms": 250,
+  "snapshots": [
+    {
+      "snapshot_id": "370be3a1-bbfe-5528-aae3-120734afd19f",
+      "sequence": 1,
+      "session_state": "PREOPEN",
+      "payload_hash": "6fe94479bea55e8f7cd55e1ca73b4801fd315c54a7dcfeb535647814fa681428"
+    },
+    {
+      "snapshot_id": "ed341157-110c-5c5e-8f5b-d6f694a0a8d1",
+      "sequence": 2,
+      "session_state": "OPEN",
+      "payload_hash": "843126e0c6488c7f9603c77aa4cd88f3030410fd1805f9ecee5bf141a6796469"
+    },
+    {
+      "snapshot_id": "a5fcb65f-c410-5860-b65f-eae6bec446ad",
+      "sequence": 3,
+      "session_state": "OPEN",
+      "payload_hash": "e3460906b060daf4df4cd655274bd0c4f67c4686bbc648c175944561f81e6e99"
+    },
+    {
+      "snapshot_id": "364275ad-6f84-57fa-b7fd-06c081786d39",
+      "sequence": 4,
+      "session_state": "OPEN",
+      "payload_hash": "0ea5f8c837fcf4cc0f87d20929df6db94e45fd1fcadb18a6b54c023ef0da412d"
+    }
+  ]
+}
