@@ -14,7 +14,7 @@ from ats.events import OutboxRecord
 from .types import AuditRecord, EvidenceRecord, OrderAuthorityRecord, StateSnapshot, StoredToken
 
 if TYPE_CHECKING:
-    from ats.portfolio.persistence import PositionRepository
+    from ats.portfolio.persistence import CapitalRepository, PositionRepository
 
 
 class Cursor(Protocol):
@@ -104,6 +104,7 @@ class Transaction(Protocol):
     tokens: TokenRepository
     campaigns: CampaignStateRepository
     positions: PositionRepository
+    capital: CapitalRepository
     candidates: CandidateEvidenceRepository
     risk_decisions: RiskDecisionEvidenceRepository
     advisories: AdvisoryEvidenceRepository

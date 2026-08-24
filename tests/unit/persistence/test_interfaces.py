@@ -45,7 +45,10 @@ def test_migration_discovery_is_deterministic() -> None:
     directory = Path("backend/migrations")
     paths = migration_files(directory)
     validate_migration_names(paths)
-    assert [path.name for path in paths] == ["0001_iba_r17_evidence_store.sql"]
+    assert [path.name for path in paths] == [
+        "0001_iba_r17_evidence_store.sql",
+        "0002_portfolio_capital_reservations.sql",
+    ]
 
 
 def test_duplicate_migration_versions_rejected(tmp_path: Path) -> None:

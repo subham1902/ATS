@@ -1,16 +1,25 @@
 """PostgreSQL evidence store and transactional repository boundary."""
 
 from .errors import (
+    CapitalAccountNotFoundError,
+    CapitalReservationStateError,
     DuplicateAggregateSequenceError,
+    DuplicateCapitalReservationError,
     DuplicateEventIdError,
     DuplicateIdempotencyKeyError,
+    InsufficientCapitalError,
     IntegrityViolationError,
     PersistenceError,
     TokenConsumeError,
     TransactionConflictError,
     UnsupportedStoredEventError,
 )
-from .postgres import PostgresTransaction, PostgresTransactionManager, connect_postgres
+from .postgres import (
+    PostgresCapitalRepository,
+    PostgresTransaction,
+    PostgresTransactionManager,
+    connect_postgres,
+)
 from .protocols import (
     AdvisoryEvidenceRepository,
     AuditRepository,
@@ -27,21 +36,26 @@ from .protocols import (
 from .types import AuditRecord, EvidenceRecord, OrderAuthorityRecord, StateSnapshot, StoredToken
 
 __all__ = [
+    "CapitalAccountNotFoundError",
+    "CapitalReservationStateError",
     "AdvisoryEvidenceRepository",
     "AuditRecord",
     "AuditRepository",
     "CampaignStateRepository",
     "CandidateEvidenceRepository",
+    "DuplicateCapitalReservationError",
     "DuplicateAggregateSequenceError",
     "DuplicateEventIdError",
     "DuplicateIdempotencyKeyError",
     "EventStore",
     "EvidenceRecord",
     "IntegrityViolationError",
+    "InsufficientCapitalError",
     "OrderAuthorityRecord",
     "OrderAuthorityRepository",
     "OutboxRepository",
     "PersistenceError",
+    "PostgresCapitalRepository",
     "PostgresTransaction",
     "PostgresTransactionManager",
     "RiskDecisionEvidenceRepository",

@@ -33,11 +33,31 @@ class TokenConsumeError(PersistenceError):
     pass
 
 
+class CapitalAccountNotFoundError(PersistenceError):
+    pass
+
+
+class InsufficientCapitalError(PersistenceError):
+    pass
+
+
+class CapitalReservationStateError(PersistenceError):
+    pass
+
+
+class DuplicateCapitalReservationError(PersistenceError):
+    pass
+
+
 __all__ = [
+    "CapitalAccountNotFoundError",
+    "CapitalReservationStateError",
+    "DuplicateCapitalReservationError",
     "DuplicateAggregateSequenceError",
     "DuplicateEventIdError",
     "DuplicateIdempotencyKeyError",
     "IntegrityViolationError",
+    "InsufficientCapitalError",
     "PersistenceError",
     "TokenConsumeError",
     "TransactionConflictError",
