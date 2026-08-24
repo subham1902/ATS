@@ -1,0 +1,72 @@
+{
+  "dataset_id": "f37dd555-f596-5af8-a434-808a2208c721",
+  "dataset_version": "1.0.0",
+  "calendar_id": "NSE_CASH_ALPHA",
+  "calendar_version": "1.0.0",
+  "bars": [
+    {
+      "instrument_id": "RELIANCE",
+      "exchange": "NSE",
+      "segment": "CASH",
+      "timeframe": "5m",
+      "bar_timestamp": "2024-06-03T03:45:00Z",
+      "open": "2915.00",
+      "high": "2918.50",
+      "low": "2914.00",
+      "close": "2917.25",
+      "volume": "1250",
+      "source_sequence": 1,
+      "quality_state": "GOOD",
+      "quality_flags": [],
+      "session_state": "PREOPEN"
+    },
+    {
+      "instrument_id": "RELIANCE",
+      "exchange": "NSE",
+      "segment": "CASH",
+      "timeframe": "5m",
+      "bar_timestamp": "2024-06-03T03:50:00Z",
+      "open": "2917.25",
+      "high": "2922.00",
+      "low": "2916.50",
+      "close": "2920.75",
+      "volume": "8425",
+      "source_sequence": 2,
+      "quality_state": "GOOD",
+      "quality_flags": [],
+      "session_state": "OPEN"
+    },
+    {
+      "instrument_id": "RELIANCE",
+      "exchange": "NSE",
+      "segment": "CASH",
+      "timeframe": "5m",
+      "bar_timestamp": "2024-06-03T03:55:00Z",
+      "open": "2920.75",
+      "high": "2924.25",
+      "low": "2919.50",
+      "close": "2923.00",
+      "volume": "9130",
+      "source_sequence": 3,
+      "quality_state": "GOOD",
+      "quality_flags": [],
+      "session_state": "OPEN"
+    },
+    {
+      "instrument_id": "RELIANCE",
+      "exchange": "NSE",
+      "segment": "CASH",
+      "timeframe": "5m",
+      "bar_timestamp": "2024-06-03T04:00:00Z",
+      "open": "2923.00",
+      "high": "2926.00",
+      "low": "2921.75",
+      "close": "2924.50",
+      "volume": "7840",
+      "source_sequence": 4,
+      "quality_state": "GOOD",
+      "quality_flags": [],
+      "session_state": "OPEN"
+    }
+  ]
+}

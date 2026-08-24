@@ -1,0 +1,15 @@
+{
+  "dataset_id": "f37dd555-f596-5af8-a434-808a2208c721",
+  "dataset_version": "1.0.0",
+  "source_description": "ATS_APPROVED_NSE_CASH_FIXTURE",
+  "instrument": "RELIANCE",
+  "exchange": "NSE",
+  "segment": "CASH",
+  "timeframe": "5m",
+  "first_bar": "2024-06-03T03:45:00Z",
+  "last_bar": "2024-06-03T04:00:00Z",
+  "bar_count": 4,
+  "content_sha256": "182078ad14a46c8c2a92e7cf6838a62c838789820568f25b8c45c6063f62aaba",
+  "calendar_id": "NSE_CASH_ALPHA",
+  "calendar_version": "1.0.0"
+}
