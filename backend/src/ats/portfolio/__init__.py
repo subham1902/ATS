@@ -1,1 +1,5 @@
-"""Portfolio namespace; behavior is deferred."""
+"""Portfolio boundaries."""
+
+from .persistence import PositionRepository
+
+__all__ = ["PositionRepository"]
