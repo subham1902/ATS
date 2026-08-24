@@ -1,0 +1,30 @@
+"""Read-only, non-durable Server-Sent Events projection."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+
+from starlette.requests import Request
+
+from .models import StreamEvent
+from .providers import ControlPlaneReader
+
+
+def serialize_sse(event: StreamEvent) -> str:
+    """Serialize one validated UI stream event without domain-event mutation."""
+    return (
+        f"id: {event.stream_event_id}\n"
+        f"event: {event.event_kind}\n"
+        f"data: {event.model_dump_json()}\n\n"
+    )
+
+
+async def iter_sse(request: Request, reader: ControlPlaneReader) -> AsyncIterator[str]:
+    """Yield the current non-replayable projection and stop on disconnect."""
+    for event in reader.stream_events():
+        if await request.is_disconnected():
+            return
+        yield serialize_sse(event)
+
+
+__all__ = ["iter_sse", "serialize_sse"]
