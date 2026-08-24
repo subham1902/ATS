@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "feature_bundle_id": "b246c0c5-2df2-5229-977e-fff3692cc6d4",
+  "snapshot_id": "364275ad-6f84-57fa-b7fd-06c081786d39",
+  "feature_version": "1.0.0",
+  "features": {
+    "simple_return": 0.0005131713992473486,
+    "log_return": 0.0005130397718345364,
+    "candle_body": 1.5,
+    "candle_range": 4.25,
+    "upper_wick": 1.5,
+    "lower_wick": 1.25,
+    "atr_3_sma": 4.833333333333333,
+    "realized_volatility_3_population": 0.00028322307002963984,
+    "roc_3_fraction": 0.0024852172422658325,
+    "rolling_volume_mean_3": 8465.0,
+    "relative_volume_3": 0.926166568222091,
+    "rolling_price_position_3": 0.8421052631578947
+  },
+  "quality_flags": [],
+  "computed_at": "2024-06-03T04:00:00.250000Z",
+  "input_hash": "51b8114a02909fe79ab2b9f667540e919517cce5d510b8a749b491a7126ed4c7"
+}
