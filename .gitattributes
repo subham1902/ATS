@@ -1,1 +1,2 @@
 backend/src/ats/market/fixtures/nse_cash_reliance_5m_v1.bars.json text eol=lf
+tests/integration/market/derivatives/fixtures/*.csv text eol=lf
