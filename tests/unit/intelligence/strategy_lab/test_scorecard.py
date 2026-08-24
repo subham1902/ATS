@@ -5,7 +5,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 from ats.intelligence.strategy_lab.scorecard import build_scorecard
-from ats.intelligence.strategy_lab.types import BacktestResult, ResearchFill, ResearchSignal, ResearchTrade
+from ats.intelligence.strategy_lab.types import (
+    BacktestResult,
+    ResearchFill,
+    ResearchTrade,
+)
 
 
 def test_zero_trade_semantics() -> None:

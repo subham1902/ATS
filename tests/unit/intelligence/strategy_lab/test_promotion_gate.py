@@ -4,7 +4,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from ats.contracts.intelligence.types import ApprovalMode
-from ats.intelligence.strategy_lab.promotion_gate import evaluate_promotion
+from ats.intelligence.strategy_lab.promotion_gate import (
+    PromotionEvaluationStatus,
+    evaluate_promotion,
+)
 from ats.intelligence.strategy_lab.scorecard import build_scorecard
 from ats.intelligence.strategy_lab.types import BacktestResult
 
@@ -57,6 +60,8 @@ def _pass_scorecard():
         start_time=now,
         end_time=now,
         seed=42,
+        cost_model_version="v1",
+        cost_model_authoritative=True,
     )
     return build_scorecard(
         strategy_definition_id=uuid4(),
@@ -64,6 +69,7 @@ def _pass_scorecard():
         experiment_ids=(uuid4(),),
         result=res,
         created_at=now,
+        cost_model_version="v1",
     )
 
 
@@ -85,7 +91,8 @@ def test_promote_requires_gates() -> None:
         approved_by=None,
         approved_at=None,
     )
-    assert dec.decision.value != "PROMOTE"
+    assert dec.status is PromotionEvaluationStatus.REJECTED_BEFORE_DECISION
+    assert dec.promotion_decision is None
 
 
 def test_human_requires_approval() -> None:
@@ -106,7 +113,8 @@ def test_human_requires_approval() -> None:
         approved_by=None,
         approved_at=None,
     )
-    assert dec.decision.value != "PROMOTE"
+    assert dec.status is PromotionEvaluationStatus.REJECTED_BEFORE_DECISION
+    assert dec.promotion_decision is None
 
 
 def test_auto_a2_promote() -> None:
@@ -126,5 +134,7 @@ def test_auto_a2_promote() -> None:
         approved_by=None,
         approved_at=None,
     )
-    assert dec.decision.value == "PROMOTE"
+    assert dec.status is PromotionEvaluationStatus.PROMOTABLE_DECISION
+    assert dec.promotion_decision is not None
+    assert dec.promotion_decision.decision.value == "PROMOTE"
     assert dec.risk_constraints_unchanged is True

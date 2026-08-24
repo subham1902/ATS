@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
 from uuid import UUID, uuid5
 
 from ats.contracts.common import UTCDateTime
+from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.intelligence.models import StrategyExperiment
 from ats.contracts.intelligence.types import ExperimentStatus, ExperimentType, LeakageScanStatus
+from ats.market.replay.models import ReplayDataset
 
 from .backtest import BacktestConfiguration, run_backtest
 from .leakage_scanner import scan_leakage
 from .types import BacktestResult
 
 
-def _payload_hash(experiment_id: UUID) -> str:
-    # Deterministic placeholder hash using id
-    return sha256(str(experiment_id).encode()).hexdigest()
+def _with_payload_hash(experiment: StrategyExperiment) -> StrategyExperiment:
+    return experiment.model_copy(update={"payload_hash": compute_payload_hash(experiment)})
 
 
 def build_experiment(
@@ -44,11 +44,9 @@ def build_experiment(
     scorecard_id: UUID | None = None,
     leakage_scan_status: LeakageScanStatus | None = None,
     status: ExperimentStatus = ExperimentStatus.PLANNED,
+    dataset: ReplayDataset | None = None,
 ) -> StrategyExperiment:
-    # Compute leakage if not supplied
     if leakage_scan_status is None:
-        # Use dummy scan based on ordering; will be PASS if valid
-        # Build minimal experiment for scan
         tmp = StrategyExperiment(
             schema_version="1.0",
             experiment_id=experiment_id,
@@ -79,10 +77,10 @@ def build_experiment(
             reason_codes=(),
             payload_hash="0" * 64,
         )
-        scan = scan_leakage(tmp)
+        scan = scan_leakage(tmp, dataset)
         leakage_scan_status = scan.status
 
-    return StrategyExperiment(
+    experiment = StrategyExperiment(
         schema_version="1.0",
         experiment_id=experiment_id,
         strategy_definition_id=strategy_definition_id,
@@ -110,8 +108,9 @@ def build_experiment(
         completed_at=completed_at,
         scorecard_id=scorecard_id,
         reason_codes=(),
-        payload_hash=_payload_hash(experiment_id),
+        payload_hash="0" * 64,
     )
+    return _with_payload_hash(experiment)
 
 
 def run_experiment(
@@ -119,11 +118,11 @@ def run_experiment(
     config: BacktestConfiguration,
     experiment: StrategyExperiment,
     now: UTCDateTime,
+    dataset: ReplayDataset | None = None,
 ) -> tuple[StrategyExperiment, BacktestResult]:
-    """Deterministic runner: scans leakage, runs backtest, returns COMPLETED experiment."""
-    scan = scan_leakage(experiment)
+    """Deterministic runner: scans leakage, runs backtest, returns COMPLETED."""
+    scan = scan_leakage(experiment, dataset or config.dataset)
     if scan.status is not LeakageScanStatus.PASS:
-        # Return FAILED experiment
         failed = experiment.model_copy(
             update={
                 "status": ExperimentStatus.FAILED,
@@ -133,9 +132,7 @@ def run_experiment(
                 "reason_codes": scan.reason_codes[:1] if scan.reason_codes else ("LEAKAGE",),
             }
         )
-        # Empty result for failure
-        from .types import BacktestResult
-
+        failed = _with_payload_hash(failed)
         empty_result = BacktestResult(
             result_id=uuid5(experiment.experiment_id, "failed"),
             experiment_id=experiment.experiment_id,
@@ -148,14 +145,12 @@ def run_experiment(
         )
         return failed, empty_result
 
-    # Run deterministic backtest
     result = run_backtest(
         config=config,
         test_start=experiment.test_start,
         test_end=experiment.test_end,
         experiment_id=experiment.experiment_id,
     )
-    # For now scorecard_id is result.result_id deterministically
     completed = experiment.model_copy(
         update={
             "status": ExperimentStatus.COMPLETED,
@@ -166,6 +161,7 @@ def run_experiment(
             "test_end": experiment.test_end or result.end_time,
         }
     )
+    completed = _with_payload_hash(completed)
     return completed, result
 
 

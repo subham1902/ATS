@@ -12,6 +12,7 @@ class CostModel(Protocol):
     """Authoritative cost model; net result must include costs."""
 
     cost_model_version: str
+    cost_model_authoritative: bool
 
     def cost_per_trade(
         self,
@@ -28,6 +29,7 @@ class ZeroCostModel:
     """Only for tests where costs are explicitly zeroed; not authoritative."""
 
     cost_model_version = "zero-v1"
+    cost_model_authoritative = False
 
     def cost_per_trade(self, *, price: Decimal, quantity: Decimal, side: str) -> Decimal:
         return Decimal("0")
@@ -39,6 +41,7 @@ class FixedBpsCostModel(ATSBaseModel):
     cost_model_version: str
     fee_bps: Decimal
     per_trade_fee: Decimal
+    cost_model_authoritative: bool = True
 
     def cost_per_trade(self, *, price: Decimal, quantity: Decimal, side: str) -> Decimal:
         _ = side

@@ -79,6 +79,8 @@ def run_backtest(
             start_time=test_start,
             end_time=test_end if test_end is not None else test_start,
             seed=config.seed,
+            cost_model_version=config.cost_model.cost_model_version,
+            cost_model_authoritative=config.cost_model.cost_model_authoritative,
         )
 
     # Build series dict for R13 context — map required_features to close/open etc.
@@ -215,16 +217,31 @@ def run_backtest(
                         fills.append(exit_fill)
                         # Create trade (deterministic: always next open)
                         assert entry_fill is not None
-                        # PnL fraction: (exit_price - entry_price)/entry_price
+                        # PnL fraction: (exit_price - entry_price)/entry price (NET, after costs)
                         try:
                             entry_p = entry_fill.price
                             exit_p = exit_fill.price
-                            pnl_frac = (exit_p - entry_p) / entry_p
-                            # R multiple: risk = 1% notional, R = pnl_frac / 0.01
-                            pnl_r = pnl_frac / Decimal("0.01")
+                            qty = entry_fill.quantity
+                            notional = entry_p * qty
+                            # Gross PnL fraction (before costs)
+                            gross_frac = (exit_p - entry_p) / entry_p
+                            gross_r = gross_frac / Decimal("0.01")
+                            # Costs from fills
+                            entry_cost = entry_fill.cost
+                            exit_cost = exit_fill.cost
+                            net_cash = (exit_p - entry_p) * qty - entry_cost - exit_cost
+                            net_frac = net_cash / notional if notional != 0 else Decimal("0")
+                            net_r = net_frac / Decimal("0.01")
                         except Exception:
-                            pnl_frac = Decimal("0")
-                            pnl_r = Decimal("0")
+                            gross_frac = Decimal("0")
+                            gross_r = Decimal("0")
+                            net_frac = Decimal("0")
+                            net_r = Decimal("0")
+                            notional = entry_fill.price * entry_fill.quantity
+                            gross_cash = Decimal("0")
+                            net_cash = Decimal("0")
+                        else:
+                            gross_cash = (exit_p - entry_p) * qty
                         trade = ResearchTrade(
                             trade_id=uuid5(
                                 experiment_id,
@@ -235,8 +252,13 @@ def run_backtest(
                             exit_fill=exit_fill,
                             entry_time=entry_fill.bar_timestamp,
                             exit_time=exit_fill.bar_timestamp,
-                            pnl_fraction=pnl_frac,
-                            pnl_r=pnl_r,
+                            pnl_fraction=net_frac,
+                            pnl_r=net_r,
+                            gross_pnl_fraction=gross_frac,
+                            gross_pnl_r=gross_r,
+                            gross_cash_pnl=gross_cash,
+                            net_cash_pnl=net_cash,
+                            entry_notional=notional,
                         )
                         trades.append(trade)
                         in_position = False
@@ -255,6 +277,8 @@ def run_backtest(
         start_time=start_t,
         end_time=end_t,
         seed=config.seed,
+        cost_model_version=config.cost_model.cost_model_version,
+        cost_model_authoritative=config.cost_model.cost_model_authoritative,
     )
 
 

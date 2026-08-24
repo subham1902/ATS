@@ -5,7 +5,7 @@ from .cost_model import CostModel, FixedBpsCostModel, ZeroCostModel
 from .dataset_binding import DatasetBinding
 from .experiment_runner import build_experiment, run_experiment
 from .leakage_scanner import LeakageScanResult, scan_leakage
-from .promotion_gate import evaluate_promotion
+from .promotion_gate import PromotionEvaluationResult, PromotionEvaluationStatus, evaluate_promotion
 from .scorecard import build_scorecard
 from .types import (
     BacktestResult,
@@ -26,6 +26,8 @@ __all__ = [
     "FillAssumption",
     "FixedBpsCostModel",
     "LeakageScanResult",
+    "PromotionEvaluationResult",
+    "PromotionEvaluationStatus",
     "ResearchFill",
     "ResearchSignal",
     "ResearchTrade",

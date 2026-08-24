@@ -5,8 +5,8 @@ from decimal import Decimal
 from uuid import uuid4
 
 from ats.contracts.domain.types import DataQualityState, SessionState
-from ats.market.replay.models import ReplayBar, ReplayDataset, ReplayManifest
 from ats.intelligence.strategy_lab.walk_forward import build_rolling_plan
+from ats.market.replay.models import ReplayBar, ReplayDataset, ReplayManifest
 
 
 def _bars(n: int = 30) -> ReplayDataset:
@@ -51,7 +51,9 @@ def _bars(n: int = 30) -> ReplayDataset:
 
 def test_walk_forward_no_leakage() -> None:
     dataset = _bars(30)
-    plan = build_rolling_plan(dataset=dataset, train_bars=10, test_bars=5, purge_bars=1, embargo_bars=1)
+    plan = build_rolling_plan(
+        dataset=dataset, train_bars=10, test_bars=5, purge_bars=1, embargo_bars=1
+    )
     assert len(plan.windows) > 0
     # Chronology
     for i in range(1, len(plan.windows)):
@@ -62,7 +64,9 @@ def test_walk_forward_no_leakage() -> None:
 
 def test_walk_forward_purge_embargo() -> None:
     dataset = _bars(20)
-    plan = build_rolling_plan(dataset=dataset, train_bars=5, test_bars=5, purge_bars=2, embargo_bars=2)
+    plan = build_rolling_plan(
+        dataset=dataset, train_bars=5, test_bars=5, purge_bars=2, embargo_bars=2
+    )
     w = plan.windows[0]
     assert w.purge_bars == 2
     assert w.embargo_bars == 2

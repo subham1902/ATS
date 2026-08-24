@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from ats.intelligence.strategy_lab.dataset_binding import DatasetBinding
 
 
@@ -26,7 +25,7 @@ def test_dataset_binding_valid() -> None:
 
 
 def test_dataset_binding_rejects_empty_universe() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         DatasetBinding(
             dataset_manifest_id=uuid4(),
             dataset_version="v1",

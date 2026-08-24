@@ -23,9 +23,15 @@ def build_rolling_plan(
 
     No random shuffle. Chronological windows with purge/embargo gaps.
     """
+    if mode != "rolling":
+        raise ValueError("only rolling walk-forward mode is implemented in v1")
+    if train_bars <= 0 or test_bars <= 0:
+        raise ValueError("train_bars and test_bars must be >0")
+    if purge_bars < 0 or embargo_bars < 0:
+        raise ValueError("purge_bars and embargo_bars must be >=0")
+
     bars = dataset.bars
     windows: list[WalkForwardWindow] = []
-    step = test_bars  # rolling step = test length
     # Need at least train+purge+test bars to create a window
     idx = 0
     while idx + train_bars + purge_bars + test_bars <= len(bars):
@@ -45,12 +51,9 @@ def build_rolling_plan(
             embargo_bars=embargo_bars,
         )
         windows.append(window)
-        idx += step + embargo_bars
-        if mode == "expanding":
-            # Expanding: train_start fixed at 0, grow window.
-            # For v1 keep rolling; expanding not required now.
-            # Keep deterministic step; train_bars would grow.
-            pass
+        # Embargo is the number of bars excluded after this test window
+        # before the next rolling train window begins.
+        idx = idx + train_bars + purge_bars + test_bars + embargo_bars
         if len(windows) > 100:
             break  # safety bound
     plan = WalkForwardPlan(

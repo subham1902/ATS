@@ -4,18 +4,14 @@ from __future__ import annotations
 
 import math
 from decimal import Decimal
-from hashlib import sha256
 from uuid import UUID, uuid5
 
 from ats.contracts.common import UTCDateTime
+from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.intelligence.models import StrategyScorecard
 from ats.contracts.intelligence.types import ScorecardValidationStatus
 
 from .types import BacktestResult
-
-
-def _payload_hash(scorecard_id: UUID) -> str:
-    return sha256(str(scorecard_id).encode()).hexdigest()
 
 
 def _safe_div(a: float, b: float) -> float | None:
@@ -34,6 +30,7 @@ def build_scorecard(
     experiment_ids: tuple[UUID, ...],
     result: BacktestResult,
     created_at: UTCDateTime,
+    cost_model_version: str | None = None,
 ) -> StrategyScorecard:
     trades = result.trades
     trade_count = len(trades)
@@ -136,15 +133,22 @@ def build_scorecard(
         if not math.isfinite(turnover_val):
             turnover_val = 0.0
 
-    # Validation status
-    if trade_count == 0:
+    # Placeholder zero-cost fixtures are deterministic, but not authoritative
+    # promotion evidence. The caller must bind the same version recorded by
+    # the backtest result.
+    cost_evidence_valid = (
+        result.cost_model_authoritative is True
+        and result.cost_model_version is not None
+        and cost_model_version == result.cost_model_version
+    )
+    if trade_count == 0 or not cost_evidence_valid:
         validation_status = ScorecardValidationStatus.INSUFFICIENT_EVIDENCE
     else:
         validation_status = ScorecardValidationStatus.PASS
 
     scorecard_id = uuid5(result.result_id, "scorecard")
 
-    return StrategyScorecard(
+    scorecard = StrategyScorecard(
         schema_version="1.0",
         scorecard_id=scorecard_id,
         strategy_definition_id=strategy_definition_id,
@@ -172,8 +176,9 @@ def build_scorecard(
         benchmark_delta=float(benchmark_delta),
         validation_status=validation_status,
         created_at=created_at,
-        payload_hash=_payload_hash(scorecard_id),
+        payload_hash="0" * 64,
     )
+    return scorecard.model_copy(update={"payload_hash": compute_payload_hash(scorecard)})
 
 
 __all__ = ["build_scorecard"]

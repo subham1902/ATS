@@ -1,3 +1,5 @@
+"""R14-F01: Cost model/net P&L consistency tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -18,7 +20,8 @@ from ats.contracts.intelligence.types import (
     VersionedRef,
 )
 from ats.intelligence.strategy_lab.backtest import BacktestConfiguration, run_backtest
-from ats.intelligence.strategy_lab.cost_model import FixedBpsCostModel
+from ats.intelligence.strategy_lab.cost_model import FixedBpsCostModel, ZeroCostModel
+from ats.intelligence.strategy_lab.scorecard import build_scorecard
 from ats.market.replay.models import ReplayBar, ReplayDataset, ReplayManifest
 
 
@@ -133,7 +136,7 @@ def _always_false() -> FormulaDefinition:
 
 
 def _strategy(entry: FormulaDefinition) -> StrategyDefinition:
-    base = StrategyDefinition(
+    return StrategyDefinition(
         schema_version="1.0",
         strategy_definition_id=uuid4(),
         strategy_definition_version=1,
@@ -158,46 +161,15 @@ def _strategy(entry: FormulaDefinition) -> StrategyDefinition:
         created_at=datetime.now(UTC),
         payload_hash="c" * 64,
     )
-    return base
 
 
-def test_entry_at_next_open() -> None:
-    dataset = _bars(5)
-    entry = _always_true()
-    exit_f = _always_false()
-    cost = FixedBpsCostModel(
-        cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0")
-    )
-    strat = _strategy(entry)
-    cfg = BacktestConfiguration(
-        strategy=strat,
-        entry_formula=entry,
-        exit_formulas=(exit_f,),
-        dataset=dataset,
-        cost_model=cost,
-        fill_quantity=Decimal("10"),
-        dataset_cutoff=dataset.manifest.last_bar,
-        parameter_set_hash="a" * 64,
-        seed=42,
-    )
-    result = run_backtest(
-        config=cfg,
-        test_start=dataset.manifest.first_bar,
-        test_end=dataset.manifest.last_bar,
-        experiment_id=uuid4(),
-    )
-    assert len(result.fills) > 0
-    first_fill = result.fills[0]
-    assert first_fill.bar_sequence == 2
-    assert first_fill.price == Decimal("100")
-
-
-def test_exit_conservative_next_open() -> None:
+def test_gross_positive_minus_costs_equals_smaller_net() -> None:
+    """Gross positive trade minus costs = smaller net return."""
     dataset = _bars(5)
     entry = _always_true()
     exit_f = _always_true()
     cost = FixedBpsCostModel(
-        cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0")
+        cost_model_version="v1", fee_bps=Decimal("10"), per_trade_fee=Decimal("0")
     )
     strat = _strategy(entry)
     cfg = BacktestConfiguration(
@@ -219,4 +191,188 @@ def test_exit_conservative_next_open() -> None:
     )
     if result.trades:
         t = result.trades[0]
-        assert t.entry_fill.bar_sequence < t.exit_fill.bar_sequence  # type: ignore[union-attr]
+        # pnl_fraction is NET, gross_pnl_fraction is GROSS
+        assert t.pnl_fraction is not None
+        assert t.gross_pnl_fraction is not None
+        # NET <= GROSS (costs reduce return)
+        assert t.pnl_fraction <= t.gross_pnl_fraction
+
+
+def test_high_costs_turn_profit_into_loss() -> None:
+    """High costs can turn gross profit into net loss."""
+    dataset = _bars(5)
+    entry = _always_true()
+    exit_f = _always_true()
+    # Very high cost: 1000 bps = 10%
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("1000"), per_trade_fee=Decimal("0")
+    )
+    strat = _strategy(entry)
+    cfg = BacktestConfiguration(
+        strategy=strat,
+        entry_formula=entry,
+        exit_formulas=(exit_f,),
+        dataset=dataset,
+        cost_model=cost,
+        fill_quantity=Decimal("10"),
+        dataset_cutoff=dataset.manifest.last_bar,
+        parameter_set_hash="a" * 64,
+        seed=42,
+    )
+    result = run_backtest(
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=uuid4(),
+    )
+    if result.trades:
+        t = result.trades[0]
+        # With 10% cost on flat prices, net should be negative
+        assert t.pnl_fraction is not None
+        assert t.pnl_fraction < 0
+
+
+def test_estimated_costs_equals_actual_subtracted() -> None:
+    """estimated_costs in scorecard equals sum of fill costs."""
+    dataset = _bars(5)
+    entry = _always_true()
+    exit_f = _always_true()
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("5"), per_trade_fee=Decimal("1")
+    )
+    strat = _strategy(entry)
+    cfg = BacktestConfiguration(
+        strategy=strat,
+        entry_formula=entry,
+        exit_formulas=(exit_f,),
+        dataset=dataset,
+        cost_model=cost,
+        fill_quantity=Decimal("10"),
+        dataset_cutoff=dataset.manifest.last_bar,
+        parameter_set_hash="a" * 64,
+        seed=42,
+    )
+    result = run_backtest(
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=uuid4(),
+    )
+    now = datetime(2024, 1, 10, tzinfo=UTC)
+    sc = build_scorecard(
+        strategy_definition_id=uuid4(),
+        strategy_definition_version=1,
+        experiment_ids=(uuid4(),),
+        result=result,
+        created_at=now,
+        cost_model_version="v1",
+    )
+    expected_costs = sum((f.cost for f in result.fills), Decimal("0"))
+    assert sc.estimated_costs == expected_costs
+
+
+def test_cost_not_deducted_twice() -> None:
+    """Costs are deducted once in pnl_fraction, not again in scorecard."""
+    dataset = _bars(5)
+    entry = _always_true()
+    exit_f = _always_true()
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("10"), per_trade_fee=Decimal("0")
+    )
+    strat = _strategy(entry)
+    cfg = BacktestConfiguration(
+        strategy=strat,
+        entry_formula=entry,
+        exit_formulas=(exit_f,),
+        dataset=dataset,
+        cost_model=cost,
+        fill_quantity=Decimal("10"),
+        dataset_cutoff=dataset.manifest.last_bar,
+        parameter_set_hash="a" * 64,
+        seed=42,
+    )
+    result = run_backtest(
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=uuid4(),
+    )
+    now = datetime(2024, 1, 10, tzinfo=UTC)
+    sc = build_scorecard(
+        strategy_definition_id=uuid4(),
+        strategy_definition_version=1,
+        experiment_ids=(uuid4(),),
+        result=result,
+        created_at=now,
+        cost_model_version="v1",
+    )
+    # net_return_fraction = sum(pnl_fraction) where pnl_fraction already has costs deducted
+    # estimated_costs is reported separately, not subtracted again
+    trade_net = sum(float(t.pnl_fraction) for t in result.trades if t.pnl_fraction is not None)
+    assert sc.net_return_fraction == trade_net
+
+
+def test_zero_cost_fixture_gross_equals_net() -> None:
+    """Zero-cost explicit fixture yields gross == net."""
+    dataset = _bars(5)
+    entry = _always_true()
+    exit_f = _always_true()
+    cost = ZeroCostModel()
+    strat = _strategy(entry)
+    cfg = BacktestConfiguration(
+        strategy=strat,
+        entry_formula=entry,
+        exit_formulas=(exit_f,),
+        dataset=dataset,
+        cost_model=cost,
+        fill_quantity=Decimal("10"),
+        dataset_cutoff=dataset.manifest.last_bar,
+        parameter_set_hash="a" * 64,
+        seed=42,
+    )
+    result = run_backtest(
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=uuid4(),
+    )
+    if result.trades:
+        t = result.trades[0]
+        assert t.pnl_fraction == t.gross_pnl_fraction
+
+
+def test_zero_cost_not_pass_authoritative() -> None:
+    """Zero-cost model yields INSUFFICIENT_EVIDENCE, not PASS."""
+    dataset = _bars(5)
+    entry = _always_true()
+    exit_f = _always_true()
+    cost = ZeroCostModel()
+    strat = _strategy(entry)
+    cfg = BacktestConfiguration(
+        strategy=strat,
+        entry_formula=entry,
+        exit_formulas=(exit_f,),
+        dataset=dataset,
+        cost_model=cost,
+        fill_quantity=Decimal("10"),
+        dataset_cutoff=dataset.manifest.last_bar,
+        parameter_set_hash="a" * 64,
+        seed=42,
+    )
+    result = run_backtest(
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=uuid4(),
+    )
+    now = datetime(2024, 1, 10, tzinfo=UTC)
+    sc = build_scorecard(
+        strategy_definition_id=uuid4(),
+        strategy_definition_version=1,
+        experiment_ids=(uuid4(),),
+        result=result,
+        created_at=now,
+    )
+    from ats.contracts.intelligence.types import ScorecardValidationStatus
+
+    assert sc.validation_status is ScorecardValidationStatus.INSUFFICIENT_EVIDENCE

@@ -38,7 +38,7 @@ def test_leakage_fail_cutoff_violation() -> None:
     import pytest
 
     # Contract itself rejects test_end > dataset_cutoff -> leakage prevented at construction
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         build_experiment(
             experiment_id=uuid4(),
             strategy_definition_id=uuid4(),

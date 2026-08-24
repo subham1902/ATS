@@ -5,20 +5,24 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
-from ats.contracts.intelligence.types import ApprovalMode, ExperimentStatus, ExperimentType, LeakageScanStatus
+from ats.contracts.intelligence.types import (
+    ApprovalMode,
+    ExperimentType,
+)
 from ats.intelligence.strategy_lab.cost_model import FixedBpsCostModel
 from ats.intelligence.strategy_lab.dataset_binding import DatasetBinding
-from ats.intelligence.strategy_lab.experiment_runner import build_experiment, run_experiment
-from ats.intelligence.strategy_lab.leakage_scanner import scan_leakage
-from ats.intelligence.strategy_lab.promotion_gate import evaluate_promotion
+from ats.intelligence.strategy_lab.experiment_runner import build_experiment
+from ats.intelligence.strategy_lab.promotion_gate import (
+    PromotionEvaluationStatus,
+    evaluate_promotion,
+)
 from ats.intelligence.strategy_lab.scorecard import build_scorecard
 from ats.intelligence.strategy_lab.types import BacktestResult
 
 
 def test_future_data_leakage() -> None:
     # dataset_cutoff before test_end is rejected at contract level
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         build_experiment(
             experiment_id=uuid4(),
             strategy_definition_id=uuid4(),
@@ -42,7 +46,7 @@ def test_future_data_leakage() -> None:
 
 
 def test_train_test_overlap() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         build_experiment(
             experiment_id=uuid4(),
             strategy_definition_id=uuid4(),
@@ -66,7 +70,9 @@ def test_train_test_overlap() -> None:
 
 
 def test_cost_model_failure() -> None:
-    cost = FixedBpsCostModel(cost_model_version="v1", fee_bps=Decimal("-1"), per_trade_fee=Decimal("0"))
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("-1"), per_trade_fee=Decimal("0")
+    )
     with pytest.raises(ValueError):
         cost.cost_per_trade(price=Decimal("100"), quantity=Decimal("10"), side="BUY")
 
@@ -151,7 +157,8 @@ def test_promotion_insufficient_evidence() -> None:
         approved_by=None,
         approved_at=None,
     )
-    assert dec.decision.value != "PROMOTE"
+    assert dec.status is PromotionEvaluationStatus.DEFERRED_BEFORE_DECISION
+    assert dec.promotion_decision is None
 
 
 def test_challenger_cannot_self_authorize() -> None:
@@ -204,6 +211,8 @@ def test_challenger_cannot_self_authorize() -> None:
         start_time=now,
         end_time=now,
         seed=42,
+        cost_model_version="v1",
+        cost_model_authoritative=True,
     )
     sc = build_scorecard(
         strategy_definition_id=uuid4(),
@@ -211,6 +220,7 @@ def test_challenger_cannot_self_authorize() -> None:
         experiment_ids=(uuid4(),),
         result=res,
         created_at=now,
+        cost_model_version="v1",
     )
     dec = evaluate_promotion(
         promotion_decision_id=uuid4(),
@@ -227,14 +237,16 @@ def test_challenger_cannot_self_authorize() -> None:
         approved_at=None,
     )
     # PromotionDecision is research-control, not trading authority — no AutonomyToken created
-    assert dec.target_status == "CHAMPION"
-    assert dec.approval_mode == ApprovalMode.AUTO_A2
+    assert dec.status is PromotionEvaluationStatus.PROMOTABLE_DECISION
+    assert dec.promotion_decision is not None
+    assert dec.promotion_decision.target_status == "CHAMPION"
+    assert dec.promotion_decision.approval_mode == ApprovalMode.AUTO_A2
 
 
 def test_corrupt_dataset_binding() -> None:
     from ats.contracts.intelligence.types import RegisteredCode
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         DatasetBinding(
             dataset_manifest_id=uuid4(),
             dataset_version="v1",

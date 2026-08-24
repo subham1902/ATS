@@ -4,12 +4,21 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+from ats.contracts.domain.types import DataQualityState, SessionState
 from ats.contracts.intelligence.models import FormulaDefinition, StrategyDefinition
-from ats.contracts.intelligence.types import AssetClass, FormulaNode, FormulaNodeKind, FormulaOutputKind, FormulaPurpose, RegisteredCode, StrategyOrigin, VersionedRef
+from ats.contracts.intelligence.types import (
+    AssetClass,
+    FormulaNode,
+    FormulaNodeKind,
+    FormulaOutputKind,
+    FormulaPurpose,
+    RegisteredCode,
+    StrategyOrigin,
+    VersionedRef,
+)
 from ats.intelligence.strategy_lab.backtest import BacktestConfiguration, run_backtest
 from ats.intelligence.strategy_lab.cost_model import FixedBpsCostModel
 from ats.market.replay.models import ReplayBar, ReplayDataset, ReplayManifest
-from ats.contracts.domain.types import DataQualityState, SessionState
 
 
 def _bars(n: int = 20) -> ReplayDataset:
@@ -90,7 +99,9 @@ def _always_true() -> FormulaDefinition:
 def test_determinism_same_seed() -> None:
     dataset = _bars(20)
     formula = _always_true()
-    cost = FixedBpsCostModel(cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0"))
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0")
+    )
     from ats.contracts.intelligence.types import StrategyStatus
 
     strat = StrategyDefinition(
@@ -131,10 +142,16 @@ def test_determinism_same_seed() -> None:
     )
     eid = uuid4()
     r1 = run_backtest(
-        config=cfg, test_start=dataset.manifest.first_bar, test_end=dataset.manifest.last_bar, experiment_id=eid
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=eid,
     )
     r2 = run_backtest(
-        config=cfg, test_start=dataset.manifest.first_bar, test_end=dataset.manifest.last_bar, experiment_id=eid
+        config=cfg,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=eid,
     )
     assert r1.trades == r2.trades
     assert r1.fills == r2.fills
@@ -143,7 +160,9 @@ def test_determinism_same_seed() -> None:
 def test_changed_seed_deterministic() -> None:
     dataset = _bars(10)
     formula = _always_true()
-    cost = FixedBpsCostModel(cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0"))
+    cost = FixedBpsCostModel(
+        cost_model_version="v1", fee_bps=Decimal("0"), per_trade_fee=Decimal("0")
+    )
     from ats.contracts.intelligence.types import StrategyStatus
 
     strat = StrategyDefinition(
@@ -195,9 +214,15 @@ def test_changed_seed_deterministic() -> None:
     )
     eid = uuid4()
     r1 = run_backtest(
-        config=cfg1, test_start=dataset.manifest.first_bar, test_end=dataset.manifest.last_bar, experiment_id=eid
+        config=cfg1,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=eid,
     )
     r2 = run_backtest(
-        config=cfg2, test_start=dataset.manifest.first_bar, test_end=dataset.manifest.last_bar, experiment_id=eid
+        config=cfg2,
+        test_start=dataset.manifest.first_bar,
+        test_end=dataset.manifest.last_bar,
+        experiment_id=eid,
     )
     assert len(r1.trades) == len(r2.trades)
