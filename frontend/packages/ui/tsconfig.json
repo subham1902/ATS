@@ -4,7 +4,12 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "target": "ES2022"
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src/index.ts", "src/components/**/*", "src/types/**/*"],
+  "exclude": ["src/__tests__", "node_modules"]
 }
