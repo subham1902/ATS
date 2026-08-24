@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from decimal import Decimal
 
+from pydantic import ValidationError
+
 from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.models import ForecastBundle
 from ats.contracts.domain.types import (
@@ -18,6 +20,7 @@ from ats.contracts.domain.types import (
 from ats.contracts.hashing import canonical_sha256
 
 from .models import ModelRunRequest, ProviderForecast
+from .naive import NAIVE_BASELINE_ID, NAIVE_BASELINE_VERSION
 from .provider import (
     DeviceUnavailableError,
     ForecastProvider,
@@ -67,7 +70,14 @@ class ForecastWorker:
             return self._failure(request, "MALFORMED_OUTPUT", ForecastStatus.FAILED)
         if failure is not None:
             return self._failure(request, failure, ForecastStatus.FAILED)
-        return self._ready(request, output)
+        try:
+            return self._ready(request, output)
+        except ValidationError:
+            return self._failure(
+                request,
+                "CONTRACT_NORMALIZATION_FAILED",
+                ForecastStatus.FAILED,
+            )
 
     def _validate_output(self, request: ModelRunRequest, output: ProviderForecast) -> str | None:
         config = request.configuration
@@ -116,8 +126,8 @@ class ForecastWorker:
         if metadata.provider_name == "naive":
             baseline_results = (
                 BaselineResult(
-                    baseline_id=metadata.model_id,
-                    baseline_version=metadata.model_version,
+                    baseline_id=NAIVE_BASELINE_ID,
+                    baseline_version=NAIVE_BASELINE_VERSION,
                     probability=output.raw_probability,
                     metrics={},
                 ),

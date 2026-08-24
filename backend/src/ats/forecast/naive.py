@@ -12,6 +12,9 @@ from .models import (
 )
 from .provider import InsufficientContextError
 
+NAIVE_BASELINE_ID = "naive-last-close"
+NAIVE_BASELINE_VERSION = "1.0.0"
+
 
 class NaiveForecastProvider:
     """Repeat the last close with an explicitly uninformative event probability."""
@@ -49,4 +52,4 @@ class NaiveForecastProvider:
         )
 
 
-__all__ = ["NaiveForecastProvider"]
+__all__ = ["NAIVE_BASELINE_ID", "NAIVE_BASELINE_VERSION", "NaiveForecastProvider"]
