@@ -12,15 +12,27 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from ats.contracts.domain.models import AutonomyToken
+from ats.contracts.domain.types import LossState
 from ats.contracts.events.models import EventEnvelope, EventPayload, EventType
 from ats.contracts.events.registry import EVENT_REGISTRY
 from ats.contracts.hashing import canonical_sha256, canonicalize
 from ats.events import ExternalSubmissionState, OutboxRecord, OutboxState
+from ats.portfolio.persistence import (
+    CapitalReservation,
+    CapitalReservationRequest,
+    CapitalReservationResult,
+    CapitalReservationState,
+    PortfolioCapitalAccount,
+)
 
 from .errors import (
+    CapitalAccountNotFoundError,
+    CapitalReservationStateError,
     DuplicateAggregateSequenceError,
+    DuplicateCapitalReservationError,
     DuplicateEventIdError,
     DuplicateIdempotencyKeyError,
+    InsufficientCapitalError,
     IntegrityViolationError,
     TokenConsumeError,
     TransactionConflictError,
@@ -62,6 +74,8 @@ def _translate_write_error(exc: BaseException) -> BaseException:
         "order_authority_evidence_idempotency_key_key",
     }:
         return DuplicateIdempotencyKeyError("duplicate idempotency key")
+    if constraint in {"capital_reservation_pkey", "capital_reservation_candidate_key"}:
+        return DuplicateCapitalReservationError("duplicate capital reservation")
     if getattr(exc, "sqlstate", None) in {"40001", "40P01"}:
         return TransactionConflictError("transaction serialization conflict")
     return exc
@@ -637,6 +651,247 @@ class PostgresPositionRepository(_StateRepository):
         super().__init__(connection, "position_state", "position_id", True)
 
 
+_CAPITAL_COLUMNS = (
+    "portfolio_id,version,total_capital,deployable_capital,reserved_capital,used_capital,"
+    "realized_pnl,unrealized_pnl,daily_loss,maximum_drawdown,loss_state,updated_at"
+)
+_RESERVATION_COLUMNS = (
+    "reservation_id,portfolio_id,campaign_id,candidate_id,instrument_id,amount,state,"
+    "created_at,updated_at"
+)
+
+
+def _capital_account(row: Sequence[Any]) -> PortfolioCapitalAccount:
+    deployable = row[3]
+    reserved = row[4]
+    used = row[5]
+    return PortfolioCapitalAccount(
+        portfolio_id=UUID(str(row[0])),
+        version=int(row[1]),
+        total_capital=row[2],
+        deployable_capital=deployable,
+        reserved_capital=reserved,
+        used_capital=used,
+        available_capital=deployable - reserved - used,
+        realized_pnl=row[6],
+        unrealized_pnl=row[7],
+        daily_loss=row[8],
+        maximum_drawdown=row[9],
+        loss_state=LossState(str(row[10])),
+        updated_at=cast(datetime, row[11]),
+    )
+
+
+def _capital_reservation(row: Sequence[Any]) -> CapitalReservation:
+    return CapitalReservation(
+        reservation_id=UUID(str(row[0])),
+        portfolio_id=UUID(str(row[1])),
+        campaign_id=UUID(str(row[2])),
+        candidate_id=UUID(str(row[3])),
+        instrument_id=str(row[4]),
+        amount=row[5],
+        state=CapitalReservationState(str(row[6])),
+        created_at=cast(datetime, row[7]),
+        updated_at=cast(datetime, row[8]),
+    )
+
+
+class PostgresCapitalRepository:
+    """Atomic capital reservation through a locked authoritative account row."""
+
+    def __init__(self, connection: Connection) -> None:
+        self._connection = connection
+
+    def create_account(self, account: PortfolioCapitalAccount) -> None:
+        cursor = self._connection.cursor()
+        try:
+            _execute(
+                cursor,
+                f"INSERT INTO portfolio_capital_account ({_CAPITAL_COLUMNS}) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    str(account.portfolio_id),
+                    account.version,
+                    account.total_capital,
+                    account.deployable_capital,
+                    account.reserved_capital,
+                    account.used_capital,
+                    account.realized_pnl,
+                    account.unrealized_pnl,
+                    account.daily_loss,
+                    account.maximum_drawdown,
+                    account.loss_state.value,
+                    account.updated_at,
+                ),
+            )
+        finally:
+            cursor.close()
+
+    def get_account(self, portfolio_id: UUID) -> PortfolioCapitalAccount | None:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                f"SELECT {_CAPITAL_COLUMNS} FROM portfolio_capital_account "
+                "WHERE portfolio_id=%s",
+                (str(portfolio_id),),
+            )
+            row = cursor.fetchone()
+        finally:
+            cursor.close()
+        return None if row is None else _capital_account(row)
+
+    def get_reservation(self, reservation_id: UUID) -> CapitalReservation | None:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                f"SELECT {_RESERVATION_COLUMNS} FROM capital_reservation "
+                "WHERE reservation_id=%s",
+                (str(reservation_id),),
+            )
+            row = cursor.fetchone()
+        finally:
+            cursor.close()
+        return None if row is None else _capital_reservation(row)
+
+    def reserve(self, request: CapitalReservationRequest) -> CapitalReservationResult:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                f"SELECT {_CAPITAL_COLUMNS} FROM portfolio_capital_account "
+                "WHERE portfolio_id=%s FOR UPDATE",
+                (str(request.portfolio_id),),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise CapitalAccountNotFoundError("portfolio capital account does not exist")
+            account = _capital_account(row)
+            if account.loss_state in (LossState.COOLDOWN, LossState.HALTED):
+                raise CapitalReservationStateError("loss state blocks new capital reservation")
+            if request.amount > account.available_capital:
+                raise InsufficientCapitalError("requested capital exceeds current availability")
+            _execute(
+                cursor,
+                f"INSERT INTO capital_reservation ({_RESERVATION_COLUMNS}) "
+                "VALUES (%s,%s,%s,%s,%s,%s,'RESERVED',%s,%s)",
+                (
+                    str(request.reservation_id),
+                    str(request.portfolio_id),
+                    str(request.campaign_id),
+                    str(request.candidate_id),
+                    request.instrument_id,
+                    request.amount,
+                    request.requested_at,
+                    request.requested_at,
+                ),
+            )
+            cursor.execute(
+                "UPDATE portfolio_capital_account SET reserved_capital=reserved_capital+%s,"
+                "version=version+1,updated_at=GREATEST(updated_at,%s) WHERE portfolio_id=%s "
+                f"RETURNING {_CAPITAL_COLUMNS}",
+                (request.amount, request.requested_at, str(request.portfolio_id)),
+            )
+            updated = cursor.fetchone()
+            assert updated is not None
+            reservation = CapitalReservation(
+                reservation_id=request.reservation_id,
+                portfolio_id=request.portfolio_id,
+                campaign_id=request.campaign_id,
+                candidate_id=request.candidate_id,
+                instrument_id=request.instrument_id,
+                amount=request.amount,
+                state=CapitalReservationState.RESERVED,
+                created_at=request.requested_at,
+                updated_at=request.requested_at,
+            )
+            return CapitalReservationResult(
+                reservation=reservation, account=_capital_account(updated)
+            )
+        finally:
+            cursor.close()
+
+    def commit(self, reservation_id: UUID, *, updated_at: datetime) -> CapitalReservationResult:
+        return self._transition(
+            reservation_id,
+            updated_at=updated_at,
+            expected=CapitalReservationState.RESERVED,
+            target=CapitalReservationState.COMMITTED,
+        )
+
+    def release(self, reservation_id: UUID, *, updated_at: datetime) -> CapitalReservationResult:
+        return self._transition(
+            reservation_id,
+            updated_at=updated_at,
+            expected=None,
+            target=CapitalReservationState.RELEASED,
+        )
+
+    def _transition(
+        self,
+        reservation_id: UUID,
+        *,
+        updated_at: datetime,
+        expected: CapitalReservationState | None,
+        target: CapitalReservationState,
+    ) -> CapitalReservationResult:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                f"SELECT {_RESERVATION_COLUMNS} FROM capital_reservation "
+                "WHERE reservation_id=%s FOR UPDATE",
+                (str(reservation_id),),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise CapitalReservationStateError("capital reservation does not exist")
+            reservation = _capital_reservation(row)
+            if reservation.state is CapitalReservationState.RELEASED:
+                raise CapitalReservationStateError("capital reservation is already released")
+            if expected is not None and reservation.state is not expected:
+                raise CapitalReservationStateError(
+                    "capital reservation state transition is invalid"
+                )
+            if updated_at < reservation.updated_at:
+                raise CapitalReservationStateError("reservation update timestamp moved backwards")
+            cursor.execute(
+                f"SELECT {_CAPITAL_COLUMNS} FROM portfolio_capital_account "
+                "WHERE portfolio_id=%s FOR UPDATE",
+                (str(reservation.portfolio_id),),
+            )
+            if cursor.fetchone() is None:
+                raise CapitalAccountNotFoundError("portfolio capital account does not exist")
+            if target is CapitalReservationState.COMMITTED:
+                capital_sql = (
+                    "reserved_capital=reserved_capital-%s,used_capital=used_capital+%s"
+                )
+                capital_params: tuple[object, ...] = (reservation.amount, reservation.amount)
+            elif reservation.state is CapitalReservationState.RESERVED:
+                capital_sql = "reserved_capital=reserved_capital-%s"
+                capital_params = (reservation.amount,)
+            else:
+                capital_sql = "used_capital=used_capital-%s"
+                capital_params = (reservation.amount,)
+            cursor.execute(
+                f"UPDATE portfolio_capital_account SET {capital_sql},version=version+1,"
+                f"updated_at=%s WHERE portfolio_id=%s RETURNING {_CAPITAL_COLUMNS}",
+                (*capital_params, updated_at, str(reservation.portfolio_id)),
+            )
+            updated_account = cursor.fetchone()
+            assert updated_account is not None
+            cursor.execute(
+                "UPDATE capital_reservation SET state=%s,updated_at=%s "
+                "WHERE reservation_id=%s RETURNING " + _RESERVATION_COLUMNS,
+                (target.value, updated_at, str(reservation_id)),
+            )
+            updated_reservation = cursor.fetchone()
+            assert updated_reservation is not None
+            return CapitalReservationResult(
+                reservation=_capital_reservation(updated_reservation),
+                account=_capital_account(updated_account),
+            )
+        finally:
+            cursor.close()
+
+
 class PostgresOrderAuthorityRepository:
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
@@ -763,6 +1018,7 @@ class PostgresTransaction:
         self.tokens = PostgresTokenRepository(connection)
         self.campaigns = PostgresCampaignStateRepository(connection)
         self.positions = PostgresPositionRepository(connection)
+        self.capital = PostgresCapitalRepository(connection)
         self.candidates = PostgresCandidateEvidenceRepository(connection)
         self.risk_decisions = PostgresRiskDecisionEvidenceRepository(connection)
         self.advisories = PostgresAdvisoryEvidenceRepository(connection)
@@ -815,6 +1071,7 @@ def connect_postgres(dsn: str) -> Connection:
 
 
 __all__ = [
+    "PostgresCapitalRepository",
     "PostgresEventStore",
     "PostgresOutboxRepository",
     "PostgresTokenRepository",

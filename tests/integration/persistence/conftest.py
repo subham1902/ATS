@@ -35,6 +35,8 @@ def pg_connection(postgres_dsn: str, migrated_database: None) -> Iterator[Any]:
     psycopg = pytest.importorskip("psycopg")
     connection = psycopg.connect(postgres_dsn)
     tables = (
+        "capital_reservation",
+        "portfolio_capital_account",
         "outbox_records",
         "order_authority_evidence",
         "autonomy_token_state",
