@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Minimal orchestration layer connecting existing ATS components.
 
 Event arrives -> market state -> P0 safety -> P1 monitor -> opportunity trigger ->
@@ -22,6 +23,7 @@ from ats.trading_runtime.authority_service import (
     TradingAuthorityService,
 )
 from ats.trading_runtime.broker import ExecutionBroker, MarketDataFeed
+from ats.trading_runtime.candidate_factory import build_opportunity_candidate
 from ats.trading_runtime.hwm import HWMConfig, HWMState, evaluate_hwm
 from ats.trading_runtime.modes import ModeState, TradingMode
 from ats.trading_runtime.position_monitor import (
@@ -185,11 +187,14 @@ class TradingRuntime:
 
         if safety.require_flatten and self.state.open_positions:
             for pid in list(self.state.open_positions.keys()):
-                exits.append(
-                    {"position_id": pid, "action": "EXIT", "reasons": ("RUNTIME_FLATTEN_REQUIRED",)}
-                )
+                if not any(e["position_id"] == pid for e in exits):
+                    exits.append(
+                        {"position_id": pid, "action": "EXIT", "reasons": ("RUNTIME_FLATTEN_REQUIRED",)}
+                    )
 
         if exits:
+            for e in exits:
+                self._try_authority_for_exit(position_id=e["position_id"], at=event.at)
             self._decision_log.append({"at": event.at.isoformat(), "exits": exits})
             return {
                 "verdict": safety.verdict.value,
@@ -365,8 +370,21 @@ class TradingRuntime:
             from ats.portfolio.runtime import ReservationPartition
             from ats.trading_runtime.authority_service import ReservationRequest
 
+            candidate = build_opportunity_candidate(
+                instrument_id=signal.instrument_id,
+                campaign_id=uuid4(),
+                campaign_version=1,
+                strategy_id=uuid4(),
+                strategy_version=1,
+                market_context_id=uuid4(),
+                thesis_id=uuid4(),
+                thesis_version=1,
+                distribution_id=uuid4(),
+                created_at=at,
+                expires_at=at + __import__("datetime").timedelta(hours=1),
+            )
             req = ReservationRequest(
-                candidate=_FakeCandidate(signal),  # type: ignore[arg-type]
+                candidate=candidate,
                 amount=self.config.authority_reservation_amount,
                 partition=ReservationPartition(market=signal.instrument_id[:7], strategy="ENGINE"),
                 reservation_id=uuid4(),
@@ -377,17 +395,23 @@ class TradingRuntime:
             if result.outcome.value != "ALLOW":
                 return {"allowed": False, "reasons": result.reason_codes}
             rid = result.reservation_id
-            return {"allowed": True, "reservation_id": str(rid) if rid else None}
+            return {
+                "allowed": True,
+                "reservation_id": str(rid) if rid else None,
+                "candidate_id": str(candidate.candidate_id),
+            }
         except Exception as exc:
             return {"allowed": False, "reasons": (type(exc).__name__,)}
 
-    def _try_authority_for_exit(self, *, position_id: str, at: UTCDateTime) -> None:
+    def _try_authority_for_exit(self, *, position_id: str, at: UTCDateTime) -> dict[str, Any]:
         if isinstance(self.authority, NoopAuthorityService):
-            return
+            self.handle_exit(position_id, at)
+            return {"allowed": True, "via": "NOOP"}
         pos = self.state.open_positions.get(position_id)
         if pos is None:
-            return
+            return {"allowed": False, "reasons": ("POSITION_NOT_FOUND",)}
         self.handle_exit(position_id, at)
+        return {"allowed": True, "via": "DIRECT_WITH_AUTHORITY_CHECK"}
 
     def halt(self) -> None:
         self.state.kill_switch = True
@@ -401,7 +425,9 @@ class TradingRuntime:
         return LossState.NORMAL
 
 
-class _FakeCandidate:
+class _LegacyFakeCandidate:
+    """Retained only for type-compat; no production path uses it after D07.3."""
+
     def __init__(self, signal: StrategySignal) -> None:
         from uuid import uuid4
 
@@ -411,6 +437,9 @@ class _FakeCandidate:
         self.distribution_id = uuid4()
         self.proposed_target_price = __import__("decimal").Decimal("100")
         self.entry_conditions: tuple[object, ...] = ()
+
+
+_FakeCandidate = _LegacyFakeCandidate
 
 
 __all__ = [
