@@ -1,0 +1,356 @@
+"""Minimal orchestration layer connecting existing ATS components.
+
+Event arrives -> market state -> P0 safety -> P1 monitor -> opportunity trigger ->
+deterministic strategy -> candidate -> anti-churn -> portfolio reservation -> A04 ->
+execution FSM -> PaperBroker -> fills -> portfolio/positions -> async audit.
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, field
+from decimal import Decimal
+from enum import StrEnum
+from typing import Any
+
+from ats.contracts.common import UTCDateTime
+from ats.contracts.domain.types import LossState
+from ats.market.calendar.models import SessionCalendar
+from ats.trading_runtime.anti_churn import AntiChurnConfig, ChurnFacts, evaluate_churn
+from ats.trading_runtime.broker import ExecutionBroker, MarketDataFeed
+from ats.trading_runtime.hwm import HWMConfig, HWMState, evaluate_hwm
+from ats.trading_runtime.modes import ModeState, TradingMode
+from ats.trading_runtime.position_monitor import (
+    MonitoredPosition,
+    PositionMonitorConfig,
+    evaluate_position,
+)
+from ats.trading_runtime.safety import SafetyFacts, evaluate_p0_safety
+from ats.trading_runtime.session import SessionRuntimeConfig, resolve_session_status
+from ats.trading_runtime.strategy import BarFeatures, StrategyConfig, StrategySignal, evaluate_bar
+
+
+class RuntimeEventKind(StrEnum):
+    BAR = "BAR"
+    TICK = "TICK"
+    FILL = "FILL"
+    PRICE_SHOCK = "PRICE_SHOCK"
+    DATA_STALE = "DATA_STALE"
+    POSITION_RISK_CHANGE = "POSITION_RISK_CHANGE"
+    THESIS_INVALIDATED = "THESIS_INVALIDATED"
+    PARTIAL_FILL = "PARTIAL_FILL"
+    SESSION_EXIT_APPROACHING = "SESSION_EXIT_APPROACHING"
+    FLATTEN = "FLATTEN"
+    HALT = "HALT"
+
+
+@dataclass(frozen=True)
+class RuntimeEvent:
+    kind: RuntimeEventKind
+    instrument_id: str | None
+    payload: dict[str, Any]
+    at: UTCDateTime
+
+
+@dataclass
+class LatencySample:
+    stage: str
+    duration_ms: float
+
+
+@dataclass
+class EngineMetrics:
+    samples: list[LatencySample] = field(default_factory=list)
+
+    def record(self, stage: str, start_ns: int) -> None:
+        elapsed_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
+        self.samples.append(LatencySample(stage=stage, duration_ms=elapsed_ms))
+
+    def summary(self) -> dict[str, dict[str, float]]:
+        from collections import defaultdict
+
+        grouped: dict[str, list[float]] = defaultdict(list)
+        for s in self.samples:
+            grouped[s.stage].append(s.duration_ms)
+        out: dict[str, dict[str, float]] = {}
+        for stage, values in grouped.items():
+            values_sorted = sorted(values)
+            n = len(values_sorted)
+            p50 = values_sorted[n // 2]
+            p95 = values_sorted[int(n * 0.95)] if n >= 20 else values_sorted[-1]
+            p99 = values_sorted[int(n * 0.99)] if n >= 100 else values_sorted[-1]
+            out[stage] = {"count": float(n), "p50": p50, "p95": p95, "p99": p99}
+        return out
+
+
+@dataclass
+class RuntimeConfig:
+    calendar: SessionCalendar
+    session: SessionRuntimeConfig = field(default_factory=SessionRuntimeConfig)
+    hwm: HWMConfig = field(default_factory=HWMConfig)
+    position_monitor: PositionMonitorConfig = field(default_factory=PositionMonitorConfig)
+    anti_churn: AntiChurnConfig = field(default_factory=AntiChurnConfig)
+    strategy: StrategyConfig = field(default_factory=StrategyConfig)
+    max_quote_age_ms: int = 2000
+    mode: TradingMode = TradingMode.NORMAL
+
+
+@dataclass
+class RuntimeState:
+    hwm_state: HWMState | None = None
+    session_start_equity: Decimal = Decimal("100000")
+    current_equity: Decimal = Decimal("100000")
+    peak_equity: Decimal = Decimal("100000")
+    mode_state: ModeState | None = None
+    open_positions: dict[str, MonitoredPosition] = field(default_factory=dict)
+    kill_switch: bool = False
+    last_exit_at: dict[str, UTCDateTime] = field(default_factory=dict)
+    last_thesis: dict[str, str] = field(default_factory=dict)
+
+
+class TradingRuntime:
+    def __init__(
+        self,
+        *,
+        config: RuntimeConfig,
+        market_feed: MarketDataFeed,
+        broker: ExecutionBroker,
+        state: RuntimeState | None = None,
+    ) -> None:
+        self.config = config
+        self.market_feed = market_feed
+        self.broker = broker
+        self.state = state or RuntimeState()
+        self.metrics = EngineMetrics()
+        self._event_log: list[RuntimeEvent] = []
+        self._decision_log: list[dict[str, Any]] = []
+
+    def process_event(self, event: RuntimeEvent) -> dict[str, Any]:
+        t0 = time.perf_counter_ns()
+        self._event_log.append(event)
+
+        session_status = resolve_session_status(
+            calendar=self.config.calendar,
+            config=self.config.session,
+            now=event.at,
+            kill_switch_active=self.state.kill_switch,
+        )
+        self.metrics.record("state_update", t0)
+
+        t1 = time.perf_counter_ns()
+        broker_healthy = self.broker.is_healthy()
+        data_fresh = True
+        if event.instrument_id is not None:
+            data_fresh = self.market_feed.data_fresh(
+                event.instrument_id, now=event.at, max_age_ms=self.config.max_quote_age_ms
+            )
+        safety_facts = SafetyFacts(
+            session=session_status,
+            kill_switch_active=self.state.kill_switch,
+            data_fresh=data_fresh,
+            broker_healthy=broker_healthy,
+            capital_ok=True,
+            clock_healthy=True,
+            position_max_loss_breached=False,
+            daily_loss_limit_breached=False,
+            loss_state=self._current_loss_state(),
+            open_positions=(),
+            current_equity=self.state.current_equity,
+            peak_equity=self.state.peak_equity,
+        )
+        safety = evaluate_p0_safety(facts=safety_facts, evaluation_time=event.at)
+        self.metrics.record("p0_safety", t1)
+
+        t2 = time.perf_counter_ns()
+        exits: list[dict[str, Any]] = []
+        for pid, pos in list(self.state.open_positions.items()):
+            dec = evaluate_position(
+                config=self.config.position_monitor,
+                position=pos,
+                hwm=self.state.hwm_state,
+                evaluation_time=event.at,
+            )
+            if dec.should_exit_now:
+                exits.append(
+                    {"position_id": pid, "action": dec.action.value, "reasons": dec.reason_codes}
+                )
+        self.metrics.record("p1_position_check", t2)
+
+        if safety.require_flatten and self.state.open_positions:
+            for pid in list(self.state.open_positions.keys()):
+                exits.append(
+                    {"position_id": pid, "action": "EXIT", "reasons": ("RUNTIME_FLATTEN_REQUIRED",)}
+                )
+
+        if exits:
+            self._decision_log.append({"at": event.at.isoformat(), "exits": exits})
+            return {
+                "verdict": safety.verdict.value,
+                "session_phase": session_status.phase.value,
+                "exits": exits,
+                "safety": safety.reason_codes,
+            }
+
+        if safety.block_new_risk:
+            self._decision_log.append(
+                {"at": event.at.isoformat(), "blocked": safety.reason_codes}
+            )
+            return {
+                "verdict": safety.verdict.value,
+                "session_phase": session_status.phase.value,
+                "blocked": safety.reason_codes,
+            }
+
+        t3 = time.perf_counter_ns()
+        signal: StrategySignal | None = None
+        bar_kinds = (RuntimeEventKind.BAR, RuntimeEventKind.TICK, RuntimeEventKind.PRICE_SHOCK)
+        if event.kind in bar_kinds:
+            instrument = event.instrument_id or "NIFTY"
+            mark = self.market_feed.latest_mark(instrument)
+            prev = event.payload.get("previous_close")
+            bar = BarFeatures(
+                instrument_id=instrument,
+                close=Decimal(str(mark)) if mark is not None else Decimal("100"),
+                previous_close=Decimal(str(prev)) if prev is not None else None,
+                evaluation_time=event.at,
+                data_fresh=data_fresh,
+            )
+            last_exit = self.state.last_exit_at.get(instrument)
+            bars_since = None
+            minutes_since = None
+            if last_exit is not None:
+                delta_s = (event.at - last_exit).total_seconds()
+                minutes_since = int(delta_s // 60)
+                bars_since = int(delta_s // 300)
+            churn_facts = ChurnFacts(
+                instrument_id=instrument,
+                direction="BULLISH",
+                thesis_id=None,
+                expected_edge_r=0.0,
+                spread_ticks=None,
+                bars_since_exit_same_instrument=bars_since,
+                minutes_since_exit_same_instrument=minutes_since,
+                campaign_trades_started=len(self.state.open_positions),
+                evaluation_time=event.at,
+            )
+            signal = evaluate_bar(
+                config=self.config.strategy,
+                anti_churn=self.config.anti_churn,
+                bar=bar,
+                churn_facts=churn_facts,
+            )
+        self.metrics.record("signal_evaluation", t3)
+
+        if signal is not None and signal.is_actionable:
+            anti = evaluate_churn(
+                config=self.config.anti_churn,
+                facts=ChurnFacts(
+                    instrument_id=signal.instrument_id,
+                    direction=signal.direction,
+                    thesis_id=signal.thesis_id,
+                    expected_edge_r=signal.expected_edge_r,
+                    spread_ticks=None,
+                    bars_since_exit_same_instrument=None,
+                    minutes_since_exit_same_instrument=None,
+                    campaign_trades_started=len(self.state.open_positions),
+                    evaluation_time=event.at,
+                ),
+            )
+            if not anti.allowed:
+                self._decision_log.append(
+                    {"at": event.at.isoformat(), "churn_blocked": anti.reason_codes}
+                )
+                return {
+                    "verdict": safety.verdict.value,
+                    "session_phase": session_status.phase.value,
+                    "churn_blocked": anti.reason_codes,
+                }
+
+            hwm_hint = None
+            if self.state.hwm_state is not None:
+                hwm_hint = self.state.hwm_state.mode_hint
+            self._decision_log.append(
+                {
+                    "at": event.at.isoformat(),
+                    "candidate": {
+                        "instrument": signal.instrument_id,
+                        "option": signal.option_type,
+                        "edge_r": signal.expected_edge_r,
+                        "hwm_hint": hwm_hint,
+                    },
+                }
+            )
+            return {
+                "verdict": safety.verdict.value,
+                "session_phase": session_status.phase.value,
+                "candidate": {
+                    "instrument": signal.instrument_id,
+                    "option": signal.option_type,
+                    "edge_r": signal.expected_edge_r,
+                },
+            }
+
+        return {
+            "verdict": safety.verdict.value,
+            "session_phase": session_status.phase.value,
+            "no_action": True,
+        }
+
+    def handle_fill(
+        self, position_id: str, mark: Decimal, quantity: Decimal, at: UTCDateTime
+    ) -> None:
+        self.state.open_positions[position_id] = MonitoredPosition(
+            position_id=position_id,
+            instrument_id=position_id.split(":")[0] if ":" in position_id else position_id,
+            entry_price=mark,
+            current_mark=mark,
+            quantity=quantity,
+            realized_pnl=Decimal("0"),
+            unrealized_pnl=Decimal("0"),
+            peak_pnl=Decimal("0"),
+            current_stop=None,
+            trailing_stop=None,
+            time_held_minutes=0,
+            entry_thesis_ref=None,
+            thesis_healthy=True,
+            data_fresh=True,
+            last_event="FILL",
+        )
+        _ = at
+
+    def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
+        self.state.open_positions.pop(position_id, None)
+        instrument = position_id.split(":")[0] if ":" in position_id else position_id
+        self.state.last_exit_at[instrument] = at
+        self.state.last_thesis.pop(instrument, None)
+
+    def update_equity(self, current_equity: Decimal) -> None:
+        self.state.current_equity = current_equity
+        self.state.peak_equity = max(self.state.peak_equity, current_equity)
+        self.state.hwm_state = evaluate_hwm(
+            config=self.config.hwm,
+            previous=self.state.hwm_state,
+            session_start_equity=self.state.session_start_equity,
+            current_equity=current_equity,
+        )
+
+    def halt(self) -> None:
+        self.state.kill_switch = True
+
+    def resume(self) -> None:
+        self.state.kill_switch = False
+
+    def _current_loss_state(self) -> LossState:
+        if self.state.kill_switch:
+            return LossState.HALTED
+        return LossState.NORMAL
+
+
+__all__ = [
+    "EngineMetrics",
+    "RuntimeConfig",
+    "RuntimeEvent",
+    "RuntimeEventKind",
+    "RuntimeState",
+    "TradingRuntime",
+]
