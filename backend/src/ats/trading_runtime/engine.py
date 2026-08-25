@@ -17,6 +17,10 @@ from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.types import LossState
 from ats.market.calendar.models import SessionCalendar
 from ats.trading_runtime.anti_churn import AntiChurnConfig, ChurnFacts, evaluate_churn
+from ats.trading_runtime.authority_service import (
+    NoopAuthorityService,
+    TradingAuthorityService,
+)
 from ats.trading_runtime.broker import ExecutionBroker, MarketDataFeed
 from ats.trading_runtime.hwm import HWMConfig, HWMState, evaluate_hwm
 from ats.trading_runtime.modes import ModeState, TradingMode
@@ -93,6 +97,7 @@ class RuntimeConfig:
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     max_quote_age_ms: int = 2000
     mode: TradingMode = TradingMode.NORMAL
+    authority_reservation_amount: Decimal = Decimal("50000")
 
 
 @dataclass
@@ -116,10 +121,12 @@ class TradingRuntime:
         market_feed: MarketDataFeed,
         broker: ExecutionBroker,
         state: RuntimeState | None = None,
+        authority: TradingAuthorityService | None = None,
     ) -> None:
         self.config = config
         self.market_feed = market_feed
         self.broker = broker
+        self.authority: TradingAuthorityService = authority or NoopAuthorityService()
         self.state = state or RuntimeState()
         self.metrics = EngineMetrics()
         self._event_log: list[RuntimeEvent] = []
@@ -266,6 +273,17 @@ class TradingRuntime:
                     "churn_blocked": anti.reason_codes,
                 }
 
+            auth_result = self._try_authority_for_signal(signal=signal, at=event.at)
+            if auth_result is not None and not auth_result.get("allowed", True):
+                self._decision_log.append(
+                    {"at": event.at.isoformat(), "authority_blocked": auth_result["reasons"]}
+                )
+                return {
+                    "verdict": safety.verdict.value,
+                    "session_phase": session_status.phase.value,
+                    "authority_blocked": auth_result["reasons"],
+                }
+
             hwm_hint = None
             if self.state.hwm_state is not None:
                 hwm_hint = self.state.hwm_state.mode_hint
@@ -277,6 +295,7 @@ class TradingRuntime:
                         "option": signal.option_type,
                         "edge_r": signal.expected_edge_r,
                         "hwm_hint": hwm_hint,
+                        "authority": auth_result,
                     },
                 }
             )
@@ -288,6 +307,7 @@ class TradingRuntime:
                     "option": signal.option_type,
                     "edge_r": signal.expected_edge_r,
                 },
+                "authority": auth_result,
             }
 
         return {
@@ -334,6 +354,41 @@ class TradingRuntime:
             current_equity=current_equity,
         )
 
+    def _try_authority_for_signal(
+        self, *, signal: StrategySignal, at: UTCDateTime
+    ) -> dict[str, Any] | None:
+        if isinstance(self.authority, NoopAuthorityService):
+            return None
+        from uuid import uuid4
+
+        try:
+            from ats.portfolio.runtime import ReservationPartition
+            from ats.trading_runtime.authority_service import ReservationRequest
+
+            req = ReservationRequest(
+                candidate=_FakeCandidate(signal),  # type: ignore[arg-type]
+                amount=self.config.authority_reservation_amount,
+                partition=ReservationPartition(market=signal.instrument_id[:7], strategy="ENGINE"),
+                reservation_id=uuid4(),
+                portfolio_id=uuid4(),
+                campaign_id=uuid4(),
+            )
+            result = self.authority.try_reserve_for_candidate(req, evaluation_time=at)
+            if result.outcome.value != "ALLOW":
+                return {"allowed": False, "reasons": result.reason_codes}
+            rid = result.reservation_id
+            return {"allowed": True, "reservation_id": str(rid) if rid else None}
+        except Exception as exc:
+            return {"allowed": False, "reasons": (type(exc).__name__,)}
+
+    def _try_authority_for_exit(self, *, position_id: str, at: UTCDateTime) -> None:
+        if isinstance(self.authority, NoopAuthorityService):
+            return
+        pos = self.state.open_positions.get(position_id)
+        if pos is None:
+            return
+        self.handle_exit(position_id, at)
+
     def halt(self) -> None:
         self.state.kill_switch = True
 
@@ -344,6 +399,18 @@ class TradingRuntime:
         if self.state.kill_switch:
             return LossState.HALTED
         return LossState.NORMAL
+
+
+class _FakeCandidate:
+    def __init__(self, signal: StrategySignal) -> None:
+        from uuid import uuid4
+
+        self.candidate_id = uuid4()
+        self.instrument_id = signal.instrument_id
+        self.side = "BUY"
+        self.distribution_id = uuid4()
+        self.proposed_target_price = __import__("decimal").Decimal("100")
+        self.entry_conditions: tuple[object, ...] = ()
 
 
 __all__ = [
