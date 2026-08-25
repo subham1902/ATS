@@ -403,7 +403,8 @@ def _validate_market_values(
         raise PaperExecutionError("market/contract mismatch")
     if market.quality_state not in (DataQualityState.GOOD, DataQualityState.DEGRADED):
         raise PaperExecutionError("market quality is unsafe")
-    age_ms = int((evaluation_time - market.quote_time).total_seconds() * 1000)
+    age = evaluation_time - market.quote_time
+    age_ms = age.days * 86_400_000 + age.seconds * 1_000 + age.microseconds // 1_000
     if market.quote_time > evaluation_time or age_ms > policy.maximum_quote_age_ms:
         raise PaperExecutionError("market quote is stale or from the future")
     if side is Side.BUY:
