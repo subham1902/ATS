@@ -11,8 +11,8 @@ from ats.contracts.domain.types import LossState
 
 
 class RuntimeTradingMode(ATSBaseModel):
-    user_selected: Literal["SAFE", "NORMAL", "AGGRESSIVE"]
-    effective: Literal["SAFE", "NORMAL", "AGGRESSIVE", "HALTED"]
+    user_selected: str
+    effective: str
     deescalation_reason: str | None
 
 
