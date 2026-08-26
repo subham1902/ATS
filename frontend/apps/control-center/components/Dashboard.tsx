@@ -7,6 +7,7 @@ import { SystemPanel, PolicyPanel, CampaignPanel, ActivityPanel } from "./panels
 import { Card, EmptyState } from "@ats/ui";
 import { useSse } from "../hooks/useSse";
 import { ConnectionIndicator } from "@ats/ui";
+import { ControlPlaneOverview, UNKNOWN_CONTROL_PLANE } from "./ControlPlaneOverview";
 
 function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -62,6 +63,7 @@ export function Dashboard() {
       </div>
 
       <SystemPanel system={systemQ.data} healthLive={healthLiveQ.data} healthReady={healthReadyQ.data} error={systemQ.error} />
+      <ControlPlaneOverview state={UNKNOWN_CONTROL_PLANE} />
       <PolicyPanel policy={policyQ.data} error={policyQ.error} />
       <CampaignPanel campaign={campaignQ.data} error={(campaignQ.error as ErrorEnvelope | null) ?? null} />
 
