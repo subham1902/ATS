@@ -11,7 +11,14 @@ from ats.contracts.domain.models import AutonomyToken
 from ats.contracts.events.models import EventEnvelope
 from ats.events import OutboxRecord
 
-from .types import AuditRecord, EvidenceRecord, OrderAuthorityRecord, StateSnapshot, StoredToken
+from .types import (
+    AuditRecord,
+    EvidenceRecord,
+    OrderAuthorityRecord,
+    ReductionAuthorityRecord,
+    StateSnapshot,
+    StoredToken,
+)
 
 if TYPE_CHECKING:
     from ats.portfolio.persistence import CapitalRepository, PositionRepository
@@ -98,6 +105,12 @@ class OrderAuthorityRepository(Protocol):
     def get_by_idempotency_key(self, key: str) -> OrderAuthorityRecord | None: ...
 
 
+class ReductionAuthorityRepository(Protocol):
+    def append(self, record: ReductionAuthorityRecord) -> None: ...
+    def get(self, reduction_id: str) -> ReductionAuthorityRecord | None: ...
+    def for_position(self, position_id: str) -> tuple[ReductionAuthorityRecord, ...]: ...
+
+
 class Transaction(Protocol):
     events: EventStore
     outbox: OutboxRepository
@@ -110,6 +123,7 @@ class Transaction(Protocol):
     advisories: AdvisoryEvidenceRepository
     audit: AuditRepository
     order_authority: OrderAuthorityRepository
+    reduction_authority: ReductionAuthorityRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -134,6 +148,7 @@ __all__ = [
     "EventStore",
     "OutboxRepository",
     "OrderAuthorityRepository",
+    "ReductionAuthorityRepository",
     "RiskDecisionEvidenceRepository",
     "TokenRepository",
     "Transaction",

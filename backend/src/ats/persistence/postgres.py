@@ -7,6 +7,7 @@ import importlib
 import json
 from collections.abc import Callable, Sequence
 from datetime import datetime
+from decimal import Decimal
 from types import TracebackType
 from typing import Any, Literal, cast
 from uuid import UUID
@@ -39,7 +40,14 @@ from .errors import (
     UnsupportedStoredEventError,
 )
 from .protocols import Connection, Cursor
-from .types import AuditRecord, EvidenceRecord, OrderAuthorityRecord, StateSnapshot, StoredToken
+from .types import (
+    AuditRecord,
+    EvidenceRecord,
+    OrderAuthorityRecord,
+    ReductionAuthorityRecord,
+    StateSnapshot,
+    StoredToken,
+)
 
 
 def _json(value: object) -> str:
@@ -76,6 +84,11 @@ def _translate_write_error(exc: BaseException) -> BaseException:
         return DuplicateIdempotencyKeyError("duplicate idempotency key")
     if constraint in {"capital_reservation_pkey", "capital_reservation_candidate_key"}:
         return DuplicateCapitalReservationError("duplicate capital reservation")
+    if constraint in {
+        "position_reduction_authority_evidence_pkey",
+        "position_reduction_authority_evidence_position_id_fkey",
+    }:
+        return IntegrityViolationError("invalid or duplicate reduction authority evidence")
     if getattr(exc, "sqlstate", None) in {"40001", "40P01"}:
         return TransactionConflictError("transaction serialization conflict")
     return exc
@@ -972,6 +985,141 @@ class PostgresOrderAuthorityRepository:
         )
 
 
+class PostgresReductionAuthorityRepository:
+    _SELECT = (
+        "SELECT reduction_id,position_id,position_version,position_evidence_hash,"
+        "governance_context_id,governance_context_payload_hash,risk_decision_id,"
+        "risk_decision_payload_hash,action_kind,system_state_version,"
+        "effective_constraints_hash,requested_quantity,exit_reason,decision_outcome,"
+        "payload,payload_hash,created_at FROM position_reduction_authority_evidence"
+    )
+
+    def __init__(self, connection: Connection) -> None:
+        self._connection = connection
+
+    def append(self, record: ReductionAuthorityRecord) -> None:
+        if canonical_sha256(record.payload) != record.payload_hash:
+            raise IntegrityViolationError("reduction authority payload hash mismatch")
+        expected_payload = {
+            "reduction_id": record.reduction_id,
+            "position_id": record.position_id,
+            "position_version": record.position_version,
+            "position_evidence_hash": record.position_evidence_hash,
+            "governance_context_id": record.governance_context_id,
+            "governance_context_payload_hash": record.governance_context_payload_hash,
+            "risk_decision_id": record.risk_decision_id,
+            "risk_decision_payload_hash": record.risk_decision_payload_hash,
+            "risk_direction": "REDUCE",
+            "action_kind": record.action_kind,
+            "system_state_version": record.system_state_version,
+            "effective_constraints_hash": record.effective_constraints_hash,
+            "requested_quantity": str(record.requested_quantity),
+            "exit_reason": record.exit_reason,
+            "decision_outcome": record.decision_outcome,
+        }
+        if any(record.payload.get(key) != value for key, value in expected_payload.items()):
+            raise IntegrityViolationError("reduction authority column binding mismatch")
+        cursor = self._connection.cursor()
+        try:
+            _execute(
+                cursor,
+                "INSERT INTO position_reduction_authority_evidence "
+                "(reduction_id,position_id,position_version,position_evidence_hash,"
+                "governance_context_id,governance_context_payload_hash,risk_decision_id,"
+                "risk_decision_payload_hash,action_kind,risk_direction,system_state_version,"
+                "effective_constraints_hash,requested_quantity,exit_reason,decision_outcome,"
+                "payload,payload_hash,created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'REDUCE',%s,%s,%s,%s,%s,%s::jsonb,%s,%s)",
+                (
+                    record.reduction_id,
+                    record.position_id,
+                    record.position_version,
+                    record.position_evidence_hash,
+                    record.governance_context_id,
+                    record.governance_context_payload_hash,
+                    record.risk_decision_id,
+                    record.risk_decision_payload_hash,
+                    record.action_kind,
+                    record.system_state_version,
+                    record.effective_constraints_hash,
+                    record.requested_quantity,
+                    record.exit_reason,
+                    record.decision_outcome,
+                    _json(record.payload),
+                    record.payload_hash,
+                    record.created_at,
+                ),
+            )
+        finally:
+            cursor.close()
+
+    def get(self, reduction_id: str) -> ReductionAuthorityRecord | None:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(f"{self._SELECT} WHERE reduction_id=%s", (reduction_id,))
+            row = cursor.fetchone()
+        finally:
+            cursor.close()
+        return None if row is None else self._decode(row)
+
+    def for_position(self, position_id: str) -> tuple[ReductionAuthorityRecord, ...]:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                f"{self._SELECT} WHERE position_id=%s ORDER BY created_at,reduction_id",
+                (position_id,),
+            )
+            rows = cursor.fetchall()
+        finally:
+            cursor.close()
+        return tuple(self._decode(row) for row in rows)
+
+    @staticmethod
+    def _decode(row: Sequence[Any]) -> ReductionAuthorityRecord:
+        payload = _mapping(row[14])
+        record = ReductionAuthorityRecord(
+            reduction_id=str(row[0]),
+            position_id=str(row[1]),
+            position_version=int(row[2]),
+            position_evidence_hash=str(row[3]),
+            governance_context_id=str(row[4]),
+            governance_context_payload_hash=str(row[5]),
+            risk_decision_id=str(row[6]),
+            risk_decision_payload_hash=str(row[7]),
+            action_kind=str(row[8]),
+            system_state_version=int(row[9]),
+            effective_constraints_hash=str(row[10]),
+            requested_quantity=cast(Decimal, row[11]),
+            exit_reason=str(row[12]),
+            decision_outcome=str(row[13]),
+            payload=payload,
+            payload_hash=str(row[15]),
+            created_at=cast(datetime, row[16]),
+        )
+        if canonical_sha256(payload) != record.payload_hash:
+            raise IntegrityViolationError("reduction authority payload hash mismatch")
+        expected_payload = {
+            "reduction_id": record.reduction_id,
+            "position_id": record.position_id,
+            "position_version": record.position_version,
+            "position_evidence_hash": record.position_evidence_hash,
+            "governance_context_id": record.governance_context_id,
+            "governance_context_payload_hash": record.governance_context_payload_hash,
+            "risk_decision_id": record.risk_decision_id,
+            "risk_decision_payload_hash": record.risk_decision_payload_hash,
+            "risk_direction": "REDUCE",
+            "action_kind": record.action_kind,
+            "system_state_version": record.system_state_version,
+            "effective_constraints_hash": record.effective_constraints_hash,
+            "requested_quantity": str(record.requested_quantity),
+            "exit_reason": record.exit_reason,
+            "decision_outcome": record.decision_outcome,
+        }
+        if any(payload.get(key) != value for key, value in expected_payload.items()):
+            raise IntegrityViolationError("reduction authority column binding mismatch")
+        return record
+
+
 class PostgresAuditRepository:
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
@@ -1048,6 +1196,7 @@ class PostgresTransaction:
         self.risk_decisions = PostgresRiskDecisionEvidenceRepository(connection)
         self.advisories = PostgresAdvisoryEvidenceRepository(connection)
         self.order_authority = PostgresOrderAuthorityRepository(connection)
+        self.reduction_authority = PostgresReductionAuthorityRepository(connection)
         self.audit = PostgresAuditRepository(connection)
 
     def __enter__(self) -> PostgresTransaction:
@@ -1099,6 +1248,7 @@ __all__ = [
     "PostgresCapitalRepository",
     "PostgresEventStore",
     "PostgresOutboxRepository",
+    "PostgresReductionAuthorityRepository",
     "PostgresTokenRepository",
     "PostgresTransaction",
     "PostgresTransactionManager",

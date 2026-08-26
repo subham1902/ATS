@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 
@@ -69,10 +70,32 @@ class OrderAuthorityRecord:
     recorded_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class ReductionAuthorityRecord:
+    reduction_id: str
+    position_id: str
+    position_version: int
+    position_evidence_hash: str
+    governance_context_id: str
+    governance_context_payload_hash: str
+    risk_decision_id: str
+    risk_decision_payload_hash: str
+    action_kind: str
+    system_state_version: int
+    effective_constraints_hash: str
+    requested_quantity: Decimal
+    exit_reason: str
+    decision_outcome: str
+    payload: dict[str, Any]
+    payload_hash: str
+    created_at: datetime
+
+
 __all__ = [
     "AuditRecord",
     "EvidenceRecord",
     "OrderAuthorityRecord",
+    "ReductionAuthorityRecord",
     "StateSnapshot",
     "StoredToken",
 ]

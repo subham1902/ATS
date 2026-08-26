@@ -38,6 +38,7 @@ def pg_connection(postgres_dsn: str, migrated_database: None) -> Iterator[Any]:
         "capital_reservation",
         "portfolio_capital_account",
         "outbox_records",
+        "position_reduction_authority_evidence",
         "order_authority_evidence",
         "autonomy_token_state",
         "event_records",
