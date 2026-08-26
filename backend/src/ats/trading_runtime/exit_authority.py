@@ -72,7 +72,9 @@ def authorize_exit(
 
     risk_dir = getattr(context, "risk_direction", None)
     if risk_dir is not _RD.REDUCE:  # noqa: E501
-        return ExitDecision(allowed=False, reason_codes=("EXIT_REQUIRES_REDUCE_CONTEXT",), exit_intent=None)
+        return ExitDecision(
+            allowed=False, reason_codes=("EXIT_REQUIRES_REDUCE_CONTEXT",), exit_intent=None
+        )
 
     result = validate_exit_intent(
         intent,

@@ -10,7 +10,9 @@ def test_normal_stays_normal() -> None:
 
 
 def test_hwm_deescalation() -> None:
-    state = resolve_effective_mode(user_selected=TradingMode.AGGRESSIVE, hwm_deescalated=TradingMode.SAFE)
+    state = resolve_effective_mode(
+        user_selected=TradingMode.AGGRESSIVE, hwm_deescalated=TradingMode.SAFE
+    )
     assert state.effective == TradingMode.SAFE
     assert state.deescalation_reason == "HWM_DRAWDOWN_DEESCALATION"
 
