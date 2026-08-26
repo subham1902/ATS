@@ -1,4 +1,4 @@
-"""Anti-churn guard — EV, cooldown, instrument suppression, spread, ceiling."""
+"""Anti-churn guard — EV, cooldown, instrument suppression, spread, ceiling, directional memory."""
 
 from __future__ import annotations
 
@@ -14,7 +14,10 @@ class AntiChurnConfig:
     same_instrument_cooldown_minutes: int = 15
     duplicate_thesis_suppression: bool = True
     spread_max_ticks: int = 6
+    spread_fraction_max: float = 0.03
     campaign_trade_ceiling: int | None = None
+    suppress_same_direction_reentry: bool = True
+    same_direction_cooldown_minutes: int = 30
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,8 @@ class ChurnFacts:
     minutes_since_exit_same_instrument: int | None
     campaign_trades_started: int
     evaluation_time: UTCDateTime
+    spread_fraction: float | None = None
+    last_exit_direction: str | None = None
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,9 @@ def evaluate_churn(
     if facts.spread_ticks is not None and facts.spread_ticks > config.spread_max_ticks:
         return ChurnResult(allowed=False, reason_codes=("SPREAD_TOO_WIDE",))
 
+    if facts.spread_fraction is not None and facts.spread_fraction > config.spread_fraction_max:
+        return ChurnResult(allowed=False, reason_codes=("SPREAD_FRACTION_TOO_WIDE",))
+
     ceiling = config.campaign_trade_ceiling
     if ceiling is not None and facts.campaign_trades_started >= ceiling:
         return ChurnResult(allowed=False, reason_codes=("CAMPAIGN_TRADE_CEILING",))
@@ -61,6 +69,15 @@ def evaluate_churn(
     if mins is not None and mins < config.same_instrument_cooldown_minutes:
         if "COOLDOWN_AFTER_EXIT" not in reasons:
             reasons.append("INSTRUMENT_COOLDOWN")
+
+    if (
+        config.suppress_same_direction_reentry
+        and facts.last_exit_direction is not None
+        and facts.last_exit_direction.upper() == facts.direction.upper()
+        and mins is not None
+        and mins < config.same_direction_cooldown_minutes
+    ):
+        reasons.append("DIRECTIONAL_CHURN_SUPPRESSED")
 
     if reasons:
         return ChurnResult(allowed=False, reason_codes=tuple(reasons))
