@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from uuid import uuid4
+
 from ats.api.app import create_app
 from ats.contracts.domain.types import AutonomyLevel
 from fastapi.testclient import TestClient
@@ -20,6 +23,30 @@ def test_health_and_system_state_endpoints() -> None:
     unattached = TestClient(create_app()).get("/health/ready")
     assert unattached.status_code == 503
     assert unattached.json()["status"] == "NOT_READY"
+
+
+def test_default_agent_chat_is_evidence_bound_and_changes_are_proposals() -> None:
+    app = create_app()
+    client = TestClient(app)
+    body = {
+        "request_id": str(uuid4()),
+        "session_id": str(uuid4()),
+        "agent_id": "operator-chat",
+        "question": "switch SAFE",
+        "intent": "REQUEST_SAFE_MODE",
+        "as_of": datetime.now(UTC).isoformat(),
+    }
+    response = client.post("/v1/agent-chat", json=body)
+    assert response.status_code == 200
+    assert response.json()["authority"] == "ADVISORY_ONLY"
+    assert response.json()["proposal_id"] is not None
+    assert len(app.state.runtime_change_proposals) == 1
+    assert app.state.runtime_change_proposals[0].proposed_value == {"mode": "SAFE"}
+
+
+def test_runtime_status_is_truthfully_unavailable_without_provider() -> None:
+    response = TestClient(create_app()).get("/v1/runtime/status")
+    assert response.status_code == 503
 
 
 def test_policy_campaign_candidate_governance_and_risk_reads() -> None:

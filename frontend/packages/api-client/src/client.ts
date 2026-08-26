@@ -1,5 +1,7 @@
 import type {
   ActivityPage,
+  AgentChatAnswer,
+  AgentChatRequest,
   AdvisoryReadModel,
   AutonomyTokenReadModel,
   CampaignReadModel,
@@ -11,6 +13,9 @@ import type {
   PolicyValidationReadModel,
   PolicyValidationRequest,
   RiskDecisionReadModel,
+  RuntimeCommandRequest,
+  RuntimeCommandResult,
+  RuntimeStatusReadModel,
   SystemReadModel,
 } from "./types";
 import { ROUTES } from "./types";
@@ -91,6 +96,11 @@ export function createApiClient(options?: ClientOptions) {
     getAutonomyToken: (id: string) =>
       request<AutonomyTokenReadModel>(ROUTES.autonomyTokenById(id), { method: "GET" }, opts),
     getActivity: () => request<ActivityPage>(ROUTES.activity, { method: "GET" }, opts),
+    agentChat: (body: AgentChatRequest) =>
+      request<AgentChatAnswer>(ROUTES.agentChat, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
+    getRuntimeStatus: () => request<RuntimeStatusReadModel>(ROUTES.runtimeStatus, { method: "GET" }, opts),
+    runtimeCommand: (body: RuntimeCommandRequest) =>
+      request<RuntimeCommandResult>(ROUTES.runtimeCommand, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
     streamUrl: () => `${resolveBaseUrl(opts)}${ROUTES.stream}`,
   };
 }

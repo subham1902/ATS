@@ -9,7 +9,7 @@ export interface ControlPlaneOverview {
   effective_mode: "SAFE" | "NORMAL" | "AGGRESSIVE" | "HALTED";
   mode_reason: string | null;
   underlyings: Array<{ symbol: "NIFTY" | "BANKNIFTY"; price: string | null; freshness: TruthState }>;
-  capital: { total: string | null; available: string | null; reserved: string | null; inflight: string | null; committed: string | null };
+  capital: { total: string | null; deployable: string | null; available: string | null; reserved: string | null; inflight: string | null; committed: string | null };
   pnl: { realized: string | null; unrealized: string | null; hwm: string | null; drawdown: string | null };
   positions: number;
   opportunities: number;
