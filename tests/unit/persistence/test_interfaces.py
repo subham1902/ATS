@@ -48,6 +48,7 @@ def test_migration_discovery_is_deterministic() -> None:
     assert [path.name for path in paths] == [
         "0001_iba_r17_evidence_store.sql",
         "0002_portfolio_capital_reservations.sql",
+        "0003_position_reduction_authority_evidence.sql",
     ]
 
 
