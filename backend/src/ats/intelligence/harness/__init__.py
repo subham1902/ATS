@@ -1,5 +1,6 @@
 """Local DeepSeek Harness advisory sidecar boundary."""
 
+from .agent_registry import HARNESS_AGENT_REGISTRY, HarnessAgentPolicy, policy_for
 from .models import (
     HarnessAdvisory,
     HarnessAgentType,
@@ -15,8 +16,10 @@ from .subprocess_sidecar import AcpSubprocessSidecar
 
 __all__ = [
     "AcpSubprocessSidecar",
+    "HARNESS_AGENT_REGISTRY",
     "HarnessAdvisory",
     "HarnessAgentType",
+    "HarnessAgentPolicy",
     "HarnessHealth",
     "HarnessRuntimeAdapter",
     "HarnessRuntimeConfiguration",
@@ -24,4 +27,5 @@ __all__ = [
     "HarnessRuntimeState",
     "HarnessSession",
     "MaterialAgentEvent",
+    "policy_for",
 ]
