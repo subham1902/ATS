@@ -106,7 +106,20 @@ def evaluate_bar(
         )
 
     if anti_churn is not None and churn_facts is not None:
-        churn: ChurnResult = evaluate_churn(config=anti_churn, facts=churn_facts)
+        effective_facts = ChurnFacts(
+            instrument_id=signal.instrument_id,
+            direction=signal.direction,
+            thesis_id=signal.thesis_id,
+            expected_edge_r=edge_r,
+            spread_ticks=churn_facts.spread_ticks,
+            bars_since_exit_same_instrument=churn_facts.bars_since_exit_same_instrument,
+            minutes_since_exit_same_instrument=churn_facts.minutes_since_exit_same_instrument,
+            campaign_trades_started=churn_facts.campaign_trades_started,
+            evaluation_time=churn_facts.evaluation_time,
+            spread_fraction=churn_facts.spread_fraction,
+            last_exit_direction=churn_facts.last_exit_direction,
+        )
+        churn: ChurnResult = evaluate_churn(config=anti_churn, facts=effective_facts)
         if not churn.allowed:
             return StrategySignal(
                 instrument_id=signal.instrument_id,
