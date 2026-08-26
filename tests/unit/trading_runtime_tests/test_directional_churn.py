@@ -41,7 +41,8 @@ def test_opposite_direction_after_exit_allowed_if_cooldown_passed() -> None:
         cooldown_after_exit_bars=3,
     )
 
-    # Exited BULLISH 20 minutes ago (past 15 min general cooldown, but within 30 min directional cooldown)
+    # Exited BULLISH 20 minutes ago (past 15m general cooldown,
+    # but within 30m directional cooldown).
     # Trying to enter BEARISH -> allowed because direction is different!
     facts_opposite = ChurnFacts(
         instrument_id="NIFTY",
