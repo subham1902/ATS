@@ -248,7 +248,7 @@ def test_offline_end_to_end_flow() -> None:
     # 4. Paper Broker Execution with Lot Sizing & Slippage
     paper_broker = PaperBrokerAdapter(
         healthy=True,
-        lot_size_registry=LotSizeRegistry(),
+        lot_size_registry=LotSizeRegistry({"NIFTY_CE": 25}),
         base_slippage_ticks=1,
         tick_size=Decimal("0.05"),
     )
