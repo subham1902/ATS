@@ -50,6 +50,9 @@ class MonitoredPosition:
     last_event: str | None
     # --- Capital & Greeks extensions ---
     capital_at_risk: Decimal = Decimal("0")
+    capital_committed: Decimal = Decimal("0")
+    risk_budget: Decimal = Decimal("0")
+    maximum_loss_per_unit: Decimal = Decimal("0")
     entry_iv: float | None = None
     greeks_delta: float | None = None
     greeks_theta: float | None = None
@@ -97,6 +100,9 @@ def update_mark(
         data_fresh=data_fresh,
         last_event="MARK_UPDATE",
         capital_at_risk=position.capital_at_risk,
+        capital_committed=position.capital_committed,
+        risk_budget=position.risk_budget,
+        maximum_loss_per_unit=position.maximum_loss_per_unit,
         entry_iv=position.entry_iv,
         greeks_delta=greeks_delta if greeks_delta is not None else position.greeks_delta,
         greeks_theta=greeks_theta if greeks_theta is not None else position.greeks_theta,
@@ -160,7 +166,10 @@ def evaluate_position(
             should_exit_now=True,
         )
 
-    if pnl_fraction <= -config.hard_loss_fraction:
+    hard_loss_breached = (
+        position.risk_budget > 0 and position.unrealized_pnl <= -position.risk_budget
+    ) or (position.risk_budget <= 0 and pnl_fraction <= -config.hard_loss_fraction)
+    if hard_loss_breached:
         return PositionMonitorDecision(
             action=PositionAction.EXIT,
             reason_codes=("HARD_LOSS_BREACH",),

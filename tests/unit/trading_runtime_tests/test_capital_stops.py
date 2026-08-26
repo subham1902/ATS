@@ -100,3 +100,23 @@ def test_theta_decay_excessive_exit() -> None:
     dec = evaluate_position(config=config, position=pos, hwm=None, evaluation_time=now)
     assert dec.action == PositionAction.EXIT
     assert "THETA_DECAY_EXCESSIVE" in dec.reason_codes
+
+
+def test_explicit_risk_budget_triggers_without_reapplying_stop_fraction() -> None:
+    now = datetime.now(UTC)
+    pos = _base_pos(current_mark=Decimal("196")).__class__(
+        **{
+            **_base_pos(current_mark=Decimal("196")).__dict__,
+            "capital_committed": Decimal("5000"),
+            "risk_budget": Decimal("75"),
+            "maximum_loss_per_unit": Decimal("3"),
+        }
+    )
+    decision = evaluate_position(
+        config=PositionMonitorConfig(hard_loss_fraction=Decimal("0.015")),
+        position=pos,
+        hwm=None,
+        evaluation_time=now,
+    )
+    assert decision.action is PositionAction.EXIT
+    assert decision.reason_codes == ("HARD_LOSS_BREACH",)

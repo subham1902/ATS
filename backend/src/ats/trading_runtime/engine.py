@@ -441,8 +441,14 @@ class TradingRuntime:
         expected_edge_r: float = 0.0,
         entry_iv: float | None = None,
     ) -> None:
+        from ats.trading_runtime.risk_terms import derive_position_risk_terms
+
         effective_lot = lot_size if lot_size is not None else self.config.default_lot_size
-        capital = mark * quantity
+        risk_terms = derive_position_risk_terms(
+            entry_price=mark,
+            quantity=quantity,
+            risk_fraction=self.config.position_monitor.hard_loss_fraction,
+        )
         self.state.open_positions[position_id] = MonitoredPosition(
             position_id=position_id,
             instrument_id=position_id.split(":")[0] if ":" in position_id else position_id,
@@ -459,7 +465,10 @@ class TradingRuntime:
             thesis_healthy=True,
             data_fresh=True,
             last_event="FILL",
-            capital_at_risk=capital,
+            capital_at_risk=risk_terms.capital_committed,
+            capital_committed=risk_terms.capital_committed,
+            risk_budget=risk_terms.risk_budget,
+            maximum_loss_per_unit=risk_terms.maximum_loss_per_unit,
             entry_iv=entry_iv,
             entry_at=at,
             lot_size=effective_lot,
