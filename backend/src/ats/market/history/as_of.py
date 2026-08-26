@@ -8,12 +8,65 @@ knowledge such as expiries strictly as of ``T``.
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections.abc import Iterable
+from uuid import UUID
 
 from ats.contracts.common import UTCDateTime
 
 from .errors import FutureInformationError, HistoricalTruthErrorCode
 from .models import ContractMetadataPayload, MarketObservation
+
+
+class AsOfTimeline:
+    """Pre-sorted visibility index for one immutable observation collection.
+
+    Building the timeline costs ``O(n log n)`` once; every subsequent
+    :meth:`visible` query is a binary search plus a linear walk over the
+    visible prefix instead of a full re-sort. Semantics are identical to
+    :func:`visible_observations`.
+    """
+
+    __slots__ = ("_availability", "_hidden_from", "_records")
+
+    def __init__(self, observations: Iterable[MarketObservation]) -> None:
+        records = tuple(
+            sorted(
+                observations,
+                key=lambda item: (
+                    item.times.available_to_strategy_time,
+                    item.times.event_time,
+                    item.observation_id,
+                ),
+            )
+        )
+        self._records = records
+        self._availability = [
+            item.times.available_to_strategy_time for item in records
+        ]
+        identity_set = {item.observation_id for item in records}
+        hidden_from: dict[UUID, UTCDateTime] = {}
+        for item in records:
+            target = item.supersedes
+            if target is None or target not in identity_set:
+                continue
+            availability = item.times.available_to_strategy_time
+            known = hidden_from.get(target)
+            if known is None or availability < known:
+                hidden_from[target] = availability
+        self._hidden_from = hidden_from
+
+    def visible(self, at_time: UTCDateTime) -> tuple[MarketObservation, ...]:
+        """Return the deterministic visible window at ``at_time``."""
+
+        cutoff = bisect_right(self._availability, at_time)
+        visible: list[MarketObservation] = []
+        for record in self._records[:cutoff]:
+            hidden_at = self._hidden_from.get(record.observation_id)
+            if hidden_at is not None and hidden_at <= at_time:
+                continue
+            visible.append(record)
+        return tuple(visible)
 
 
 def is_admissible_as_of(observation: MarketObservation, *, at_time: UTCDateTime) -> bool:
@@ -46,26 +99,12 @@ def visible_observations(
     Within the visible window any record superseded by another visible record
     is replaced by its reviser. Output order is
     ``(available_to_strategy_time, event_time, observation_id)``.
+
+    For repeated queries over the same collection prefer building an
+    :class:`AsOfTimeline` once and calling :meth:`AsOfTimeline.visible`.
     """
 
-    visible = [
-        item for item in observations if item.times.available_to_strategy_time <= at_time
-    ]
-    visible_ids = {item.observation_id for item in visible}
-    superseded = {
-        item.supersedes
-        for item in visible
-        if item.supersedes is not None and item.supersedes in visible_ids
-    }
-    effective = [item for item in visible if item.observation_id not in superseded]
-    effective.sort(
-        key=lambda item: (
-            item.times.available_to_strategy_time,
-            item.times.event_time,
-            item.observation_id,
-        )
-    )
-    return tuple(effective)
+    return AsOfTimeline(observations).visible(at_time)
 
 
 def known_expiries_as_of(
@@ -108,6 +147,7 @@ def latest_contract_metadata_as_of(
 
 
 __all__ = [
+    "AsOfTimeline",
     "is_admissible_as_of",
     "known_expiries_as_of",
     "latest_contract_metadata_as_of",

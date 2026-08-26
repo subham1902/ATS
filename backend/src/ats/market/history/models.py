@@ -31,6 +31,7 @@ from ats.contracts.domain.types import (
 from ats.contracts.enums import ATSStringEnum
 from ats.contracts.ids import OpaqueId
 from ats.contracts.intelligence.types import BoundedText, RegisteredCode
+from ats.market.calendar.models import SessionCalendar
 
 from .errors import HistoricalTruthErrorCode
 
@@ -265,13 +266,29 @@ class DatasetManifest(ATSBaseModel):
         return self
 
 
+class InstrumentPolicyOverride(ATSBaseModel):
+    """Instrument-scoped (optionally timeframe-scoped) policy relaxation.
+
+    Only bar-level availability thresholds may be overridden; every unset
+    field falls back to the global :class:`HistoryValidationPolicy` value.
+    """
+
+    instrument: InstrumentId
+    timeframe: RegisteredCode | None = None
+    bar_minimum_availability_delay_ms: NonNegativeInt | None = None
+    bar_maximum_source_lag_ms: NonNegativeInt | None = None
+
+
 class HistoryValidationPolicy(ATSBaseModel):
     """Deterministic thresholds used by the historical validation engine.
 
     Delays are expressed in whole milliseconds. Minimum availability delays
     guard against unrealistic same-bar visibility; maximum source-lag
     thresholds classify stale records; the expected bar interval drives missing
-    interval detection; the contract universe gates derivative records.
+    interval detection; the contract universe gates derivative records. When a
+    ``session_calendar`` is attached, gap detection becomes calendar-aware:
+    intervals that span only closed/halted time are not flagged, and per-
+    instrument overrides relax bar thresholds for specific instruments.
     """
 
     bar_minimum_availability_delay_ms: NonNegativeInt = 1_000
@@ -284,11 +301,22 @@ class HistoryValidationPolicy(ATSBaseModel):
     event_maximum_source_lag_ms: NonNegativeInt = 3_600_000
     expected_bar_interval_ms: PositiveInt = 300_000
     contract_universe: tuple[InstrumentId, ...] = ()
+    session_calendar: SessionCalendar | None = None
+    instrument_overrides: tuple[InstrumentPolicyOverride, ...] = ()
 
     @model_validator(mode="after")
     def validate_universe(self) -> HistoryValidationPolicy:
         if tuple(sorted(self.contract_universe)) != self.contract_universe:
             raise ValueError("contract_universe must be sorted and unique")
+        keys = tuple(
+            (override.instrument, override.timeframe)
+            for override in self.instrument_overrides
+        )
+        if tuple(sorted(keys)) != keys or len(set(keys)) != len(keys):
+            raise ValueError(
+                "instrument_overrides must be sorted and unique by "
+                "(instrument, timeframe)"
+            )
         return self
 
 
@@ -386,6 +414,7 @@ __all__ = [
     "HistoryFinding",
     "HistoryValidationPolicy",
     "HistoryValidationReport",
+    "InstrumentPolicyOverride",
     "MarketBarPayload",
     "MarketEventPayload",
     "MarketObservation",

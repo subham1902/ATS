@@ -7,7 +7,8 @@ from importlib.resources import files
 
 from ats.contracts.enums import ATSStringEnum
 from ats.market.calendar import SessionCalendar
-from ats.market.replay.engine import DeterministicReplay
+from ats.market.history import HistoricalReplaySession
+from ats.market.history.replay_bridge import create_history_gated_replay
 from ats.market.replay.models import (
     ReplayConfiguration,
     ReplayDataset,
@@ -78,9 +79,17 @@ def create_approved_replay(
     fixture: ApprovedFixture,
     calendar: SessionCalendar,
     configuration: ReplayConfiguration,
-) -> DeterministicReplay:
-    """Construct a cursor-gated replay without exposing its full fixture dataset."""
-    return DeterministicReplay(
+) -> HistoricalReplaySession:
+    """Construct a history-gated replay over an approved fixture.
+
+    The returned session enforces the AS_OF_INFORMATION_MODEL on every
+    advance: strategies can only observe bars whose availability time has
+    passed, and each decision instant is recorded with a visible-window
+    digest for attribution. Raw cursor replay remains available exclusively
+    inside the historical-truth bridge, never to strategy-facing callers.
+    """
+
+    return create_history_gated_replay(
         _load_approved_fixture(fixture, calendar),
         configuration,
     )

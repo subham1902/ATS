@@ -4,6 +4,7 @@ from .backtest import BacktestConfiguration, run_backtest
 from .cost_model import CostModel, FixedBpsCostModel, ZeroCostModel
 from .dataset_binding import DatasetBinding
 from .experiment_runner import build_experiment, run_experiment
+from .fill_model import FixedBpsSlippageModel, SlippageModel, ZeroSlippageModel
 from .leakage_scanner import LeakageScanResult, scan_leakage
 from .promotion_gate import PromotionEvaluationResult, PromotionEvaluationStatus, evaluate_promotion
 from .scorecard import build_scorecard
@@ -25,15 +26,18 @@ __all__ = [
     "DatasetBinding",
     "FillAssumption",
     "FixedBpsCostModel",
+    "FixedBpsSlippageModel",
     "LeakageScanResult",
     "PromotionEvaluationResult",
     "PromotionEvaluationStatus",
     "ResearchFill",
     "ResearchSignal",
     "ResearchTrade",
+    "SlippageModel",
     "WalkForwardPlan",
     "WalkForwardWindow",
     "ZeroCostModel",
+    "ZeroSlippageModel",
     "build_experiment",
     "build_rolling_plan",
     "build_scorecard",

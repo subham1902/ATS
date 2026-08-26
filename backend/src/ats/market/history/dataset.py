@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import PrivateAttr
+
 from ats.contracts.common import ATSBaseModel, SchemaVersion, UTCDateTime
 
-from .as_of import known_expiries_as_of, latest_contract_metadata_as_of, visible_observations
+from .as_of import AsOfTimeline, known_expiries_as_of, latest_contract_metadata_as_of
 from .models import DatasetManifest, MarketObservation
 
 
@@ -14,17 +16,29 @@ class HistoricalDataset(ATSBaseModel):
     Construction is restricted to
     :func:`ats.market.history.build_historical_dataset`, which fails closed on
     any ``INVALID`` validation finding before the manifest is derived.
-    Consumers read the dataset only through as-of methods.
+    Consumers read the dataset only through as-of methods. Visibility queries
+    reuse one pre-sorted :class:`AsOfTimeline` so repeated as-of lookups stay
+    ``O(log n)`` per query after the first.
     """
 
     schema_version: SchemaVersion = "1.0"
     manifest: DatasetManifest
     observations: tuple[MarketObservation, ...]
 
+    _timeline: AsOfTimeline | None = PrivateAttr(default=None)
+
+    @property
+    def timeline(self) -> AsOfTimeline:
+        """Return the lazily-built shared visibility index."""
+
+        if self._timeline is None:
+            self._timeline = AsOfTimeline(self.observations)
+        return self._timeline
+
     def visible_as_of(self, at_time: UTCDateTime) -> tuple[MarketObservation, ...]:
         """Return observations genuinely available to a strategy at ``at_time``."""
 
-        return visible_observations(self.observations, at_time=at_time)
+        return self.timeline.visible(at_time)
 
     def known_expiries_as_of(
         self, underlying: str, at_time: UTCDateTime
