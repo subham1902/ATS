@@ -28,6 +28,7 @@ DeltaFloat = Annotated[FiniteFloat, Field(ge=-1.0, le=1.0)]
 
 class GreeksMethod(ATSStringEnum):
     SOURCE_PROVIDED = "SOURCE_PROVIDED"
+    DETERMINISTIC_CALCULATOR = "DETERMINISTIC_CALCULATOR"
     UNAVAILABLE = "UNAVAILABLE"
 
 

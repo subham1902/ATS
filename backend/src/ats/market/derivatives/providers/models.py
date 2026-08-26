@@ -16,6 +16,7 @@ class SourceFreshness(StrEnum):
     FRESH = "FRESH"
     STALE = "STALE"
     UNKNOWN = "UNKNOWN"
+    RESYNC_REQUIRED = "RESYNC_REQUIRED"
 
 
 class MarketFeedHealth(ATSBaseModel):

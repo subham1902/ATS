@@ -1,0 +1,41 @@
+"""Market-data feed adapters; credentials are always injected at this edge."""
+
+from .upstox_v3 import (
+    ConnectionState,
+    FeedConnection,
+    FeedMode,
+    FeedPayloadDecoder,
+    JsonFeedPayloadDecoder,
+    NormalizedFeedUpdate,
+    ProtobufDecodingSeam,
+    ReconciliationSource,
+    SubscriptionEntry,
+    SubscriptionRegistry,
+    UpdateKind,
+    UpstoxFeedAuthorization,
+    UpstoxFeedConfiguration,
+    UpstoxFeedError,
+    UpstoxFeedErrorCode,
+    UpstoxV3FeedAdapter,
+    WireFormat,
+)
+
+__all__ = [
+    "ConnectionState",
+    "FeedConnection",
+    "FeedMode",
+    "FeedPayloadDecoder",
+    "JsonFeedPayloadDecoder",
+    "NormalizedFeedUpdate",
+    "ProtobufDecodingSeam",
+    "ReconciliationSource",
+    "SubscriptionEntry",
+    "SubscriptionRegistry",
+    "UpdateKind",
+    "UpstoxFeedAuthorization",
+    "UpstoxFeedConfiguration",
+    "UpstoxFeedError",
+    "UpstoxFeedErrorCode",
+    "UpstoxV3FeedAdapter",
+    "WireFormat",
+]
