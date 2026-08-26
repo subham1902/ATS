@@ -6,10 +6,12 @@ This path deliberately has no OpportunityCandidate input.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from ats.contracts.common import UTCDateTime
+from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.models import (
     AutonomyToken,
     Position,
@@ -17,20 +19,25 @@ from ats.contracts.domain.models import (
     StrategyPolicy,
     SupervisorAdvisory,
 )
-from ats.contracts.domain.types import PositionStatus
+from ats.contracts.domain.types import (
+    AdvisoryOutcome,
+    AutonomyLevel,
+    PolicyStatus,
+    PositionStatus,
+    RiskOutcome,
+)
 from ats.contracts.governance.models import GovernanceContext, OpportunityCandidate
 from ats.contracts.governance.types import ActionKind, EffectiveConstraintSet, RiskDirection
 
-from .autonomy import construct_autonomy_token
 from .governance import validate_system_state
 from .order_guard import constraints_no_broader
 from .types import (
+    AutonomyTokenPolicy,
     ExecutionSafetyFacts,
     GateCode,
     KernelOutcome,
     KernelResult,
     RiskCapitalBasis,
-    AutonomyTokenPolicy,
 )
 
 
@@ -100,19 +107,39 @@ def construct_reduction_token(
         raise ValueError("reduction eligibility must ALLOW")
     if context.risk_direction is not RiskDirection.REDUCE:
         raise ValueError("reduction token requires REDUCE context")
-    return construct_autonomy_token(
-        eligibility=eligibility,
+    if (
+        risk_decision.decision is not RiskOutcome.ALLOW
+        or advisory.recommendation is not AdvisoryOutcome.APPROVE
+        or policy.lifecycle_status is not PolicyStatus.ACTIVE
+        or policy.autonomy_level is not AutonomyLevel.A2
+        or risk_decision.policy_id != policy.policy_id
+        or risk_decision.policy_version != policy.policy_version
+        or context.policy_id != policy.policy_id
+        or context.policy_version != policy.policy_version
+        or not nonce
+    ):
+        raise ValueError("reduction token binding inputs are not authority-eligible")
+    if expires_at <= issued_at:
+        raise ValueError("token expiry must be after issuance")
+    if expires_at - issued_at > timedelta(milliseconds=token_policy.max_ttl_ms):
+        raise ValueError("token TTL exceeds policy")
+    token = AutonomyToken(
+        schema_version="1.0",
         token_id=token_id,
-        candidate=historical_candidate,
-        policy=policy,
-        risk_decision=risk_decision,
-        advisory=advisory,
-        context=context,
+        scope="A2_PAPER",
+        candidate_id=historical_candidate.candidate_id,
+        policy_id=policy.policy_id,
+        policy_version=policy.policy_version,
+        risk_decision_id=risk_decision.risk_decision_id,
+        advisory_id=advisory.advisory_id,
+        system_state_version=context.system_state_version,
         issued_at=issued_at,
         expires_at=expires_at,
         nonce=nonce,
-        token_policy=token_policy,
+        consumed_at=None,
+        payload_hash="0" * 64,
     )
+    return token.model_copy(update={"payload_hash": compute_payload_hash(token)})
 
 
 __all__ = ["construct_reduction_token", "validate_reduction_eligibility"]

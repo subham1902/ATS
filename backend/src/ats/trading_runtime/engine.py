@@ -12,7 +12,8 @@ import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
+from uuid import UUID
 
 from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.types import LossState
@@ -26,10 +27,15 @@ from ats.trading_runtime.broker import ExecutionBroker, MarketDataFeed
 from ats.trading_runtime.candidate_factory import build_opportunity_candidate
 from ats.trading_runtime.hwm import HWMConfig, HWMState, evaluate_hwm
 from ats.trading_runtime.modes import ModeState, TradingMode
+from ats.trading_runtime.position_authority import PositionAuthorityStore
 from ats.trading_runtime.position_monitor import (
     MonitoredPosition,
     PositionMonitorConfig,
     evaluate_position,
+)
+from ats.trading_runtime.reduction_authority import (
+    BeginReductionRequest,
+    ReductionAuthorityService,
 )
 from ats.trading_runtime.safety import SafetyFacts, evaluate_p0_safety
 from ats.trading_runtime.session import SessionRuntimeConfig, resolve_session_status
@@ -125,6 +131,18 @@ class PendingExit:
     reason_codes: tuple[str, ...]
     source: str
     authorized: bool
+    reduction_id: str | None = None
+    execution_state: str | None = None
+
+
+class ReductionRequestFactory(Protocol):
+    def __call__(
+        self,
+        position_id: str,
+        at: UTCDateTime,
+        reason_codes: tuple[str, ...],
+        source: str,
+    ) -> BeginReductionRequest: ...
 
 
 class TradingRuntime:
@@ -136,15 +154,22 @@ class TradingRuntime:
         broker: ExecutionBroker,
         state: RuntimeState | None = None,
         authority: TradingAuthorityService | None = None,
+        reduction_authority: ReductionAuthorityService | None = None,
+        reduction_request_factory: ReductionRequestFactory | None = None,
+        durable_positions: PositionAuthorityStore | None = None,
     ) -> None:
         self.config = config
         self.market_feed = market_feed
         self.broker = broker
         self.authority: TradingAuthorityService = authority or NoopAuthorityService()
+        self.reduction_authority = reduction_authority
+        self.reduction_request_factory = reduction_request_factory
+        self.durable_positions = durable_positions
         self.state = state or RuntimeState()
         self.metrics = EngineMetrics()
         self._event_log: list[RuntimeEvent] = []
         self._decision_log: list[dict[str, Any]] = []
+        self._recover_durable_runtime_state()
 
     def process_event(self, event: RuntimeEvent) -> dict[str, Any]:
         t0 = time.perf_counter_ns()
@@ -370,14 +395,7 @@ class TradingRuntime:
         reason_codes: tuple[str, ...] = ("MANUAL_EXIT_REQUESTED",),
         source: str = "MANUAL",
     ) -> dict[str, Any]:
-        """Queue one deterministic exit request without mutating the position.
-
-        Runtime positions currently lack the frozen Position/token/context evidence needed by
-        ``validate_exit_intent``.  Therefore an authority-backed runtime fails closed here;
-        execution integration must attach that evidence before marking the request authorized.
-        The no-op test runtime may queue an authorized paper-only request, but still cannot
-        close the position until an exit fill is applied.
-        """
+        """Start or return one durable authorized reduction without closing the position."""
         if position_id not in self.state.open_positions:
             return {"accepted": False, "reasons": ("POSITION_NOT_FOUND",)}
         existing = self.state.pending_exits.get(position_id)
@@ -387,21 +405,47 @@ class TradingRuntime:
                 "idempotent": True,
                 "authorized": existing.authorized,
                 "reasons": existing.reason_codes,
+                "reduction_id": existing.reduction_id,
+                "execution_state": existing.execution_state,
             }
-        authorized = isinstance(self.authority, NoopAuthorityService)
-        reasons = reason_codes if authorized else reason_codes + ("EXIT_EVIDENCE_REQUIRED",)
+        reduction_id: str | None = None
+        execution_state: str | None = None
+        if self.reduction_authority is not None and self.reduction_request_factory is not None:
+            try:
+                request = self.reduction_request_factory(position_id, at, reason_codes, source)
+                authorized_reduction = self.reduction_authority.begin_reduction(request)
+                execution = self.reduction_authority.submit(
+                    authorized_reduction, broker=self.broker, submitted_at=at
+                )
+                authorized = True
+                reasons = reason_codes + ("REDUCTION_AUTHORIZED",)
+                reduction_id = str(authorized_reduction.reduction_id)
+                execution_state = execution.state.value
+            except Exception as exc:
+                return {
+                    "accepted": False,
+                    "authorized": False,
+                    "reasons": reason_codes + (type(exc).__name__,),
+                }
+        else:
+            authorized = isinstance(self.authority, NoopAuthorityService)
+            reasons = reason_codes if authorized else reason_codes + ("EXIT_EVIDENCE_REQUIRED",)
         self.state.pending_exits[position_id] = PendingExit(
             position_id=position_id,
             requested_at=at,
             reason_codes=reasons,
             source=source,
             authorized=authorized,
+            reduction_id=reduction_id,
+            execution_state=execution_state,
         )
         return {
             "accepted": True,
             "idempotent": False,
             "authorized": authorized,
             "reasons": reasons,
+            "reduction_id": reduction_id,
+            "execution_state": execution_state,
         }
 
     def request_flatten(
@@ -423,6 +467,60 @@ class TradingRuntime:
     def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
         """Backward-compatible terminal fill hook. Prefer ``handle_exit_fill``."""
         self.handle_exit_fill(position_id, at)
+
+    def reconcile_exit(self, position_id: str, at: UTCDateTime) -> dict[str, Any]:
+        pending = self.state.pending_exits.get(position_id)
+        if pending is None or pending.reduction_id is None or self.reduction_authority is None:
+            return {"reconciled": False, "reasons": ("REDUCTION_NOT_FOUND",)}
+        execution = self.reduction_authority.reconcile(
+            UUID(pending.reduction_id), broker=self.broker, reconciled_at=at
+        )
+        self.state.pending_exits[position_id] = PendingExit(
+            position_id=pending.position_id,
+            requested_at=pending.requested_at,
+            reason_codes=pending.reason_codes,
+            source=pending.source,
+            authorized=pending.authorized,
+            reduction_id=pending.reduction_id,
+            execution_state=execution.state.value,
+        )
+        if execution.state.value == "CLOSED":
+            self.handle_exit_fill(position_id, at)
+        return {"reconciled": True, "execution_state": execution.state.value}
+
+    def _recover_durable_runtime_state(self) -> None:
+        if self.durable_positions is not None:
+            for record in self.durable_positions.recover_open():
+                position = record.position
+                self.state.open_positions[str(position.position_id)] = MonitoredPosition(
+                    position_id=str(position.position_id),
+                    instrument_id=position.instrument_id,
+                    entry_price=position.average_entry_price,
+                    current_mark=position.mark_price,
+                    quantity=abs(position.net_quantity),
+                    realized_pnl=position.realized_pnl,
+                    unrealized_pnl=position.unrealized_pnl,
+                    peak_pnl=max(position.unrealized_pnl, Decimal("0")),
+                    current_stop=None,
+                    trailing_stop=None,
+                    time_held_minutes=0,
+                    entry_thesis_ref=None,
+                    thesis_healthy=True,
+                    data_fresh=True,
+                    last_event="RECOVERED",
+                )
+        if self.reduction_authority is not None:
+            for recovered in self.reduction_authority.recover_pending():
+                position_id = str(recovered.exit_intent.position_id)
+                self.state.pending_exits[position_id] = PendingExit(
+                    position_id=position_id,
+                    requested_at=recovered.exit_intent.created_at,
+                    reason_codes=("REDUCTION_RECOVERED",),
+                    source="RECOVERY",
+                    authorized=True,
+                    reduction_id=str(recovered.reduction_id),
+                    execution_state=recovered.execution.state.value,
+                )
 
     def update_equity(self, current_equity: Decimal) -> None:
         self.state.current_equity = current_equity
