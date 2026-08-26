@@ -29,6 +29,14 @@ class PortfolioBrainPolicy:
     minimum_net_value: dict[TradingMode, Decimal]
     maximum_spread_fraction: dict[TradingMode, Decimal]
     minimum_liquidity: dict[TradingMode, Decimal]
+    cross_underlying_direction_penalty: Decimal = Decimal("0.25")
+    same_underlying_penalty: Decimal = Decimal("0.25")
+    same_strategy_penalty: Decimal = Decimal("0.15")
+    maximum_concentration_penalty: Decimal = Decimal("0.50")
+    drawdown_penalty_multiplier: Decimal = Decimal("4")
+    maximum_drawdown_penalty: Decimal = Decimal("0.50")
+    liquidity_penalty_multiplier: Decimal = Decimal("0.25")
+    maximum_total_penalty: Decimal = Decimal("0.90")
     decision_ttl: timedelta = timedelta(seconds=5)
 
 
@@ -97,7 +105,7 @@ class PortfolioManagerBrain:
             )
 
         correlation = (
-            Decimal("0.25")
+            self._policy.cross_underlying_direction_penalty
             if any(
                 item.underlying != request.underlying and item.direction is request.direction
                 for item in context.positions
@@ -105,24 +113,31 @@ class PortfolioManagerBrain:
             else Decimal(0)
         )
         underlying = (
-            Decimal("0.25")
+            self._policy.same_underlying_penalty
             if any(item.underlying == request.underlying for item in context.positions)
             else Decimal(0)
         )
         strategy = (
-            Decimal("0.15")
+            self._policy.same_strategy_penalty
             if any(
                 item.strategy_id == request.candidate.strategy_definition_id
                 for item in context.positions
             )
             else Decimal(0)
         )
-        concentration = min(Decimal("0.50"), underlying + strategy)
-        drawdown = min(Decimal("0.50"), context.hwm.drawdown_fraction * Decimal(4))
+        concentration = min(self._policy.maximum_concentration_penalty, underlying + strategy)
+        drawdown = min(
+            self._policy.maximum_drawdown_penalty,
+            context.hwm.drawdown_fraction * self._policy.drawdown_penalty_multiplier,
+        )
         execution = Decimal(0) if context.execution_healthy else Decimal("1")
-        liquidity = max(Decimal(0), Decimal("1") - request.liquidity_score) * Decimal("0.25")
+        liquidity = (
+            max(Decimal(0), Decimal("1") - request.liquidity_score)
+            * self._policy.liquidity_penalty_multiplier
+        )
         penalty = min(
-            Decimal("0.90"), correlation + concentration + drawdown + execution + liquidity
+            self._policy.maximum_total_penalty,
+            correlation + concentration + drawdown + execution + liquidity,
         )
         account = context.snapshot.account
         capacity = min(
