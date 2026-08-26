@@ -73,6 +73,26 @@ def test_bod_parser_does_not_hard_code_contract_values() -> None:
     assert record.strike is None
 
 
+def test_bod_parser_accepts_current_official_ce_shape_and_epoch_expiry() -> None:
+    body = b"""[{
+      "segment":"NSE_FO", "exchange":"NSE", "instrument_type":"CE",
+      "instrument_key":"NSE_FO|123", "exchange_token":"123",
+      "underlying_symbol":"NIFTY", "trading_symbol":"NIFTY TEST CE",
+      "expiry":1787788799000, "strike_price":2500000,
+      "lot_size":75, "tick_size":5.0, "freeze_quantity":1800.0, "weekly":true
+    }]"""
+    record = parse_upstox_bod_records(
+        body,
+        source_as_of=datetime(2026, 8, 27, tzinfo=UTC),
+        policy=UpstoxInstrumentShapePolicy(
+            schema_version="1.0", price_scale=Decimal("0.01"), tradable_default=True
+        ),
+    )[0]
+    assert record.instrument_type.value == "OPTIDX"
+    assert record.option_type is not None and record.option_type.value == "CE"
+    assert record.expiry == "2026-08-26"
+
+
 def test_candle_parser_preserves_real_shape_values_and_orders_provider_rows() -> None:
     body = b"""{
       "status":"success", "data":{"candles":[

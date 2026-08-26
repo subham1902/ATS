@@ -10,6 +10,7 @@ from uuid import UUID, uuid5
 from ats.contracts.common import ATSBaseModel, UTCDateTime
 from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.types import NonEmptyStr, PositiveDecimal, PositiveInt, Sha256
+from ats.contracts.hashing import canonical_sha256
 
 from .active_window import ActiveOptionWindow, ActiveWindowPolicy, build_active_option_window
 from .contract_master import (
@@ -20,9 +21,10 @@ from .contract_master import (
     select_nearest_expiry,
     validate_master_for_use,
 )
-from .normalization import NormalizedDerivativeContract
+from .normalization import NormalizedDerivativeContract, ProviderInstrumentRecord
 
 _SPEC_NAMESPACE = UUID("76664021-6112-5c6d-96bc-e343957849ac")
+_PROVIDER_CONTRACT_NAMESPACE = UUID("9db40a8c-7562-5651-9c1e-95bd174624b5")
 
 
 class DerivativeInstrumentSpec(ATSBaseModel):
@@ -142,9 +144,53 @@ def build_current_option_window(
     )
 
 
+def provider_records_to_reference_contracts(
+    records: tuple[ProviderInstrumentRecord, ...],
+    *,
+    underlying_aliases: dict[str, DerivativeUnderlying],
+) -> tuple[NormalizedDerivativeContract, ...]:
+    """Bind current provider BOD records without guessing contract economics."""
+
+    contracts: list[NormalizedDerivativeContract] = []
+    for record in records:
+        underlying = underlying_aliases.get(record.provider_underlying)
+        if underlying is None:
+            continue
+        values = {
+            "schema_version": "1.0",
+            "instrument_id": uuid5(_PROVIDER_CONTRACT_NAMESPACE, record.provider_instrument_key),
+            "exchange": record.exchange,
+            "segment": record.segment,
+            "underlying": underlying,
+            "instrument_type": record.instrument_type,
+            "expiry": record.expiry,
+            "strike": record.strike,
+            "option_type": record.option_type,
+            "lot_size": record.lot_size,
+            "tick_size": record.tick_size,
+            "freeze_quantity": record.freeze_quantity,
+            "weekly": record.weekly,
+            "tradable": record.tradable,
+            "provider": record.provider,
+            "provider_underlying": record.provider_underlying,
+            "provider_instrument_key": record.provider_instrument_key,
+            "provider_exchange_token": record.provider_exchange_token,
+            "provider_trading_symbol": record.trading_symbol,
+            "source_as_of": record.source_as_of,
+            "provider_source_hash": record.source_hash,
+            "reference_source_hash": record.source_hash,
+        }
+        values["contract_hash"] = canonical_sha256(values)
+        contracts.append(NormalizedDerivativeContract.model_validate(values))
+    if not contracts:
+        raise InstrumentReferenceError("NO_SUPPORTED_PROVIDER_CONTRACTS")
+    return tuple(sorted(contracts, key=lambda item: item.provider_instrument_key))
+
+
 __all__ = [
     "DerivativeInstrumentSpec",
     "InstrumentReferenceAuthority",
     "InstrumentReferenceError",
     "build_current_option_window",
+    "provider_records_to_reference_contracts",
 ]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -62,9 +62,14 @@ def parse_upstox_bod_records(
         if item.get("segment") != "NSE_FO":
             continue
         raw_type = item.get("instrument_type")
-        if raw_type not in {"OPTIDX", "FUTIDX"}:
+        if raw_type not in {"CE", "PE", "FUT", "OPTIDX", "FUTIDX"}:
             continue
-        option_type = item.get("option_type")
+        instrument_type = (
+            DerivativeInstrumentType.OPTIDX
+            if raw_type in {"CE", "PE", "OPTIDX"}
+            else DerivativeInstrumentType.FUTIDX
+        )
+        option_type = raw_type if raw_type in {"CE", "PE"} else item.get("option_type")
         strike_value = item.get("strike_price", item.get("strike"))
         records.append(
             ProviderInstrumentRecord(
@@ -77,10 +82,12 @@ def parse_upstox_bod_records(
                 exchange=_required_text(item, "exchange"),
                 segment="FO",
                 trading_symbol=_required_text_any(item, ("trading_symbol", "tradingsymbol")),
-                instrument_type=DerivativeInstrumentType(raw_type),
-                expiry=_required_text(item, "expiry"),
+                instrument_type=instrument_type,
+                expiry=_expiry(item.get("expiry")),
                 strike=(
-                    _decimal(strike_value) * policy.price_scale if raw_type == "OPTIDX" else None
+                    _decimal(strike_value) * policy.price_scale
+                    if instrument_type is DerivativeInstrumentType.OPTIDX
+                    else None
                 ),
                 option_type=OptionType(option_type) if option_type is not None else None,
                 lot_size=_positive_integer(item.get("lot_size"), "lot_size"),
@@ -138,6 +145,15 @@ def _json_document(body: bytes) -> dict[str, Any]:
 
 def _required_text(item: dict[str, Any], name: str) -> str:
     return _text(item.get(name), name)
+
+
+def _expiry(value: object) -> str:
+    if isinstance(value, str):
+        datetime.strptime(value, "%Y-%m-%d")
+        return value
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("expiry must be an ISO date or epoch milliseconds")
+    return datetime.fromtimestamp(value / 1000, tz=UTC).date().isoformat()
 
 
 def _required_text_any(item: dict[str, Any], names: tuple[str, ...]) -> str:
