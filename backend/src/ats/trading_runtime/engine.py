@@ -26,12 +26,20 @@ from ats.trading_runtime.authority_service import (
 from ats.trading_runtime.broker import ExecutionBroker, MarketDataFeed
 from ats.trading_runtime.candidate_factory import build_opportunity_candidate
 from ats.trading_runtime.hwm import HWMConfig, HWMState, evaluate_hwm
-from ats.trading_runtime.modes import ModeState, TradingMode
+from ats.trading_runtime.modes import (
+    DEFAULT_MODE_ENVELOPES,
+    ModeEnvelope,
+    ModeState,
+    TradingMode,
+    is_entry_blocked_by_mode,
+    resolve_effective_mode,
+)
 from ats.trading_runtime.position_authority import PositionAuthorityStore
 from ats.trading_runtime.position_monitor import (
     MonitoredPosition,
     PositionMonitorConfig,
     evaluate_position,
+    update_mark,
 )
 from ats.trading_runtime.reduction_authority import (
     BeginReductionRequest,
@@ -105,6 +113,10 @@ class RuntimeConfig:
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     max_quote_age_ms: int = 2000
     mode: TradingMode = TradingMode.NORMAL
+    mode_envelopes: dict[TradingMode, ModeEnvelope] = field(
+        default_factory=lambda: dict(DEFAULT_MODE_ENVELOPES)
+    )
+    default_lot_size: int = 25
     authority_reservation_amount: Decimal = Decimal("50000")
 
 
@@ -120,6 +132,7 @@ class RuntimeState:
     last_exit_at: dict[str, UTCDateTime] = field(default_factory=dict)
     last_thesis: dict[str, str] = field(default_factory=dict)
     pending_exits: dict[str, PendingExit] = field(default_factory=dict)
+    last_exit_direction: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -174,6 +187,11 @@ class TradingRuntime:
     def process_event(self, event: RuntimeEvent) -> dict[str, Any]:
         t0 = time.perf_counter_ns()
         self._event_log.append(event)
+
+        # --- Live mark update: re-mark all open positions on every market event ---
+        mark_kinds = (RuntimeEventKind.BAR, RuntimeEventKind.TICK, RuntimeEventKind.PRICE_SHOCK)
+        if event.kind in mark_kinds:
+            self._update_position_marks(event)
 
         session_status = resolve_session_status(
             calendar=self.config.calendar,
@@ -249,12 +267,22 @@ class TradingRuntime:
                 "safety": safety.reason_codes,
             }
 
-        if safety.block_new_risk:
-            self._decision_log.append({"at": event.at.isoformat(), "blocked": safety.reason_codes})
+        hwm_hint = self.state.hwm_state.mode_hint if self.state.hwm_state is not None else None
+        effective_mode_state = resolve_effective_mode(
+            user_selected=self.config.mode,
+            hwm_deescalated=hwm_hint,
+            safety_halted=safety.block_new_risk,
+            previous_effective=self.state.mode_state.effective if self.state.mode_state else None,
+        )
+        self.state.mode_state = effective_mode_state
+
+        if safety.block_new_risk or effective_mode_state.effective == TradingMode.HALTED:
+            reasons = safety.reason_codes if safety.block_new_risk else ("MODE_HALTED",)
+            self._decision_log.append({"at": event.at.isoformat(), "blocked": reasons})
             return {
                 "verdict": safety.verdict.value,
                 "session_phase": session_status.phase.value,
-                "blocked": safety.reason_codes,
+                "blocked": reasons,
             }
 
         t3 = time.perf_counter_ns()
@@ -288,6 +316,7 @@ class TradingRuntime:
                 minutes_since_exit_same_instrument=minutes_since,
                 campaign_trades_started=len(self.state.open_positions),
                 evaluation_time=event.at,
+                last_exit_direction=self.state.last_exit_direction.get(instrument),
             )
             signal = evaluate_bar(
                 config=self.config.strategy,
@@ -298,6 +327,40 @@ class TradingRuntime:
         self.metrics.record("signal_evaluation", t3)
 
         if signal is not None and signal.is_actionable:
+            envelope = self.config.mode_envelopes.get(effective_mode_state.effective)
+            if envelope is not None:
+                if is_entry_blocked_by_mode(
+                    envelope=envelope, open_positions=len(self.state.open_positions)
+                ):
+                    self._decision_log.append(
+                        {
+                            "at": event.at.isoformat(),
+                            "mode_blocked": ("MODE_MAX_CONCURRENT_POSITIONS",),
+                        }
+                    )
+                    return {
+                        "verdict": safety.verdict.value,
+                        "session_phase": session_status.phase.value,
+                        "mode_blocked": ("MODE_MAX_CONCURRENT_POSITIONS",),
+                    }
+                if signal.expected_edge_r < envelope.minimum_expected_edge_r:
+                    self._decision_log.append(
+                        {"at": event.at.isoformat(), "mode_blocked": ("MODE_MIN_EDGE_NOT_MET",)}
+                    )
+                    return {
+                        "verdict": safety.verdict.value,
+                        "session_phase": session_status.phase.value,
+                        "mode_blocked": ("MODE_MIN_EDGE_NOT_MET",),
+                    }
+
+            last_exit = self.state.last_exit_at.get(signal.instrument_id)
+            bars_since = None
+            minutes_since = None
+            if last_exit is not None:
+                delta_s = (event.at - last_exit).total_seconds()
+                minutes_since = int(delta_s // 60)
+                bars_since = int(delta_s // 300)
+
             anti = evaluate_churn(
                 config=self.config.anti_churn,
                 facts=ChurnFacts(
@@ -306,10 +369,11 @@ class TradingRuntime:
                     thesis_id=signal.thesis_id,
                     expected_edge_r=signal.expected_edge_r,
                     spread_ticks=None,
-                    bars_since_exit_same_instrument=None,
-                    minutes_since_exit_same_instrument=None,
+                    bars_since_exit_same_instrument=bars_since,
+                    minutes_since_exit_same_instrument=minutes_since,
                     campaign_trades_started=len(self.state.open_positions),
                     evaluation_time=event.at,
+                    last_exit_direction=self.state.last_exit_direction.get(signal.instrument_id),
                 ),
             )
             if not anti.allowed:
@@ -366,8 +430,19 @@ class TradingRuntime:
         }
 
     def handle_fill(
-        self, position_id: str, mark: Decimal, quantity: Decimal, at: UTCDateTime
+        self,
+        position_id: str,
+        mark: Decimal,
+        quantity: Decimal,
+        at: UTCDateTime,
+        *,
+        lot_size: int | None = None,
+        direction: str = "BULLISH",
+        expected_edge_r: float = 0.0,
+        entry_iv: float | None = None,
     ) -> None:
+        effective_lot = lot_size if lot_size is not None else self.config.default_lot_size
+        capital = mark * quantity
         self.state.open_positions[position_id] = MonitoredPosition(
             position_id=position_id,
             instrument_id=position_id.split(":")[0] if ":" in position_id else position_id,
@@ -384,8 +459,13 @@ class TradingRuntime:
             thesis_healthy=True,
             data_fresh=True,
             last_event="FILL",
+            capital_at_risk=capital,
+            entry_iv=entry_iv,
+            entry_at=at,
+            lot_size=effective_lot,
+            expected_edge_r=expected_edge_r,
+            direction=direction,
         )
-        _ = at
 
     def request_exit(
         self,
@@ -458,11 +538,13 @@ class TradingRuntime:
 
     def handle_exit_fill(self, position_id: str, at: UTCDateTime) -> None:
         """Apply a terminal broker fill; requests/commands must never call this directly."""
-        self.state.open_positions.pop(position_id, None)
+        exited = self.state.open_positions.pop(position_id, None)
         self.state.pending_exits.pop(position_id, None)
         instrument = position_id.split(":")[0] if ":" in position_id else position_id
         self.state.last_exit_at[instrument] = at
         self.state.last_thesis.pop(instrument, None)
+        if exited is not None:
+            self.state.last_exit_direction[instrument] = exited.direction
 
     def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
         """Backward-compatible terminal fill hook. Prefer ``handle_exit_fill``."""
@@ -575,6 +657,27 @@ class TradingRuntime:
             }
         except Exception as exc:
             return {"allowed": False, "reasons": (type(exc).__name__,)}
+
+    def _update_position_marks(self, event: RuntimeEvent) -> None:
+        """Re-mark all open positions from the market feed on every tick/bar.
+
+        This is the critical fix: without this, MonitoredPosition.current_mark
+        remains at entry price and all stop-loss/trailing-stop/PnL monitoring
+        operates on stale data.
+        """
+        for pid in list(self.state.open_positions):
+            pos = self.state.open_positions[pid]
+            feed_mark = self.market_feed.latest_mark(pos.instrument_id)
+            if feed_mark is not None:
+                data_fresh = self.market_feed.data_fresh(
+                    pos.instrument_id, now=event.at, max_age_ms=self.config.max_quote_age_ms
+                )
+                self.state.open_positions[pid] = update_mark(
+                    pos,
+                    mark=feed_mark,
+                    at=event.at,
+                    data_fresh=data_fresh,
+                )
 
     def halt(self) -> None:
         self.state.kill_switch = True

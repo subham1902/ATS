@@ -106,10 +106,7 @@ def test_exit_converges_through_single_path() -> None:
     rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
     rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
     # Trigger P1 exit via hard loss
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    rt.state.open_positions["NIFTY:1"] = rt.state.open_positions["NIFTY:1"].__class__(
-        **{**rt.state.open_positions["NIFTY:1"].__dict__, "current_mark": Decimal("95")}
-    )
+    feed.set_mark("NIFTY", Decimal("95"), now)
     result = rt.process_event(
         RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=now)
     )
