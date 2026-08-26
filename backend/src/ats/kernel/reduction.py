@@ -7,13 +7,21 @@ This path deliberately has no OpportunityCandidate input.
 from __future__ import annotations
 
 from decimal import Decimal
+from uuid import UUID
 
 from ats.contracts.common import UTCDateTime
-from ats.contracts.domain.models import Position, StrategyPolicy
+from ats.contracts.domain.models import (
+    AutonomyToken,
+    Position,
+    RiskDecision,
+    StrategyPolicy,
+    SupervisorAdvisory,
+)
 from ats.contracts.domain.types import PositionStatus
-from ats.contracts.governance.models import GovernanceContext
+from ats.contracts.governance.models import GovernanceContext, OpportunityCandidate
 from ats.contracts.governance.types import ActionKind, EffectiveConstraintSet, RiskDirection
 
+from .autonomy import construct_autonomy_token
 from .governance import validate_system_state
 from .order_guard import constraints_no_broader
 from .types import (
@@ -22,6 +30,7 @@ from .types import (
     KernelOutcome,
     KernelResult,
     RiskCapitalBasis,
+    AutonomyTokenPolicy,
 )
 
 
@@ -72,4 +81,38 @@ def validate_reduction_eligibility(
     return KernelResult(outcome=KernelOutcome.ALLOW, reason_codes=(GateCode.OK,))
 
 
-__all__ = ["validate_reduction_eligibility"]
+def construct_reduction_token(
+    *,
+    eligibility: KernelResult,
+    token_id: UUID,
+    historical_candidate: OpportunityCandidate,
+    policy: StrategyPolicy,
+    risk_decision: RiskDecision,
+    advisory: SupervisorAdvisory,
+    context: GovernanceContext,
+    issued_at: UTCDateTime,
+    expires_at: UTCDateTime,
+    nonce: str,
+    token_policy: AutonomyTokenPolicy,
+) -> AutonomyToken:
+    """Mint a fresh exit token using historical candidate lineage, never entry token reuse."""
+    if eligibility.outcome is not KernelOutcome.ALLOW:
+        raise ValueError("reduction eligibility must ALLOW")
+    if context.risk_direction is not RiskDirection.REDUCE:
+        raise ValueError("reduction token requires REDUCE context")
+    return construct_autonomy_token(
+        eligibility=eligibility,
+        token_id=token_id,
+        candidate=historical_candidate,
+        policy=policy,
+        risk_decision=risk_decision,
+        advisory=advisory,
+        context=context,
+        issued_at=issued_at,
+        expires_at=expires_at,
+        nonce=nonce,
+        token_policy=token_policy,
+    )
+
+
+__all__ = ["construct_reduction_token", "validate_reduction_eligibility"]
