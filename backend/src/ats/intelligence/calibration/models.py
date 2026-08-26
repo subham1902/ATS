@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import PositiveInt, field_validator
+from pydantic import PositiveInt, field_validator, model_validator
 
 from ats.contracts.common import ATSBaseModel, FiniteFloat, Probability, UTCDateTime
 from ats.contracts.domain.types import NonEmptyStr
@@ -27,11 +27,18 @@ class CalibrationObservation(ATSBaseModel):
     forecast_probability: Probability
     outcome_occurred: bool
     observed_at: UTCDateTime
+    available_to_strategy_time: UTCDateTime
     regime_evidence_id: UUID | None
     realized_return_fraction: FiniteFloat
     realized_volatility_fraction: NonNegativeFiniteFloat
     realized_mfe_fraction: FiniteFloat
     realized_mae_fraction: FiniteFloat
+
+    @model_validator(mode="after")
+    def validate_information_time(self) -> CalibrationObservation:
+        if self.available_to_strategy_time < self.observed_at:
+            raise ValueError("calibration outcome cannot be available before it is observed")
+        return self
 
 
 class CalibrationConfiguration(ATSBaseModel):

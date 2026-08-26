@@ -89,7 +89,7 @@ class IntelligencePipelineConfig:
             calibrator_id="calibrator.empirical.v1",
             calibrator_version="1.0.0",
             bin_count=5,
-            minimum_support=1,
+            minimum_support=20,
             interval_z=1.96,
             validity_ms=300000,
             tail_loss_return_threshold=-0.02,
@@ -160,6 +160,7 @@ class MarketIntelligencePipeline:
         campaign_id: UUID,
         strategy_id: UUID,
         evaluation_time: UTCDateTime,
+        calibration_observations: tuple[CalibrationObservation, ...] = (),
     ) -> PipelineResult:
         """Run full evidence synthesis from raw snapshots to OpportunityCandidate."""
 
@@ -198,7 +199,7 @@ class MarketIntelligencePipeline:
             configuration=self.config.regime,
         )
 
-        # 3. Simple Empirical Calibration Observation
+        # 3. Calibration uses only caller-supplied, already-realized evidence.
         # Momentum-based binary probability estimate from features
         roc = bundle.features.get("roc_3_fraction", 0.0)
         prob_up = Decimal(str(round(min(0.95, max(0.05, 0.50 + roc * 5.0)), 4)))
@@ -241,27 +242,23 @@ class MarketIntelligencePipeline:
         )
         ensemble = ensemble.model_copy(update={"payload_hash": compute_payload_hash(ensemble)})
 
-        # Calibrated Distribution
-        cal_obs = (
-            CalibrationObservation(
-                observation_id=uuid5(_PIPELINE_NS, f"obs:{ctx.market_context_id}"),
-                forecast_probability=prob_up,
-                outcome_occurred=(roc > 0),
-                observed_at=ctx.as_of_time - timedelta(minutes=5),
-                regime_evidence_id=None,
-                realized_return_fraction=roc,
-                realized_volatility_fraction=bundle.features.get(
-                    "realized_volatility_3_population", 0.01
-                ),
-                realized_mfe_fraction=abs(roc) * 1.5,
-                realized_mae_fraction=abs(roc) * 0.5,
-            ),
-        )
+        if not calibration_observations:
+            return PipelineResult(
+                is_actionable=False,
+                direction="NEUTRAL",
+                expected_edge_r=0.0,
+                candidate=None,
+                instrument_candidate=None,
+                thesis=None,
+                regime=regime,
+                distribution=None,
+                reason_codes=("CALIBRATION_EVIDENCE_REQUIRED",),
+            )
         cal_res = calibrate_outcome_distribution(
             ensemble=ensemble,
             market_context=ctx,
             target_outcome_code="UP",
-            observations=cal_obs,
+            observations=calibration_observations,
             configuration=self.config.calibration,
             regime_evidence=None,
         )

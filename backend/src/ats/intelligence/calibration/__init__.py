@@ -8,6 +8,13 @@ from .models import (
     CalibrationEvaluationStatus,
     CalibrationObservation,
 )
+from .validation import (
+    CalibrationHealth,
+    CalibrationValidationPolicy,
+    CalibrationValidationReport,
+    ReliabilityBucket,
+    validate_calibration_history,
+)
 
 __all__ = [
     "CalibrationConfiguration",
@@ -15,5 +22,10 @@ __all__ = [
     "CalibrationEvaluationStatus",
     "CalibrationInputError",
     "CalibrationObservation",
+    "CalibrationHealth",
+    "CalibrationValidationPolicy",
+    "CalibrationValidationReport",
+    "ReliabilityBucket",
     "calibrate_outcome_distribution",
+    "validate_calibration_history",
 ]

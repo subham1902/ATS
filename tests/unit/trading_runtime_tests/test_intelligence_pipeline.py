@@ -10,6 +10,7 @@ from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.types import DataQualityState, SessionState
 from ats.contracts.intelligence.models import MarketContext
 from ats.contracts.intelligence.types import LiquidityState, VolatilityState
+from ats.intelligence.calibration import CalibrationObservation
 from ats.trading_runtime.intelligence_pipeline import (
     IntelligencePipelineConfig,
     MarketIntelligencePipeline,
@@ -54,6 +55,24 @@ def _sample_snapshots() -> tuple[MarketSnapshot, ...]:
     return tuple(snapshots)
 
 
+def _calibration_observations(cutoff: datetime) -> tuple[CalibrationObservation, ...]:
+    return tuple(
+        CalibrationObservation(
+            observation_id=uuid4(),
+            forecast_probability=Decimal("0.74"),
+            outcome_occurred=index < 15,
+            observed_at=cutoff - timedelta(days=2, minutes=20 - index),
+            available_to_strategy_time=cutoff - timedelta(days=2, minutes=20 - index),
+            regime_evidence_id=None,
+            realized_return_fraction=0.01 if index < 15 else -0.01,
+            realized_volatility_fraction=0.015,
+            realized_mfe_fraction=0.02,
+            realized_mae_fraction=-0.01,
+        )
+        for index in range(20)
+    )
+
+
 def test_intelligence_pipeline_e2e() -> None:
     snapshots = _sample_snapshots()
     cutoff_snap = snapshots[-1]
@@ -93,6 +112,7 @@ def test_intelligence_pipeline_e2e() -> None:
         campaign_id=uuid4(),
         strategy_id=uuid4(),
         evaluation_time=cutoff_snap.received_at,
+        calibration_observations=_calibration_observations(cutoff_snap.received_at),
     )
     elapsed_ms = (time.perf_counter_ns() - t0) / 1_000_000
 
@@ -146,6 +166,7 @@ def test_intelligence_pipeline_steady_state_latency() -> None:
             campaign_id=uuid4(),
             strategy_id=uuid4(),
             evaluation_time=cutoff_snap.received_at,
+            calibration_observations=_calibration_observations(cutoff_snap.received_at),
         )
 
     # 100 runs
@@ -159,6 +180,7 @@ def test_intelligence_pipeline_steady_state_latency() -> None:
             campaign_id=uuid4(),
             strategy_id=uuid4(),
             evaluation_time=cutoff_snap.received_at,
+            calibration_observations=_calibration_observations(cutoff_snap.received_at),
         )
         assert res.is_actionable
 
@@ -169,3 +191,40 @@ def test_intelligence_pipeline_steady_state_latency() -> None:
         f"Avg: {avg_ms:.3f} ms ({1000 / avg_ms:.0f} cycles/sec)"
     )
     assert avg_ms < 5.0  # Well within the 5ms threshold!
+
+
+def test_pipeline_fails_closed_without_realized_calibration_evidence() -> None:
+    snapshots = _sample_snapshots()
+    cutoff = snapshots[-1]
+    context = MarketContext(
+        schema_version="1.0",
+        market_context_id=uuid4(),
+        instrument_spec_id=uuid4(),
+        instrument_id="NIFTY",
+        timeframe="5m",
+        snapshot_id=cutoff.snapshot_id,
+        feature_bundle_id=uuid4(),
+        as_of_time=cutoff.received_at,
+        data_cutoff=cutoff.received_at,
+        session_state=SessionState.OPEN,
+        data_quality_state=DataQualityState.GOOD,
+        freshness_ms=100,
+        liquidity_state=LiquidityState.NORMAL,
+        volatility_state=VolatilityState.NORMAL,
+        higher_timeframe_context_refs=(),
+        related_market_context_refs=(),
+        cost_model_version="1.0.0",
+        input_hash="0" * 64,
+        payload_hash="0" * 64,
+    )
+    context = context.model_copy(update={"payload_hash": compute_payload_hash(context)})
+    result = MarketIntelligencePipeline().evaluate(
+        snapshots=snapshots,
+        cutoff_sequence=5,
+        market_context=context,
+        campaign_id=uuid4(),
+        strategy_id=uuid4(),
+        evaluation_time=cutoff.received_at,
+    )
+    assert not result.is_actionable
+    assert result.reason_codes == ("CALIBRATION_EVIDENCE_REQUIRED",)

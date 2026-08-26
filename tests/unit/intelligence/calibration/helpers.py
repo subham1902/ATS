@@ -54,12 +54,15 @@ def observation(
     regime_id: UUID | None = None,
 ) -> CalibrationObservation:
     current = context()
+    observed_at = current.data_cutoff - timedelta(
+        minutes=minutes_before if minutes_before is not None else 10 - index
+    )
     return CalibrationObservation(
         observation_id=UUID(f"30000000-0000-0000-0000-{index:012d}"),
         forecast_probability=Decimal(probability),
         outcome_occurred=occurred,
-        observed_at=current.data_cutoff
-        - timedelta(minutes=minutes_before if minutes_before is not None else 10 - index),
+        observed_at=observed_at,
+        available_to_strategy_time=observed_at,
         regime_evidence_id=regime_id,
         realized_return_fraction=0.01 if occurred else -0.02,
         realized_volatility_fraction=0.015,

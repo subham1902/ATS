@@ -111,8 +111,7 @@ def test_unconditioned_calibration_rejects_regime_argument() -> None:
 def test_invalid_configuration_is_contract_invalid() -> None:
     with pytest.raises(ValidationError):
         calibration_config().model_copy(update={"tail_loss_return_threshold": 0.0}).model_validate(
-            calibration_config().model_dump()
-            | {"tail_loss_return_threshold": 0.0}
+            calibration_config().model_dump() | {"tail_loss_return_threshold": 0.0}
         )
 
 

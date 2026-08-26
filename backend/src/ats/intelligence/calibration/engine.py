@@ -132,21 +132,16 @@ def calibrate_outcome_distribution(
         support_count=len(selected),
         outcomes=outcomes,
         brier_score=_brier_score(eligible),
-        expected_calibration_error=_expected_calibration_error(
-            eligible, configuration.bin_count
-        ),
+        expected_calibration_error=_expected_calibration_error(eligible, configuration.bin_count),
         regime_conditioned=configuration.regime_conditioned,
         regime_evidence_id=regime_evidence.regime_evidence_id if regime_evidence else None,
         expected_return_fraction=fmean(item.realized_return_fraction for item in selected),
-        expected_volatility_fraction=fmean(
-            item.realized_volatility_fraction for item in selected
-        ),
+        expected_volatility_fraction=fmean(item.realized_volatility_fraction for item in selected),
         expected_mfe_fraction=fmean(item.realized_mfe_fraction for item in selected),
         expected_mae_fraction=fmean(item.realized_mae_fraction for item in selected),
         tail_loss_probability=Decimal(
             sum(
-                item.realized_return_fraction
-                <= configuration.tail_loss_return_threshold
+                item.realized_return_fraction <= configuration.tail_loss_return_threshold
                 for item in selected
             )
         )
@@ -199,8 +194,8 @@ def _validate_inputs(
     observation_ids = tuple(item.observation_id for item in observations)
     if len(observation_ids) != len(set(observation_ids)):
         raise CalibrationInputError("duplicate calibration observation")
-    if any(item.observed_at > ensemble.data_cutoff for item in observations):
-        raise CalibrationInputError("future calibration observation")
+    if any(item.available_to_strategy_time > ensemble.data_cutoff for item in observations):
+        raise CalibrationInputError("future calibration observation is not available to strategy")
     if configuration.regime_conditioned:
         if regime_evidence is None:
             raise CalibrationInputError("regime-conditioned calibration requires regime evidence")
@@ -234,9 +229,7 @@ def _wilson_interval(probability: Decimal, count: int, z_value: float) -> Probab
         z_squared = z * z
         denominator = Decimal(1) + z_squared / n
         center = (probability + z_squared / (Decimal(2) * n)) / denominator
-        radicand = probability * (Decimal(1) - probability) / n + z_squared / (
-            Decimal(4) * n * n
-        )
+        radicand = probability * (Decimal(1) - probability) / n + z_squared / (Decimal(4) * n * n)
         margin = z * context.sqrt(radicand) / denominator
         return ProbabilityInterval(
             low=max(Decimal(0), center - margin),
