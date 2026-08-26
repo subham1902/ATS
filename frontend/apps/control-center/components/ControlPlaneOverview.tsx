@@ -1,11 +1,28 @@
 "use client";
 
-import type { ControlPlaneOverview as Overview } from "@ats/api-client";
+import { useState } from "react";
+import type { AgentChatAnswer, ControlPlaneOverview as Overview, RuntimeCommandRequest } from "@ats/api-client";
 import { Card, DetailField, EmptyState } from "@ats/ui";
 
 const shown = (value: string | null) => value ?? "UNKNOWN";
 
-export function ControlPlaneOverview({ state }: { state: Overview }) {
+export function ControlPlaneOverview({
+  state,
+  onChat,
+  onCommand,
+}: {
+  state: Overview;
+  onChat?: (question: string) => Promise<AgentChatAnswer>;
+  onCommand?: (command: RuntimeCommandRequest) => Promise<unknown>;
+}) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<AgentChatAnswer | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const ask = async () => {
+    if (!onChat || !question.trim()) return;
+    try { setAnswer(await onChat(question)); setChatError(null); }
+    catch { setChatError("Agent chat unavailable; no action was taken."); }
+  };
   return (
     <section aria-label="ATS intelligence overview" style={{ display: "grid", gap: 16 }}>
       <Card title="System / Session / Feed">
@@ -50,7 +67,20 @@ export function ControlPlaneOverview({ state }: { state: Overview }) {
         <p>Answers cite recorded candidate, thesis, position, allocation, risk, event, strategy, or experiment evidence.</p>
         <p>Requested changes create a RuntimeChangeProposal. Chat cannot place orders or mutate risk.</p>
         <label htmlFor="agent-question">Question</label>
-        <input id="agent-question" disabled placeholder="Agent chat provider not attached" style={{ width: "100%" }} />
+        <input id="agent-question" value={question} onChange={(event) => setQuestion(event.target.value)} disabled={!onChat} placeholder={onChat ? "Ask ATS about recorded evidence" : "Agent chat provider not attached"} style={{ width: "100%" }} />
+        <button type="button" disabled={!onChat || !question.trim()} onClick={() => void ask()}>Ask</button>
+        {answer ? <div role="status"><p>{answer.answer}</p><p>AUTHORITY {answer.authority}</p><p>EVIDENCE {answer.evidence_refs.join(", ") || "NONE"}</p>{answer.proposal_id ? <p>PROPOSAL {answer.proposal_id}</p> : null}</div> : null}
+        {chatError ? <p role="alert">{chatError}</p> : null}
+      </Card>
+      <Card title="A2 Paper Controls">
+        <p>All controls enter deterministic runtime authority. No live-money control exists.</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {(["SAFE", "NORMAL", "AGGRESSIVE"] as const).map((mode) => <button key={mode} type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "SET_MODE", mode })}>{mode}</button>)}
+          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "PAUSE_NEW_ENTRIES" })}>PAUSE NEW ENTRIES</button>
+          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "RESUME_NEW_ENTRIES" })}>RESUME</button>
+          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "FLATTEN_PORTFOLIO" })}>FLATTEN</button>
+          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "HALT_SYSTEM" })}>HALT</button>
+        </div>
       </Card>
     </section>
   );
@@ -63,7 +93,7 @@ export const UNKNOWN_CONTROL_PLANE: Overview = {
     { symbol: "NIFTY", price: null, freshness: "UNKNOWN" },
     { symbol: "BANKNIFTY", price: null, freshness: "UNKNOWN" },
   ],
-  capital: { total: null, available: null, reserved: null, inflight: null, committed: null },
+  capital: { total: null, deployable: null, available: null, reserved: null, inflight: null, committed: null },
   pnl: { realized: null, unrealized: null, hwm: null, drawdown: null },
   positions: 0, opportunities: 0, a04_decisions: 0, portfolio_decisions: 0,
   harness: "UNKNOWN", openrouter: "UNKNOWN", active_agents: [], champion: null,

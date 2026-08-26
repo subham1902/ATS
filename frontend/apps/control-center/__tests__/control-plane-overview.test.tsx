@@ -15,7 +15,7 @@ describe("Control Plane 2.0", () => {
   it("separates user and effective mode and exposes no live authority", () => {
     const state = { ...UNKNOWN_CONTROL_PLANE, user_mode: "AGGRESSIVE" as const, effective_mode: "SAFE" as const, mode_reason: "HWM_DRAWDOWN" };
     const { container } = render(<ControlPlaneOverview state={state} />);
-    expect(screen.getByText("AGGRESSIVE")).toBeInTheDocument();
+    expect(screen.getAllByText("AGGRESSIVE").length).toBeGreaterThan(0);
     expect(screen.getAllByText("SAFE").length).toBeGreaterThan(0);
     expect(screen.getByText("HWM_DRAWDOWN")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/ENABLE LIVE|PLACE REAL ORDER/);

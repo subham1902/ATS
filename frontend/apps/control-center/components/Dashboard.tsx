@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { getApiClient } from "../lib/api";
 import { isApiError } from "@ats/api-client";
-import type { SystemReadModel, PolicyReadModel, CampaignReadModel, HealthReadModel, ActivityReadModel, ErrorEnvelope } from "@ats/api-client";
+import type { SystemReadModel, PolicyReadModel, CampaignReadModel, HealthReadModel, ActivityReadModel, ErrorEnvelope, RuntimeStatusReadModel, ChatIntent } from "@ats/api-client";
 import { SystemPanel, PolicyPanel, CampaignPanel, ActivityPanel } from "./panels";
 import { Card, EmptyState } from "@ats/ui";
 import { useSse } from "../hooks/useSse";
@@ -41,6 +41,7 @@ export function Dashboard() {
   }));
   const policyQ = useFetch<PolicyReadModel>(() => getApiClient().getActivePolicy());
   const activityQ = useFetch<ActivityReadModel[]>(async () => (await getApiClient().getActivity()).items);
+  const runtimeQ = useFetch<RuntimeStatusReadModel>(() => getApiClient().getRuntimeStatus());
   const campaignQ = useFetch<CampaignReadModel | null>(async () => {
     const sys = await getApiClient().getSystem().catch(() => null);
     if (!sys?.active_campaign_id) return null;
@@ -51,6 +52,28 @@ export function Dashboard() {
 
   // Merge SSE events into activity surface (append, no replay guarantee)
   const sseActivityHint = events.length > 0 ? `+${events.length} live stream events (not replayed on reconnect)` : null;
+  const overview = runtimeQ.data ? {
+    ...UNKNOWN_CONTROL_PLANE,
+    system: (runtimeQ.data.halted ? "DEGRADED" : "READY") as "READY" | "DEGRADED",
+    session: runtimeQ.data.session.phase,
+    feed: (runtimeQ.data.feed_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
+    broker: (runtimeQ.data.broker_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
+    user_mode: runtimeQ.data.trading_mode.user_selected,
+    effective_mode: runtimeQ.data.trading_mode.effective,
+    mode_reason: runtimeQ.data.trading_mode.deescalation_reason,
+    capital: { total: runtimeQ.data.capital.total, deployable: null, available: runtimeQ.data.capital.available, reserved: runtimeQ.data.capital.reserved, inflight: runtimeQ.data.capital.inflight, committed: runtimeQ.data.capital.used },
+    pnl: { realized: runtimeQ.data.pnl.realized, unrealized: runtimeQ.data.pnl.unrealized, hwm: runtimeQ.data.pnl.session_peak, drawdown: runtimeQ.data.pnl.drawdown_fraction },
+    positions: runtimeQ.data.open_positions.length,
+  } : UNKNOWN_CONTROL_PLANE;
+  const chat = async (question: string) => {
+    const normalized = question.toLowerCase();
+    let intent: ChatIntent = "EXPLAIN";
+    if (normalized.includes("switch safe")) intent = "REQUEST_SAFE_MODE";
+    else if (normalized.includes("pause strategy")) intent = "REQUEST_STRATEGY_PAUSE";
+    else if (normalized.includes("reduce allocation")) intent = "REQUEST_REDUCED_ALLOCATION";
+    else if (normalized.includes("test") && normalized.includes("hypothesis")) intent = "PROPOSE_EXPERIMENT";
+    return getApiClient().agentChat({ request_id: crypto.randomUUID(), session_id: crypto.randomUUID(), agent_id: "operator-chat", question, intent, as_of: new Date().toISOString() });
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1100 }}>
@@ -63,7 +86,7 @@ export function Dashboard() {
       </div>
 
       <SystemPanel system={systemQ.data} healthLive={healthLiveQ.data} healthReady={healthReadyQ.data} error={systemQ.error} />
-      <ControlPlaneOverview state={UNKNOWN_CONTROL_PLANE} />
+      <ControlPlaneOverview state={overview} onChat={chat} onCommand={(command) => getApiClient().runtimeCommand(command)} />
       <PolicyPanel policy={policyQ.data} error={policyQ.error} />
       <CampaignPanel campaign={campaignQ.data} error={(campaignQ.error as ErrorEnvelope | null) ?? null} />
 

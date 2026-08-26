@@ -60,11 +60,12 @@ describe("api-client contract", () => {
     }
   });
 
-  it("no trading command routes exist", () => {
+  it("exposes only the bounded A2 runtime command route", () => {
     const all = Object.values(ROUTES).join(" ");
-    expect(all).not.toMatch(/command/i);
+    expect(ROUTES.runtimeCommand).toBe("/v1/runtime/command");
     expect(all).not.toMatch(/order/i);
     expect(all).not.toMatch(/trade/i);
+    expect(all).not.toMatch(/enable.live/i);
   });
 
   it("autonomy token type excludes nonce/payload_hash", () => {

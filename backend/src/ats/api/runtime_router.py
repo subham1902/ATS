@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ats.trading_runtime.modes import TradingMode
 
@@ -24,7 +24,10 @@ ProviderDep = Annotated[object | None, Depends(_runtime_provider)]
 def get_runtime_status(request: Request, provider: ProviderDep) -> RuntimeStatusReadModel:
     _ = request
     if provider is None:
-        raise RuntimeError("runtime status requires injected provider")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="runtime status provider is not attached",
+        )
     from ats.api.runtime_models import (
         RuntimeCapitalView,
         RuntimePnLView,
@@ -93,7 +96,10 @@ def post_runtime_command(
 ) -> RuntimeCommandResult:
     _ = request
     if provider is None:
-        raise RuntimeError("runtime command requires injected provider")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="runtime command provider is not attached",
+        )
     if body.command not in _ALLOWED:
         return RuntimeCommandResult(accepted=False, reason_codes=("COMMAND_NOT_ALLOWED",))
     from ats.trading_runtime.runtime_provider import TradingRuntimeProvider

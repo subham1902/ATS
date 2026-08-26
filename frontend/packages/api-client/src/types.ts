@@ -228,6 +228,56 @@ export interface ActivityPage {
   replay_supported: false;
 }
 
+export type ChatIntent = "EXPLAIN" | "REQUEST_SAFE_MODE" | "REQUEST_STRATEGY_PAUSE" | "REQUEST_REDUCED_ALLOCATION" | "PROPOSE_EXPERIMENT";
+
+export interface AgentChatRequest {
+  request_id: string;
+  session_id: string;
+  agent_id: string;
+  question: string;
+  intent: ChatIntent;
+  as_of: string;
+}
+
+export interface AgentChatAnswer {
+  answer_id: string;
+  request_id: string;
+  generated_at: string;
+  data_cutoff: string;
+  context_hash: string;
+  answer: string;
+  evidence_refs: string[];
+  proposal_id: string | null;
+  authority: "ADVISORY_ONLY";
+}
+
+export interface RuntimeStatusReadModel {
+  session: { phase: string; can_enter: boolean; can_reduce: boolean; must_flatten: boolean; is_halted: boolean };
+  trading_mode: { user_selected: "SAFE" | "NORMAL" | "AGGRESSIVE"; effective: "SAFE" | "NORMAL" | "AGGRESSIVE" | "HALTED"; deescalation_reason: string | null };
+  capital: { available: string; reserved: string; inflight: string; used: string; total: string };
+  pnl: { realized: string; unrealized: string; session_peak: string; drawdown_fraction: string };
+  loss_state: LossState;
+  open_positions: Array<{ position_id: string; instrument_id: string; quantity: string; entry_price: string; mark_price: string | null; unrealized_pnl: string }>;
+  recent_decisions: Array<Record<string, unknown>>;
+  feed_healthy: boolean;
+  broker_healthy: boolean;
+  halted: boolean;
+  paused_new_entries: boolean;
+  updated_at: string;
+}
+
+export interface RuntimeCommandRequest {
+  command: "SET_MODE" | "PAUSE_NEW_ENTRIES" | "RESUME_NEW_ENTRIES" | "EXIT_POSITION" | "FLATTEN_PORTFOLIO" | "HALT_SYSTEM";
+  mode?: "SAFE" | "NORMAL" | "AGGRESSIVE" | null;
+  position_id?: string | null;
+}
+
+export interface RuntimeCommandResult {
+  accepted: boolean;
+  reason_codes: string[];
+  effective_mode: string | null;
+}
+
 export interface StreamEvent {
   stream_event_id: string;
   event_kind: string;
@@ -250,5 +300,8 @@ export const ROUTES = {
   advisoryById: (id: string) => `/v1/advisories/${id}`,
   autonomyTokenById: (id: string) => `/v1/autonomy-tokens/${id}`,
   activity: "/v1/activity",
+  agentChat: "/v1/agent-chat",
+  runtimeStatus: "/v1/runtime/status",
+  runtimeCommand: "/v1/runtime/command",
   stream: "/v1/stream",
 } as const;

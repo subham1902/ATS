@@ -14,8 +14,11 @@ from pydantic import ValidationError
 
 from ats.contracts.domain.models import StrategyPolicy
 from ats.contracts.governance.types import SystemState
+from ats.intelligence.agent_chat import AgentChatAnswer, EvidenceBackedChatService
+from ats.intelligence.agent_governance import RuntimeChangeProposal
 from ats.kernel.policy import validate_strategy_policy
 
+from .chat import AgentChatHttpRequest, build_control_plane_chat
 from .models import (
     ActivityPage,
     AdvisoryReadModel,
@@ -35,6 +38,7 @@ from .models import (
     SystemReadModel,
 )
 from .providers import ControlPlaneReader, EmptyControlPlaneReader
+from .runtime_router import router as runtime_router
 from .stream import iter_sse
 
 _CORRELATION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
@@ -76,14 +80,25 @@ def _error_response(
     return JSONResponse(status_code=status_code, content=body.model_dump(mode="json"))
 
 
-def create_app(reader: ControlPlaneReader | None = None) -> FastAPI:
+def create_app(
+    reader: ControlPlaneReader | None = None,
+    *,
+    chat_service: EvidenceBackedChatService | None = None,
+    trading_runtime_provider: object | None = None,
+) -> FastAPI:
     """Create an A05 app over an injected read provider; no runtime is fabricated."""
     app = FastAPI(
         title="ATS Typed Control API",
         version="1.0.0",
         description="Read-only A2 paper control surface. SSE replay is not implemented.",
     )
-    app.state.control_plane_reader = reader or EmptyControlPlaneReader()
+    resolved_reader = reader or EmptyControlPlaneReader()
+    app.state.control_plane_reader = resolved_reader
+    app.state.trading_runtime_provider = trading_runtime_provider
+    proposal_log: list[RuntimeChangeProposal] = []
+    app.state.runtime_change_proposals = proposal_log
+    app.state.chat_service = chat_service or build_control_plane_chat(resolved_reader, proposal_log)
+    app.include_router(runtime_router)
 
     @app.exception_handler(ResourceNotFound)
     async def not_found_handler(request: Request, exc: ResourceNotFound) -> JSONResponse:
@@ -310,6 +325,11 @@ def create_app(reader: ControlPlaneReader | None = None) -> FastAPI:
     @app.get("/v1/activity", response_model=ActivityPage, tags=["activity"])
     def list_activity(control: ReaderDependency) -> ActivityPage:
         return ActivityPage(items=control.list_activity())
+
+    @app.post("/v1/agent-chat", response_model=AgentChatAnswer, tags=["agents"])
+    def agent_chat(body: AgentChatHttpRequest, request: Request) -> AgentChatAnswer:
+        service = cast(EvidenceBackedChatService, request.app.state.chat_service)
+        return service.respond(body.to_domain())
 
     @app.get(
         "/v1/stream",

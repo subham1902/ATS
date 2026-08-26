@@ -19,10 +19,13 @@ EXPECTED_OPERATIONS = {
     ("get", "/v1/autonomy-tokens/{token_id}"),
     ("get", "/v1/activity"),
     ("get", "/v1/stream"),
+    ("get", "/v1/runtime/status"),
+    ("post", "/v1/runtime/command"),
+    ("post", "/v1/agent-chat"),
 }
 
 
-def test_openapi_exports_all_and_only_a05_operations() -> None:
+def test_openapi_exports_all_and_only_operator_operations() -> None:
     schema = make_api_fixture()["app"].openapi()
     operations = {
         (method, path)
