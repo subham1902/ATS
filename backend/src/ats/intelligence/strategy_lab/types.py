@@ -1,8 +1,9 @@
-"""Minimal immutable research structures."""
+"""Minimal immutable research structures with lineage and anti-overfit evidence."""
 
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import model_validator
@@ -48,13 +49,7 @@ class ResearchFill(ATSBaseModel):
 
 
 class ResearchTrade(ATSBaseModel):
-    """Paired entry+exit fills (or open). NET economics: pnl_fraction is net.
-
-    Gross cash PnL = (exit_price - entry_price) * quantity
-    Net cash PnL = gross - entry_cost - exit_cost
-    Net return fraction = net_cash / (entry_price * quantity)  # denominator = entry notional
-    If gross retained, named explicitly as gross_pnl_fraction.
-    """
+    """Paired entry+exit fills (or open). NET economics: pnl_fraction is net."""
 
     trade_id: UUID
     instrument_id: InstrumentId
@@ -112,16 +107,17 @@ class BacktestResult(ATSBaseModel):
 
 
 class FillAssumption(ATSBaseModel):
-    """Frozen v1 fill assumption doc."""
+    """Frozen fill assumption doc."""
 
     model_version: str
     description: str
     entry_at_next_open: bool = True
     exit_at_next_open: bool = True
     same_bar_exit_conservative: str = "next_open_stop_before_target"
+    ohlc_uncertainty_label: str = "conservative_next_open_no_candle_close_fill"
+    cost_stack_version: str | None = None
 
 
-# Walk-forward plan types
 class WalkForwardWindow(ATSBaseModel):
     """Single train/test window."""
 
@@ -157,7 +153,6 @@ class WalkForwardPlan(ATSBaseModel):
         for i in range(1, len(self.windows)):
             prev = self.windows[i - 1]
             cur = self.windows[i]
-            # test windows must be chronological and non-overlapping
             prev_end = prev.test_end
             if prev_end is not None and cur.test_start <= prev_end:
                 raise ValueError("walk-forward test windows overlap or not chronological")
@@ -166,12 +161,75 @@ class WalkForwardPlan(ATSBaseModel):
                     raise ValueError("embargo window overlaps previous test")
 
 
+class ExperimentLineage(ATSBaseModel):
+    """Immutable lineage record for anti-overfit."""
+
+    lineage_id: UUID
+    strategy_definition_id: UUID
+    strategy_definition_version: int
+    parent_strategy_ref: tuple[UUID, int] | None = None
+    origin: str = "HUMAN"
+    dataset_manifest_id: UUID
+    dataset_version: str
+    trial_count: int
+    parameter_search_count: int
+    seed: int
+    cost_model_version: str
+    created_at: UTCDateTime
+
+    @model_validator(mode="after")
+    def validate_lineage(self) -> ExperimentLineage:
+        if self.trial_count < 1:
+            raise ValueError("trial_count must be >=1")
+        if self.parameter_search_count < 0:
+            raise ValueError("parameter_search_count must be >=0")
+        return self
+
+
+class OverfitEvidence(ATSBaseModel):
+    """Anti-overfit diagnostics; UNKNOWN/INSUFFICIENT_EVIDENCE when not computable."""
+
+    evidence_id: UUID
+    strategy_definition_id: UUID
+    experiment_ids: tuple[UUID, ...]
+    sample_count: int
+    trial_count: int
+    psr: float | Literal["UNKNOWN"] | Literal["INSUFFICIENT_EVIDENCE"] = "UNKNOWN"
+    psr_benchmark_sharpe: float | None = None
+    dsr: float | Literal["UNKNOWN"] | Literal["INSUFFICIENT_EVIDENCE"] = "UNKNOWN"
+    dsr_expected_max_sharpe: float | None = None
+    pbo: float | Literal["UNKNOWN"] | Literal["INSUFFICIENT_EVIDENCE"] = "UNKNOWN"
+    pbo_method: str | None = None
+    cscv_mean_sharpe: float | None = None
+    cpcv_evidence: str | None = None
+    reason_codes: tuple[str, ...] = ()
+    created_at: UTCDateTime
+
+
+class RobustnessReport(ATSBaseModel):
+    """Perturbation robustness: cost/timing/parameter/walk-forward variation."""
+
+    report_id: UUID
+    strategy_definition_id: UUID
+    base_scorecard_id: UUID
+    parameter_sensitivity_score: float
+    cost_sensitivity_score: float
+    timing_sensitivity_score: float
+    walk_forward_dispersion: float | Literal["UNKNOWN"] = "UNKNOWN"
+    is_robust: bool
+    reason_codes: tuple[str, ...] = ()
+    created_at: UTCDateTime
+
+
 __all__ = [
     "BacktestResult",
+    "ExperimentLineage",
     "FillAssumption",
+    "OverfitEvidence",
     "ResearchFill",
     "ResearchSignal",
     "ResearchTrade",
+    "RobustnessReport",
     "WalkForwardPlan",
     "WalkForwardWindow",
 ]
