@@ -650,6 +650,35 @@ class PostgresPositionRepository(_StateRepository):
     def __init__(self, connection: Connection) -> None:
         super().__init__(connection, "position_state", "position_id", True)
 
+    def list_by_state(self, state: str) -> tuple[StateSnapshot, ...]:
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT position_id,version,state,payload,payload_hash,updated_at,external_state "
+                "FROM position_state WHERE state=%s ORDER BY updated_at,position_id",
+                (state,),
+            )
+            rows = cursor.fetchall()
+        finally:
+            cursor.close()
+        snapshots: list[StateSnapshot] = []
+        for row in rows:
+            payload = _mapping(row[3])
+            if canonical_sha256(payload) != str(row[4]):
+                raise IntegrityViolationError("position_state payload hash mismatch")
+            snapshots.append(
+                StateSnapshot(
+                    str(row[0]),
+                    int(row[1]),
+                    str(row[2]),
+                    payload,
+                    str(row[4]),
+                    cast(datetime, row[5]),
+                    str(row[6]),
+                )
+            )
+        return tuple(snapshots)
+
 
 _CAPITAL_COLUMNS = (
     "portfolio_id,version,total_capital,deployable_capital,reserved_capital,used_capital,"
@@ -731,8 +760,7 @@ class PostgresCapitalRepository:
         cursor = self._connection.cursor()
         try:
             cursor.execute(
-                f"SELECT {_CAPITAL_COLUMNS} FROM portfolio_capital_account "
-                "WHERE portfolio_id=%s",
+                f"SELECT {_CAPITAL_COLUMNS} FROM portfolio_capital_account WHERE portfolio_id=%s",
                 (str(portfolio_id),),
             )
             row = cursor.fetchone()
@@ -744,8 +772,7 @@ class PostgresCapitalRepository:
         cursor = self._connection.cursor()
         try:
             cursor.execute(
-                f"SELECT {_RESERVATION_COLUMNS} FROM capital_reservation "
-                "WHERE reservation_id=%s",
+                f"SELECT {_RESERVATION_COLUMNS} FROM capital_reservation WHERE reservation_id=%s",
                 (str(reservation_id),),
             )
             row = cursor.fetchone()
@@ -860,9 +887,7 @@ class PostgresCapitalRepository:
             if cursor.fetchone() is None:
                 raise CapitalAccountNotFoundError("portfolio capital account does not exist")
             if target is CapitalReservationState.COMMITTED:
-                capital_sql = (
-                    "reserved_capital=reserved_capital-%s,used_capital=used_capital+%s"
-                )
+                capital_sql = "reserved_capital=reserved_capital-%s,used_capital=used_capital+%s"
                 capital_params: tuple[object, ...] = (reservation.amount, reservation.amount)
             elif reservation.state is CapitalReservationState.RESERVED:
                 capital_sql = "reserved_capital=reserved_capital-%s"
