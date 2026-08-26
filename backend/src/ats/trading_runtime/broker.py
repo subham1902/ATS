@@ -105,6 +105,7 @@ class PaperBrokerAdapter:
     def __init__(self, *, healthy: bool = True) -> None:
         self._healthy = healthy
         self._orders: dict[str, OrderStatus] = {}
+        self._requested_quantities: dict[str, Decimal] = {}
         self._positions: dict[str, PositionSnapshot] = {}
 
     def health(self) -> BrokerHealth:
@@ -128,6 +129,7 @@ class PaperBrokerAdapter:
             idempotency_key=request.idempotency_key,
         )
         self._orders[order_id] = status
+        self._requested_quantities[order_id] = request.quantity
         return status
 
     def query_order(self, order_id: str) -> OrderStatus | None:
@@ -164,7 +166,11 @@ class PaperBrokerAdapter:
             return
         self._orders[order_id] = OrderStatus(
             order_id=existing.order_id,
-            status="FILLED",
+            status=(
+                "FILLED"
+                if filled_quantity == self._requested_quantities[order_id]
+                else "PARTIALLY_FILLED"
+            ),
             filled_quantity=filled_quantity,
             average_price=average_price,
             updated_at=now,

@@ -129,15 +129,23 @@ def post_runtime_command(
             if body.command in flattens:
                 from ats.contracts.common import SystemClock
 
-                for pid in list(getattr(engine.state, "open_positions", {}).keys()):
-                    engine.handle_exit(pid, SystemClock().now())
+                engine.request_flatten(
+                    SystemClock().now(),
+                    reason_code="DASHBOARD_FLATTEN_REQUESTED",
+                    source="DASHBOARD",
+                )
                 return RuntimeCommandResult(accepted=True, reason_codes=("FLATTEN_QUEUED",))
             if body.position_id is not None:
                 from ats.contracts.common import SystemClock
 
                 pid = str(body.position_id)
                 if pid in getattr(engine.state, "open_positions", {}):
-                    engine.handle_exit(pid, SystemClock().now())
+                    engine.request_exit(
+                        pid,
+                        SystemClock().now(),
+                        reason_codes=("DASHBOARD_EXIT_REQUESTED",),
+                        source="DASHBOARD",
+                    )
                     return RuntimeCommandResult(accepted=True, reason_codes=("EXIT_QUEUED",))
                 return RuntimeCommandResult(accepted=False, reason_codes=("POSITION_NOT_FOUND",))
         return RuntimeCommandResult(

@@ -56,10 +56,19 @@ def test_engine_emits_production_candidate() -> None:
     )
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     feed.set_mark("NIFTY", Decimal("101"), now)
     rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
+    result = rt.process_event(
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="NIFTY",
+            payload={"previous_close": "100"},
+            at=now,
+        )
+    )
     assert "candidate" in result or "no_action" in result
     # If candidate, it must have production-like instrument
     if "candidate" in result:
@@ -91,7 +100,9 @@ def test_exit_converges_through_single_path() -> None:
     )
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
     rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
     # Trigger P1 exit via hard loss
@@ -99,7 +110,9 @@ def test_exit_converges_through_single_path() -> None:
     rt.state.open_positions["NIFTY:1"] = rt.state.open_positions["NIFTY:1"].__class__(
         **{**rt.state.open_positions["NIFTY:1"].__dict__, "current_mark": Decimal("95")}
     )
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=now))
+    result = rt.process_event(
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=now)
+    )
     assert "exits" in result
     # No duplicate
     pids = [e["position_id"] for e in result["exits"]]
@@ -110,5 +123,5 @@ def test_no_fake_candidate_in_production_path() -> None:
     import pathlib
 
     src = pathlib.Path("backend/src/ats/trading_runtime/engine.py").read_text()
-    # _FakeCandidate should not be used in process_event anymore; only _LegacyFakeCandidate alias remains
-    assert "_FakeCandidate(signal)" not in src or "_LegacyFakeCandidate" in src
+    assert "_FakeCandidate" not in src
+    assert "_LegacyFakeCandidate" not in src
