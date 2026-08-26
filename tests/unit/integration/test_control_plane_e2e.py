@@ -25,7 +25,18 @@ from ats.intelligence.agent_governance import (
     RuntimeChangeProposal,
     RuntimeChangeType,
 )
+from ats.intelligence.calibration import CalibrationObservation
+from ats.intelligence.rare_opportunity import (
+    HistoricalAnalogue,
+    OptionConvexityInput,
+    PatternState,
+    RareOpportunityPolicy,
+    assess_rare_opportunity,
+    encode_pattern_state,
+    find_historical_analogues,
+)
 from ats.intelligence.research.engine import ResearchBrainEngine
+from ats.market.derivatives.active_window import MarketStateFreshness
 from ats.portfolio.brain.engine import PortfolioManagerBrain
 from ats.portfolio.brain.models import (
     AllocationOutcome,
@@ -102,6 +113,24 @@ def _sample_snapshots() -> tuple[MarketSnapshot, ...]:
     return tuple(snapshots)
 
 
+def _calibration_history(cutoff: datetime) -> tuple[CalibrationObservation, ...]:
+    return tuple(
+        CalibrationObservation(
+            observation_id=uuid4(),
+            forecast_probability=Decimal("0.74"),
+            outcome_occurred=index < 15,
+            observed_at=cutoff - timedelta(days=3, minutes=20 - index),
+            available_to_strategy_time=cutoff - timedelta(days=3, minutes=20 - index),
+            regime_evidence_id=None,
+            realized_return_fraction=0.01 if index < 15 else -0.01,
+            realized_volatility_fraction=0.015,
+            realized_mfe_fraction=0.02,
+            realized_mae_fraction=-0.01,
+        )
+        for index in range(20)
+    )
+
+
 def _make_proposal(
     kind: RuntimeChangeType,
     *,
@@ -174,10 +203,77 @@ def test_offline_end_to_end_flow() -> None:
         campaign_id=CAMPAIGN_ID,
         strategy_id=STRATEGY_ID,
         evaluation_time=cutoff_snap.received_at,
+        calibration_observations=_calibration_history(cutoff_snap.received_at),
     )
     assert eval_res.is_actionable
     assert eval_res.candidate is not None
     candidate = eval_res.candidate
+
+    # 2b. R10-X remains evidence-only and cannot bypass Portfolio Brain/A04.
+    pattern = PatternState(
+        state_id=uuid4(),
+        as_of=cutoff_snap.received_at,
+        data_cutoff=cutoff_snap.received_at,
+        regime="TRENDING",
+        returns_1s=1.5,
+        returns_5s=1.5,
+        returns_15s=1.5,
+        returns_1m=1.5,
+        returns_5m=1.5,
+        acceleration=1.5,
+        realized_volatility=0.02,
+        range_compression=0.1,
+        breakout_magnitude=1.5,
+        spread_fraction=0.01,
+        volume_rate=3.0,
+        oi_change=0.5,
+        iv_change=0.5,
+        premium_acceleration=1.5,
+        liquidity_score=0.9,
+    )
+    vector = encode_pattern_state(pattern)
+    analogue_history = tuple(
+        HistoricalAnalogue(
+            analogue_id=uuid4(),
+            state_time=cutoff_snap.received_at - timedelta(days=30 - index),
+            available_to_strategy_time=cutoff_snap.received_at - timedelta(days=29 - index),
+            regime="TRENDING",
+            vector=vector,
+            favorable_excursion=0.04,
+            adverse_excursion=-0.01,
+            forward_return=0.02,
+            forward_volatility=0.03,
+        )
+        for index in range(20)
+    )
+    analogue_distribution = find_historical_analogues(
+        pattern, analogue_history, RareOpportunityPolicy()
+    )
+    rare = assess_rare_opportunity(
+        state=pattern,
+        option=OptionConvexityInput(
+            instrument_key="TEST_ONLY|NIFTY_CE",
+            premium=Decimal("10"),
+            delta=0.5,
+            gamma=0.02,
+            theta_per_day=-0.5,
+            iv=0.2,
+            spread_cost=Decimal("0.25"),
+            slippage_cost=Decimal("0.25"),
+            fee_cost=Decimal("0.10"),
+            liquidity_score=0.9,
+            time_to_expiry_days=Decimal("2"),
+            median_underlying_move=20.0,
+            tail_underlying_move=100.0,
+            execution_uncertainty=Decimal("0.25"),
+            calibration_uncertainty=Decimal("0.25"),
+            freshness=MarketStateFreshness.FRESH,
+            reference_valid=True,
+        ),
+        analogues=analogue_distribution,
+    )
+    assert rare.eligible
+    assert not hasattr(rare, "authorize")
 
     # 3. Portfolio Manager Brain Allocation
     portfolio_brain = PortfolioManagerBrain()
