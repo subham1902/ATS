@@ -60,9 +60,7 @@ def evaluate_hwm(
     peak_equity = previous.peak_equity
     if current_equity - peak_equity >= config.hwm_update_min_profit:
         peak_equity = current_equity
-    peak_profit = max(
-        previous.peak_profit, current_equity - session_start_equity, Decimal("0")
-    )
+    peak_profit = max(previous.peak_profit, current_equity - session_start_equity, Decimal("0"))
     drawdown = Decimal("0")
     if peak_equity != 0:
         drawdown = max(Decimal("0"), (peak_equity - current_equity) / peak_equity)

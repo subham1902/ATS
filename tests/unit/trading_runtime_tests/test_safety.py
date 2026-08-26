@@ -20,7 +20,9 @@ def _open_facts(**overrides: object) -> SafetyFacts:
         market_close=time(15, 30),
         overrides=(),
     )
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     session = resolve_session_status(calendar=cal, config=SessionRuntimeConfig(), now=now)
     base: dict[str, object] = {
         "session": session,
@@ -47,13 +49,17 @@ def test_allow_when_all_green() -> None:
 
 
 def test_stale_blocks_new_risk_but_not_halted() -> None:
-    result = evaluate_p0_safety(facts=_open_facts(data_fresh=False), evaluation_time=datetime.now(UTC))
+    result = evaluate_p0_safety(
+        facts=_open_facts(data_fresh=False), evaluation_time=datetime.now(UTC)
+    )
     assert result.verdict == SafetyVerdict.BLOCK_NEW_RISK
     assert result.block_new_risk
     assert not result.is_halted
 
 
 def test_kill_switch_halts() -> None:
-    result = evaluate_p0_safety(facts=_open_facts(kill_switch_active=True), evaluation_time=datetime.now(UTC))
+    result = evaluate_p0_safety(
+        facts=_open_facts(kill_switch_active=True), evaluation_time=datetime.now(UTC)
+    )
     assert result.verdict == SafetyVerdict.HALT
     assert result.is_halted

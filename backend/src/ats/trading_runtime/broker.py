@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from ats.contracts.common import UTCDateTime
+from ats.trading_runtime.lot_size import LotSizeError, LotSizeRegistry
 
 from .position_monitor import MonitoredPosition
 
@@ -102,8 +103,18 @@ class InMemoryMarketFeed:
 class PaperBrokerAdapter:
     """Thin adapter wrapping existing ats.execution.paper broker for runtime use."""
 
-    def __init__(self, *, healthy: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        healthy: bool = True,
+        lot_size_registry: LotSizeRegistry | None = None,
+        base_slippage_ticks: int = 0,
+        tick_size: Decimal = Decimal("0.05"),
+    ) -> None:
         self._healthy = healthy
+        self._lot_size_registry = lot_size_registry
+        self._base_slippage_ticks = base_slippage_ticks
+        self._tick_size = tick_size
         self._orders: dict[str, OrderStatus] = {}
         self._requested_quantities: dict[str, Decimal] = {}
         self._positions: dict[str, PositionSnapshot] = {}
@@ -114,9 +125,23 @@ class PaperBrokerAdapter:
     def is_healthy(self) -> bool:
         return self._healthy
 
+    def apply_slippage(self, price: Decimal, side: str) -> Decimal:
+        """Apply realistic slippage (in ticks) to a requested limit/market price."""
+        if self._base_slippage_ticks <= 0:
+            return price
+        slippage_amt = Decimal(self._base_slippage_ticks) * self._tick_size
+        if side.upper() in ("BUY", "LONG"):
+            return price + slippage_amt
+        return max(Decimal("0.05"), price - slippage_amt)
+
     def submit_order(self, request: OrderRequest, *, now: UTCDateTime) -> OrderStatus | None:
         if not self._healthy:
             return None
+        if self._lot_size_registry is not None:
+            try:
+                self._lot_size_registry.validate_quantity(request.instrument_id, request.quantity)
+            except LotSizeError:
+                return None
         order_id = f"paper-{request.idempotency_key}"
         if order_id in self._orders:
             return self._orders[order_id]

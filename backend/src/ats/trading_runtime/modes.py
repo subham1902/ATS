@@ -103,7 +103,42 @@ def is_entry_blocked_by_mode(*, envelope: ModeEnvelope, open_positions: int) -> 
     return open_positions >= envelope.max_concurrent_positions
 
 
+DEFAULT_MODE_ENVELOPES: dict[TradingMode, ModeEnvelope] = {
+    TradingMode.SAFE: ModeEnvelope(
+        mode=TradingMode.SAFE,
+        capital_utilization=Decimal("0.30"),
+        max_concurrent_positions=1,
+        minimum_expected_edge_r=0.20,
+        spread_tolerance_ticks=4,
+        cooldown_after_exit_minutes=20,
+        profit_protection_tightness=Decimal("0.015"),
+        label="Safe Envelope",
+    ),
+    TradingMode.NORMAL: ModeEnvelope(
+        mode=TradingMode.NORMAL,
+        capital_utilization=Decimal("0.60"),
+        max_concurrent_positions=2,
+        minimum_expected_edge_r=0.15,
+        spread_tolerance_ticks=6,
+        cooldown_after_exit_minutes=10,
+        profit_protection_tightness=Decimal("0.02"),
+        label="Normal Envelope",
+    ),
+    TradingMode.AGGRESSIVE: ModeEnvelope(
+        mode=TradingMode.AGGRESSIVE,
+        capital_utilization=Decimal("0.90"),
+        max_concurrent_positions=4,
+        minimum_expected_edge_r=0.10,
+        spread_tolerance_ticks=10,
+        cooldown_after_exit_minutes=5,
+        profit_protection_tightness=Decimal("0.03"),
+        label="Aggressive Envelope",
+    ),
+}
+
+
 __all__ = [
+    "DEFAULT_MODE_ENVELOPES",
     "ModeEnvelope",
     "ModeState",
     "TradingMode",
