@@ -17,7 +17,8 @@ from tests.unit.market.history.fixtures import (
 def test_manifest_is_frozen_and_complete() -> None:
     dataset = build_test_dataset(scenario_normal_series(3))
     manifest = dataset.manifest
-    assert manifest.schema_version == "1.0"
+    assert manifest.schema_version == "1.1"
+    assert len(manifest.validation_policy_hash) == 64
     assert manifest.row_count == 3
     assert manifest.source == "ATS_TEST_ONLY_SYNTHETIC"
     assert manifest.data_classification is DatasetSourceClass.TEST_ONLY_SYNTHETIC

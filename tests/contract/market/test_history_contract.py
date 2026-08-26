@@ -83,8 +83,9 @@ def test_core_models_expose_json_schema() -> None:
     versioned_models = (MarketObservation, DatasetManifest, HistoricalDataset)
     for model in (*versioned_models, HistoryValidationReport):
         assert model.model_json_schema()["type"] == "object"
-    for model in versioned_models:
-        assert model.model_fields["schema_version"].default == "1.0"
+    assert MarketObservation.model_fields["schema_version"].default == "1.0"
+    assert DatasetManifest.model_fields["schema_version"].default == "1.1"
+    assert HistoricalDataset.model_fields["schema_version"].default == "1.0"
 
 
 def test_as_of_information_model_is_the_declared_admission_contract() -> None:

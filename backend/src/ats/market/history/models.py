@@ -29,6 +29,7 @@ from ats.contracts.domain.types import (
     ensure_unique,
 )
 from ats.contracts.enums import ATSStringEnum
+from ats.contracts.hashing import canonical_sha256
 from ats.contracts.ids import OpaqueId
 from ats.contracts.intelligence.types import BoundedText, RegisteredCode
 from ats.market.calendar.models import SessionCalendar
@@ -235,7 +236,7 @@ class DatasetManifest(ATSBaseModel):
     market values itself; integrity flows from the pinned content hashes.
     """
 
-    schema_version: SchemaVersion = "1.0"
+    schema_version: SchemaVersion = "1.1"
     dataset_id: OpaqueId
     source: NonEmptyText
     source_version: SemVer
@@ -248,6 +249,7 @@ class DatasetManifest(ATSBaseModel):
     transform_lineage: tuple[TransformStep, ...]
     row_count: PositiveInt
     quality_summary: QualitySummary
+    validation_policy_hash: Sha256
     payload_hash: Sha256
 
     @model_validator(mode="after")
@@ -321,6 +323,17 @@ class HistoryValidationPolicy(ATSBaseModel):
 
 
 DEFAULT_VALIDATION_POLICY = HistoryValidationPolicy()
+
+
+def validation_policy_hash(policy: HistoryValidationPolicy) -> Sha256:
+    """Hash the complete effective policy through ATS canonical JSON primitives.
+
+    JSON-mode dumping makes calendar dates/times explicit strings before the
+    canonical hash is computed, while preserving strict model validation and
+    deterministic ordering of the policy's validated tuple fields.
+    """
+
+    return canonical_sha256(policy.model_dump(mode="json"))
 
 
 class AsOfInformationModel(ATSBaseModel):
@@ -426,4 +439,5 @@ __all__ = [
     "RawRecordReference",
     "TransformStep",
     "milliseconds_between",
+    "validation_policy_hash",
 ]

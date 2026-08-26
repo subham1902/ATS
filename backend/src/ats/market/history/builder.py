@@ -19,18 +19,24 @@ from .dataset import HistoricalDataset
 from .errors import HistoricalTruthError
 from .models import (
     DATASET_NAMESPACE,
+    DEFAULT_VALIDATION_POLICY,
     HISTORY_NAMESPACE,
     DatasetManifest,
     DatasetSourceClass,
     FileHashEntry,
+    HistoryValidationPolicy,
     MarketObservation,
     ObservationPayload,
     ObservationTimes,
     QualitySummary,
     RawRecordReference,
     TransformStep,
+    validation_policy_hash,
 )
-from .validation import compute_effective_states, validate_market_history
+from .validation import (
+    compute_effective_states,
+    validate_market_history,
+)
 
 
 def build_market_observation(
@@ -86,6 +92,7 @@ def build_historical_dataset(
     contract_master_version: str,
     file_hashes: Sequence[FileHashEntry],
     transform_lineage: Sequence[TransformStep],
+    policy: HistoryValidationPolicy = DEFAULT_VALIDATION_POLICY,
 ) -> HistoricalDataset:
     """Validate observations and bind them into an immutable dataset.
 
@@ -96,7 +103,7 @@ def build_historical_dataset(
 
     if not observations:
         raise ValueError("observations must be non-empty")
-    report = validate_market_history(observations)
+    report = validate_market_history(observations, policy=policy)
     invalid_codes = [
         item.code for item in report.findings if item.quality_state is DataQualityState.INVALID
     ]
@@ -128,6 +135,7 @@ def build_historical_dataset(
         contract_master_version=contract_master_version,
         file_hashes=tuple(file_hashes),
         transform_lineage=tuple(transform_lineage),
+        validation_policy_hash=validation_policy_hash(policy),
         quality_summary=QualitySummary(
             good_count=summary_counts[DataQualityState.GOOD],
             degraded_count=summary_counts[DataQualityState.DEGRADED],
@@ -147,13 +155,14 @@ def _build_manifest(
     contract_master_version: str,
     file_hashes: tuple[FileHashEntry, ...],
     transform_lineage: tuple[TransformStep, ...],
+    validation_policy_hash: str,
     quality_summary: QualitySummary,
 ) -> DatasetManifest:
     as_of_start = min(item.times.available_to_strategy_time for item in observations)
     as_of_end = max(item.times.available_to_strategy_time for item in observations)
     universe = frozenset(item.instrument for item in observations)
     candidate = DatasetManifest(
-        schema_version="1.0",
+        schema_version="1.1",
         dataset_id=UUID(int=0),
         source=source,
         source_version=source_version,
@@ -166,6 +175,7 @@ def _build_manifest(
         transform_lineage=transform_lineage,
         row_count=len(observations),
         quality_summary=quality_summary,
+        validation_policy_hash=validation_policy_hash,
         payload_hash="0" * 64,
     )
     preimage = payload_preimage(candidate)

@@ -21,11 +21,18 @@ from ats.contracts.domain.types import Sha256
 from .builder import build_historical_dataset
 from .dataset import HistoricalDataset
 from .errors import HistoricalTruthError, HistoricalTruthErrorCode
-from .models import DatasetManifest, MarketObservation
+from .models import (
+    DEFAULT_VALIDATION_POLICY,
+    DatasetManifest,
+    HistoryValidationPolicy,
+    MarketObservation,
+    validation_policy_hash,
+)
 
 MANIFEST_FILE = "manifest.json"
 RECORDS_FILE = "observations.jsonl"
 DIGEST_FILE = "records.sha256"
+POLICY_FILE = "policy.json"
 
 
 class SavedDatasetPaths(ATSBaseModel):
@@ -41,6 +48,8 @@ class SavedDatasetPaths(ATSBaseModel):
 def save_historical_dataset(
     dataset: HistoricalDataset,
     directory: Path | str,
+    *,
+    policy: HistoryValidationPolicy | None = None,
 ) -> SavedDatasetPaths:
     """Atomically persist ``dataset`` and pin the records-file digest."""
 
@@ -49,6 +58,14 @@ def save_historical_dataset(
     manifest_path = base / MANIFEST_FILE
     records_path = base / RECORDS_FILE
     digest_path = base / DIGEST_FILE
+    if policy is None:
+        policy = DEFAULT_VALIDATION_POLICY
+    policy_hash = validation_policy_hash(policy)
+    if policy_hash != dataset.manifest.validation_policy_hash:
+        raise HistoricalTruthError(
+            HistoricalTruthErrorCode.DATASET_POLICY_MISMATCH,
+            "saved policy does not match the dataset manifest validation_policy_hash",
+        )
     payload = "".join(
         observation.model_dump_json() + "\n" for observation in dataset.observations
     ).encode("utf-8")
@@ -56,6 +73,7 @@ def save_historical_dataset(
     _atomic_write(manifest_path, dataset.manifest.model_dump_json().encode("utf-8"))
     _atomic_write(records_path, payload)
     _atomic_write(digest_path, f"{digest}\n".encode())
+    _atomic_write(base / POLICY_FILE, policy.model_dump_json().encode("utf-8"))
     return SavedDatasetPaths(
         manifest_path=str(manifest_path),
         records_path=str(records_path),
@@ -64,7 +82,23 @@ def save_historical_dataset(
     )
 
 
-def load_historical_dataset(directory: Path | str) -> HistoricalDataset:
+def _load_policy_sidecar(base: Path) -> HistoryValidationPolicy:
+    """Load the mandatory, manifest-bound validation policy sidecar."""
+
+    sidecar = base / POLICY_FILE
+    try:
+        return HistoryValidationPolicy.model_validate_json(sidecar.read_bytes())
+    except (OSError, ValueError) as error:
+        raise HistoricalTruthError(
+            HistoricalTruthErrorCode.DATASET_POLICY_MISMATCH,
+            "policy.json is missing, malformed, or does not satisfy the strict policy schema",
+        ) from error
+
+
+def load_historical_dataset(
+    directory: Path | str,
+    policy: HistoryValidationPolicy | None = None,
+) -> HistoricalDataset:
     """Reload and fully re-verify a persisted dataset; fail closed on any drift."""
 
     base = Path(directory)
@@ -88,6 +122,19 @@ def load_historical_dataset(directory: Path | str) -> HistoricalDataset:
             HistoricalTruthErrorCode.DATASET_STORAGE_CORRUPT,
             "records file contains no observations",
         )
+    persisted_policy = _load_policy_sidecar(base)
+    persisted_policy_hash = validation_policy_hash(persisted_policy)
+    if persisted_policy_hash != manifest.validation_policy_hash:
+        raise HistoricalTruthError(
+            HistoricalTruthErrorCode.DATASET_POLICY_MISMATCH,
+            "policy.json does not match manifest.validation_policy_hash",
+        )
+    if policy is not None and validation_policy_hash(policy) != persisted_policy_hash:
+        raise HistoricalTruthError(
+            HistoricalTruthErrorCode.DATASET_POLICY_MISMATCH,
+            "caller-supplied policy does not match the persisted validation policy",
+        )
+    policy = persisted_policy
     rebuilt = build_historical_dataset(
         observations,
         source=manifest.source,
@@ -96,6 +143,7 @@ def load_historical_dataset(directory: Path | str) -> HistoricalDataset:
         contract_master_version=manifest.contract_master_version,
         file_hashes=manifest.file_hashes,
         transform_lineage=manifest.transform_lineage,
+        policy=policy,
     )
     if (
         rebuilt.manifest.dataset_id != manifest.dataset_id
