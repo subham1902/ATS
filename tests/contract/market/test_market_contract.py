@@ -49,7 +49,20 @@ def test_public_replay_surface_has_no_future_preload_accessor() -> None:
 
     replay = make_replay()
     public = {name for name in dir(replay) if not name.startswith("_")}
-    assert public == {"advance", "clock", "current", "snapshot_at", "state", "visible_snapshots"}
+    # The fixture path now returns the history-gated session. Its extra
+    # accessors are strictly as-of gated: visible_observations admits only
+    # information whose availability time has passed, and attribution_ledger
+    # records digests of what was visible. No future-preload accessor exists.
+    assert public == {
+        "advance",
+        "attribution_ledger",
+        "clock",
+        "current",
+        "snapshot_at",
+        "state",
+        "visible_observations",
+        "visible_snapshots",
+    }
     assert "ReplayDataset" not in market.__all__
     assert "load_replay_dataset" not in market.__all__
     assert "load_approved_fixture" not in market.__all__

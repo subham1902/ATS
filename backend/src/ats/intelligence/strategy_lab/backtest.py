@@ -20,6 +20,7 @@ from ats.intelligence.formula import FormulaEvaluationContext, evaluate
 from ats.market.replay.models import ReplayBar, ReplayDataset
 
 from .cost_model import CostModel
+from .fill_model import SlippageModel
 from .types import BacktestResult, ResearchFill, ResearchSignal, ResearchTrade
 
 
@@ -49,6 +50,19 @@ class BacktestConfiguration:
     dataset_cutoff: UTCDateTime
     parameter_set_hash: str
     seed: int
+    slippage_model: SlippageModel | None = None
+
+
+def _degraded_price(
+    slippage_model: SlippageModel | None,
+    *,
+    price: Decimal,
+    quantity: Decimal,
+    side: str,
+) -> Decimal:
+    if slippage_model is None:
+        return price
+    return slippage_model.applied_price(price=price, quantity=quantity, side=side)
 
 
 def run_backtest(
@@ -151,7 +165,12 @@ def run_backtest(
                     next_bar = bars[next_idx]
                     # Must be within test window; if beyond test_end still bounded
                     if test_end is None or next_bar.bar_timestamp <= test_end:
-                        fill_price = next_bar.open
+                        fill_price = _degraded_price(
+                            config.slippage_model,
+                            price=next_bar.open,
+                            quantity=config.fill_quantity,
+                            side="BUY",
+                        )
                         cost = config.cost_model.cost_per_trade(
                             price=fill_price, quantity=config.fill_quantity, side="BUY"
                         )
@@ -199,7 +218,12 @@ def run_backtest(
                 if next_idx < len(bars):
                     next_bar = bars[next_idx]
                     if test_end is None or next_bar.bar_timestamp <= test_end:
-                        fill_price = next_bar.open
+                        fill_price = _degraded_price(
+                            config.slippage_model,
+                            price=next_bar.open,
+                            quantity=config.fill_quantity,
+                            side="SELL",
+                        )
                         cost = config.cost_model.cost_per_trade(
                             price=fill_price, quantity=config.fill_quantity, side="SELL"
                         )

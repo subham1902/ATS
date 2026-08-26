@@ -9,11 +9,12 @@ unusable for historical replay.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from ats.contracts.domain.hashing import compute_payload_hash
-from ats.contracts.domain.types import DataQualityState
+from ats.contracts.domain.types import DataQualityState, SessionState
+from ats.market.calendar.models import _INDIA_STANDARD_TIME, SessionCalendar
 
 from .errors import HistoricalTruthErrorCode
 from .models import (
@@ -22,6 +23,7 @@ from .models import (
     HistoryFinding,
     HistoryValidationPolicy,
     HistoryValidationReport,
+    InstrumentPolicyOverride,
     MarketBarPayload,
     MarketObservation,
     ObservationKind,
@@ -64,6 +66,41 @@ def finding_sort_key(finding: HistoryFinding) -> tuple[str, str, str, str]:
         str(finding.related_observation_id) if finding.related_observation_id else "",
         finding.message,
     )
+
+
+def _matching_override(
+    overrides: tuple[InstrumentPolicyOverride, ...], observation: MarketObservation
+) -> InstrumentPolicyOverride | None:
+    payload = observation.payload
+    for override in reversed(overrides):
+        if override.instrument != observation.instrument:
+            continue
+        if override.timeframe is not None:
+            if not isinstance(payload, MarketBarPayload):
+                continue
+            if str(payload.timeframe) != str(override.timeframe):
+                continue
+        return override
+    return None
+
+
+def _bar_thresholds(
+    policy: HistoryValidationPolicy, observation: MarketObservation
+) -> tuple[int, int]:
+    """Resolve effective (minimum availability, maximum lag) for one record."""
+
+    minimum_field = _MINIMUM_AVAILABILITY_FIELD[observation.kind]
+    maximum_field = _MAXIMUM_SOURCE_LAG_FIELD[observation.kind]
+    minimum_delay: int = getattr(policy, minimum_field)
+    maximum_lag: int = getattr(policy, maximum_field)
+    if observation.kind is ObservationKind.MARKET_BAR:
+        override = _matching_override(policy.instrument_overrides, observation)
+        if override is not None:
+            if override.bar_minimum_availability_delay_ms is not None:
+                minimum_delay = override.bar_minimum_availability_delay_ms
+            if override.bar_maximum_source_lag_ms is not None:
+                maximum_lag = override.bar_maximum_source_lag_ms
+    return minimum_delay, maximum_lag
 
 
 def validate_market_history(
@@ -159,8 +196,7 @@ def _time_semantics_findings(
             )
             continue
         lag_ms = milliseconds_between(times.event_time, times.available_to_strategy_time)
-        minimum_field = _MINIMUM_AVAILABILITY_FIELD[observation.kind]
-        minimum_delay = getattr(policy, minimum_field)
+        minimum_delay, maximum_lag = _bar_thresholds(policy, observation)
         if lag_ms < minimum_delay:
             findings.append(
                 HistoryFinding(
@@ -173,8 +209,6 @@ def _time_semantics_findings(
                     observation_id=observation.observation_id,
                 )
             )
-        maximum_lag_field = _MAXIMUM_SOURCE_LAG_FIELD[observation.kind]
-        maximum_lag = getattr(policy, maximum_lag_field)
         if lag_ms > maximum_lag:
             findings.append(
                 HistoryFinding(
@@ -448,7 +482,16 @@ def _missing_interval_findings(
             interval = policy.expected_bar_interval_ms
             if gap_ms <= 0:
                 continue
-            if gap_ms % interval != 0 or gap_ms > interval:
+            if policy.session_calendar is not None:
+                missing_close = _calendar_gap_has_missing_close(
+                    policy.session_calendar,
+                    earlier.times.event_time,
+                    later.times.event_time,
+                    interval,
+                )
+            else:
+                missing_close = gap_ms % interval != 0 or gap_ms > interval
+            if missing_close:
                 findings.append(
                     HistoryFinding(
                         code=HistoricalTruthErrorCode.MISSING_INTERVAL,
@@ -464,6 +507,41 @@ def _missing_interval_findings(
                     )
                 )
     return findings
+
+
+def _calendar_gap_has_missing_close(
+    calendar: SessionCalendar,
+    earlier: datetime,
+    later: datetime,
+    interval_ms: int,
+) -> bool:
+    """Return whether any eligible session close is absent between two bars.
+
+    A close timestamp is eligible when the calendar declares the instant
+    PREOPEN or OPEN and it aligns to the anchored interval grid exactly as
+    :meth:`SessionCalendar.validate_bar_close` requires. Gaps that span only
+    closed or halted time are therefore never flagged.
+    """
+
+    step = timedelta(milliseconds=interval_ms)
+    candidate = earlier + step
+    while candidate < later:
+        state = calendar.state_at(candidate)
+        if state in (SessionState.PREOPEN, SessionState.OPEN):
+            local = candidate.astimezone(_INDIA_STANDARD_TIME)
+            if not (local.second or local.microsecond):
+                anchor_time = (
+                    calendar.preopen_start
+                    if state is SessionState.PREOPEN
+                    else calendar.market_open
+                )
+                anchor = datetime.combine(local.date(), anchor_time, tzinfo=local.tzinfo)
+                elapsed_seconds = int((local - anchor).total_seconds())
+                expected_seconds = interval_ms // 1000
+                if elapsed_seconds > 0 and elapsed_seconds % expected_seconds == 0:
+                    return True
+        candidate += step
+    return False
 
 
 def _contract_universe_findings(

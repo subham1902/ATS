@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from ats.market import (
     ApprovedFixture,
-    DeterministicReplay,
     ReplayConfiguration,
     approved_manifest,
     create_approved_replay,
     nse_cash_alpha_v1_calendar,
 )
+from ats.market.history import HistoricalReplaySession
 
 
-def make_replay() -> DeterministicReplay:
+def make_replay() -> HistoricalReplaySession:
     calendar = nse_cash_alpha_v1_calendar()
     manifest = approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1)
     return create_approved_replay(
