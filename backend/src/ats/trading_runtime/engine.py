@@ -113,6 +113,18 @@ class RuntimeState:
     kill_switch: bool = False
     last_exit_at: dict[str, UTCDateTime] = field(default_factory=dict)
     last_thesis: dict[str, str] = field(default_factory=dict)
+    pending_exits: dict[str, PendingExit] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PendingExit:
+    """Idempotent reduction request; a fill is the only event that closes a position."""
+
+    position_id: str
+    requested_at: UTCDateTime
+    reason_codes: tuple[str, ...]
+    source: str
+    authorized: bool
 
 
 class TradingRuntime:
@@ -189,12 +201,21 @@ class TradingRuntime:
             for pid in list(self.state.open_positions.keys()):
                 if not any(e["position_id"] == pid for e in exits):
                     exits.append(
-                        {"position_id": pid, "action": "EXIT", "reasons": ("RUNTIME_FLATTEN_REQUIRED",)}
+                        {
+                            "position_id": pid,
+                            "action": "EXIT",
+                            "reasons": ("RUNTIME_FLATTEN_REQUIRED",),
+                        }
                     )
 
         if exits:
             for e in exits:
-                self._try_authority_for_exit(position_id=e["position_id"], at=event.at)
+                self.request_exit(
+                    e["position_id"],
+                    event.at,
+                    reason_codes=tuple(e["reasons"]),
+                    source="AUTOMATIC",
+                )
             self._decision_log.append({"at": event.at.isoformat(), "exits": exits})
             return {
                 "verdict": safety.verdict.value,
@@ -204,9 +225,7 @@ class TradingRuntime:
             }
 
         if safety.block_new_risk:
-            self._decision_log.append(
-                {"at": event.at.isoformat(), "blocked": safety.reason_codes}
-            )
+            self._decision_log.append({"at": event.at.isoformat(), "blocked": safety.reason_codes})
             return {
                 "verdict": safety.verdict.value,
                 "session_phase": session_status.phase.value,
@@ -343,11 +362,67 @@ class TradingRuntime:
         )
         _ = at
 
-    def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
+    def request_exit(
+        self,
+        position_id: str,
+        at: UTCDateTime,
+        *,
+        reason_codes: tuple[str, ...] = ("MANUAL_EXIT_REQUESTED",),
+        source: str = "MANUAL",
+    ) -> dict[str, Any]:
+        """Queue one deterministic exit request without mutating the position.
+
+        Runtime positions currently lack the frozen Position/token/context evidence needed by
+        ``validate_exit_intent``.  Therefore an authority-backed runtime fails closed here;
+        execution integration must attach that evidence before marking the request authorized.
+        The no-op test runtime may queue an authorized paper-only request, but still cannot
+        close the position until an exit fill is applied.
+        """
+        if position_id not in self.state.open_positions:
+            return {"accepted": False, "reasons": ("POSITION_NOT_FOUND",)}
+        existing = self.state.pending_exits.get(position_id)
+        if existing is not None:
+            return {
+                "accepted": True,
+                "idempotent": True,
+                "authorized": existing.authorized,
+                "reasons": existing.reason_codes,
+            }
+        authorized = isinstance(self.authority, NoopAuthorityService)
+        reasons = reason_codes if authorized else reason_codes + ("EXIT_EVIDENCE_REQUIRED",)
+        self.state.pending_exits[position_id] = PendingExit(
+            position_id=position_id,
+            requested_at=at,
+            reason_codes=reasons,
+            source=source,
+            authorized=authorized,
+        )
+        return {
+            "accepted": True,
+            "idempotent": False,
+            "authorized": authorized,
+            "reasons": reasons,
+        }
+
+    def request_flatten(
+        self, at: UTCDateTime, *, reason_code: str = "FLATTEN_REQUESTED", source: str = "MANUAL"
+    ) -> tuple[dict[str, Any], ...]:
+        return tuple(
+            self.request_exit(pid, at, reason_codes=(reason_code,), source=source)
+            for pid in tuple(self.state.open_positions)
+        )
+
+    def handle_exit_fill(self, position_id: str, at: UTCDateTime) -> None:
+        """Apply a terminal broker fill; requests/commands must never call this directly."""
         self.state.open_positions.pop(position_id, None)
+        self.state.pending_exits.pop(position_id, None)
         instrument = position_id.split(":")[0] if ":" in position_id else position_id
         self.state.last_exit_at[instrument] = at
         self.state.last_thesis.pop(instrument, None)
+
+    def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
+        """Backward-compatible terminal fill hook. Prefer ``handle_exit_fill``."""
+        self.handle_exit_fill(position_id, at)
 
     def update_equity(self, current_equity: Decimal) -> None:
         self.state.current_equity = current_equity
@@ -403,16 +478,6 @@ class TradingRuntime:
         except Exception as exc:
             return {"allowed": False, "reasons": (type(exc).__name__,)}
 
-    def _try_authority_for_exit(self, *, position_id: str, at: UTCDateTime) -> dict[str, Any]:
-        if isinstance(self.authority, NoopAuthorityService):
-            self.handle_exit(position_id, at)
-            return {"allowed": True, "via": "NOOP"}
-        pos = self.state.open_positions.get(position_id)
-        if pos is None:
-            return {"allowed": False, "reasons": ("POSITION_NOT_FOUND",)}
-        self.handle_exit(position_id, at)
-        return {"allowed": True, "via": "DIRECT_WITH_AUTHORITY_CHECK"}
-
     def halt(self) -> None:
         self.state.kill_switch = True
 
@@ -425,25 +490,9 @@ class TradingRuntime:
         return LossState.NORMAL
 
 
-class _LegacyFakeCandidate:
-    """Retained only for type-compat; no production path uses it after D07.3."""
-
-    def __init__(self, signal: StrategySignal) -> None:
-        from uuid import uuid4
-
-        self.candidate_id = uuid4()
-        self.instrument_id = signal.instrument_id
-        self.side = "BUY"
-        self.distribution_id = uuid4()
-        self.proposed_target_price = __import__("decimal").Decimal("100")
-        self.entry_conditions: tuple[object, ...] = ()
-
-
-_FakeCandidate = _LegacyFakeCandidate
-
-
 __all__ = [
     "EngineMetrics",
+    "PendingExit",
     "RuntimeConfig",
     "RuntimeEvent",
     "RuntimeEventKind",

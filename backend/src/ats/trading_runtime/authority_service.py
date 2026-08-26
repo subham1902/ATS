@@ -20,6 +20,7 @@ from ats.portfolio.runtime import (
     PortfolioReservationCommand,
     ReservationPartition,
     SerializedPortfolioAuthority,
+    UnknownSubmissionHold,
 )
 
 
@@ -45,17 +46,17 @@ class AuthorityDecision:
 class TradingAuthorityService(Protocol):
     def try_reserve_for_candidate(
         self, request: ReservationRequest, *, evaluation_time: UTCDateTime
-    ) -> AuthorityDecision:
-        ...
+    ) -> AuthorityDecision: ...
 
-    def release_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None:
-        ...
+    def release_reservation(
+        self, reservation_id: UUID, *, evaluation_time: UTCDateTime
+    ) -> None: ...
 
-    def commit_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None:
-        ...
+    def commit_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None: ...
 
-    def snapshot(self) -> object:
-        ...
+    def hold_unknown_submission(self, reservation_id: UUID) -> UnknownSubmissionHold: ...
+
+    def snapshot(self) -> object: ...
 
 
 class PortfolioAuthorityService:
@@ -110,16 +111,15 @@ class PortfolioAuthorityService:
         )
 
     def release_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None:
-        try:
-            self._authority.release(reservation_id, updated_at=evaluation_time)
-        except Exception:
-            pass
+        self._authority.release(reservation_id, updated_at=evaluation_time)
 
     def commit_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None:
-        try:
-            self._authority.commit(reservation_id, updated_at=evaluation_time)
-        except Exception:
-            pass
+        # R17 reservations are indivisible.  The first partial or full fill commits the
+        # entire worst-case risk reservation; this is intentionally conservative.
+        self._authority.commit(reservation_id, updated_at=evaluation_time)
+
+    def hold_unknown_submission(self, reservation_id: UUID) -> UnknownSubmissionHold:
+        return self._authority.hold_unknown_submission(reservation_id)
 
     def snapshot(self) -> object:
         return self._authority.snapshot()
@@ -143,6 +143,9 @@ class NoopAuthorityService:
 
     def commit_reservation(self, reservation_id: UUID, *, evaluation_time: UTCDateTime) -> None:
         _ = (reservation_id, evaluation_time)
+
+    def hold_unknown_submission(self, reservation_id: UUID) -> UnknownSubmissionHold:
+        raise RuntimeError("no-op authority cannot provide a durable unknown-submission hold")
 
     def snapshot(self) -> object:
         return None
