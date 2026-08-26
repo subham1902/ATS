@@ -54,7 +54,10 @@ def expected_max_sharpe(n_trials: int, n_obs: int) -> float | str:
         return "INSUFFICIENT_EVIDENCE"
     try:
         euler_gamma = 0.5772156649
-        val = math.sqrt(2 * math.log(n_trials)) - (euler_gamma / math.sqrt(2 * math.log(n_trials)))
+        log_k = math.log(n_trials)
+        z_max = math.sqrt(2 * log_k) + (euler_gamma / math.sqrt(2 * log_k))
+        sigma_sr = 1.0 / math.sqrt(n_obs - 1)
+        val = z_max * sigma_sr
         if not math.isfinite(val):
             return "UNKNOWN"
         return float(val)

@@ -1,4 +1,4 @@
-"""R14 hardening: India cost stack, conservative fills, anti-overfit, robustness, lineage, overlapping labels."""
+"""R14 hardening: India cost stack, conservative fills, anti-overfit, lineage."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from ats.contracts.domain.types import DataQualityState, SessionState
-from ats.contracts.intelligence.types import ScorecardValidationStatus
+from ats.contracts.intelligence.types import ExperimentType
 from ats.intelligence.strategy_lab.anti_overfit import (
     build_lineage,
     build_overfit_evidence,
@@ -21,18 +21,15 @@ from ats.intelligence.strategy_lab.anti_overfit import (
 from ats.intelligence.strategy_lab.cost_model import (
     ConservativeCostModel,
     IndiaCashCostModel,
-    ZeroCostModel,
     default_india_conservative_cost_model,
 )
-from ats.intelligence.strategy_lab.leakage_scanner import scan_leakage
 from ats.intelligence.strategy_lab.experiment_runner import build_experiment
-from ats.contracts.intelligence.types import ExperimentType
+from ats.intelligence.strategy_lab.leakage_scanner import scan_leakage
 from ats.intelligence.strategy_lab.robustness import (
     parameter_perturbation_score,
     walk_forward_dispersion,
 )
 from ats.intelligence.strategy_lab.types import BacktestResult, ResearchFill, ResearchTrade
-from ats.intelligence.strategy_lab.scorecard import build_scorecard
 from ats.market.replay.models import ReplayBar, ReplayDataset, ReplayManifest
 
 
@@ -201,7 +198,6 @@ def test_overlapping_label_protection_requires_embargo() -> None:
 
 def test_walk_forward_overlap_is_rejected() -> None:
     ds = _bars(20)
-    from ats.intelligence.strategy_lab.walk_forward import build_rolling_plan
     from ats.intelligence.strategy_lab.types import WalkForwardPlan, WalkForwardWindow
 
     w1 = WalkForwardWindow(
@@ -288,7 +284,17 @@ def test_cscv_insufficient() -> None:
 
 def test_expected_max_sharpe_insufficient() -> None:
     assert expected_max_sharpe(n_trials=2, n_obs=10) == "INSUFFICIENT_EVIDENCE"
-    assert isinstance(expected_max_sharpe(n_trials=10, n_obs=50), float)
+    emax = expected_max_sharpe(n_trials=10, n_obs=50)
+    assert isinstance(emax, float)
+    # Scaled by 1/sqrt(49) ~ 0.1428, so value for 10 trials is roughly 0.3 - 0.4
+    assert 0.1 <= emax <= 1.0
+
+
+def test_expected_max_sharpe_decreases_with_more_observations() -> None:
+    emax_50 = expected_max_sharpe(n_trials=10, n_obs=50)
+    emax_200 = expected_max_sharpe(n_trials=10, n_obs=200)
+    assert isinstance(emax_50, float) and isinstance(emax_200, float)
+    assert emax_200 < emax_50
 
 
 def test_overfit_evidence_returns_unknown_when_insufficient() -> None:
@@ -396,7 +402,7 @@ def test_walk_forward_dispersion_float_when_sufficient() -> None:
 
 def test_lineage_requires_trial_count() -> None:
     now = datetime(2024, 1, 10, tzinfo=UTC)
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         build_lineage(
             strategy_definition_id=uuid4(),
             strategy_definition_version=1,
