@@ -12,14 +12,22 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
 
 $state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
 
+function Get-StatePid([string]$Name) {
+    $property = $state.PSObject.Properties[$Name]
+    if ($null -ne $property -and $null -ne $property.Value) {
+        return [int]$property.Value
+    }
+    return $null
+}
+
 $ids = @(
-    if ($state.backend_launcher) { [int]$state.backend_launcher }
-    if ($state.frontend_launcher) { [int]$state.frontend_launcher }
-    if ($state.harness_launcher) { [int]$state.harness_launcher }
-    if ($state.backend) { [int]$state.backend }
-    if ($state.frontend) { [int]$state.frontend }
-    if ($state.harness) { [int]$state.harness }
-) | Sort-Object -Unique
+    Get-StatePid 'backend_launcher'
+    Get-StatePid 'frontend_launcher'
+    Get-StatePid 'harness_launcher'
+    Get-StatePid 'backend'
+    Get-StatePid 'frontend'
+    Get-StatePid 'harness'
+) | Where-Object { $null -ne $_ } | Sort-Object -Unique
 
 foreach ($pid_ in $ids) {
     try {
