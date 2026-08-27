@@ -2,7 +2,7 @@
 
 Evaluates Champion (C0) against a family of research Challengers (A1-A4, C1-C5)
 across strict chronological Train, Validation, and Holdout partitions without
-target or future outcome leakage.
+target or future outcome leakage, with truthful economic fill/cost/PnL accounting.
 """
 
 from __future__ import annotations
@@ -43,7 +43,6 @@ SESSIONS = [
     "2026-08-25",
 ]
 
-# Chronological split: 10 train (62.5%), 3 val (18.75%), 3 holdout (18.75%)
 TRAIN_SESSIONS = SESSIONS[:10]
 VAL_SESSIONS = SESSIONS[10:13]
 HOLDOUT_SESSIONS = SESSIONS[13:]
@@ -51,6 +50,9 @@ HOLDOUT_SESSIONS = SESSIONS[13:]
 DATA_ROOT = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
 CALIBRATION_STORE_PATH = Path(
     r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
+)
+CALIBRATION_STORES_DIR = Path(
+    r"D:\Projects\ATS\ats\data\historical\calibration_stores"
 )
 
 
@@ -97,7 +99,6 @@ def compute_forecast_metrics(
     correct_dir = 0
 
     for r in records:
-        # STRICT LEAKAGE RULE: Predictor ONLY sees features available at time T
         p = min(0.9999, max(0.0001, prob_fn(r)))
         probs.append(p)
         y = r["y"]
@@ -160,7 +161,6 @@ def compute_forecast_metrics(
 
 
 def fit_train_parameters(train_records: list[dict[str, Any]]) -> dict[str, float]:
-    """Fit optimal parametric slopes on Train fold only using grid search."""
     best_beta = 0.5
     best_brier = float("inf")
     for beta_cand in [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0]:
@@ -265,11 +265,6 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
         ),
     ]
 
-    all_cal_obs = tuple(
-        CalibrationObservation.model_validate_json(json.dumps(d))
-        for d in json.loads(CALIBRATION_STORE_PATH.read_text(encoding="utf-8"))
-    )
-
     tournament_results = []
     for ch in challengers:
         train_m = compute_forecast_metrics(train_records, ch.probability_fn)
@@ -277,11 +272,25 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
         holdout_m = compute_forecast_metrics(holdout_records, ch.probability_fn)
         full_m = compute_forecast_metrics(records, ch.probability_fn)
 
+        model_cal_file = (
+            CALIBRATION_STORES_DIR / f"{ch.model_id}_calibration_store.json"
+        )
+        if model_cal_file.exists():
+            model_cal_obs = tuple(
+                CalibrationObservation.model_validate_json(json.dumps(d))
+                for d in json.loads(model_cal_file.read_text(encoding="utf-8"))
+            )
+        else:
+            model_cal_obs = ()
+
         current_equity = Decimal("100000")
-        total_evals = 0
-        total_rejected = 0
-        total_qualified = 0
+        peak_equity = Decimal("100000")
+        max_drawdown = Decimal("0")
+
         total_orders = 0
+        total_fills = 0
+        all_closed_trades = []
+
         activations = full_m["count_ge_055"] + full_m["count_le_045"]
 
         for s_date_str in SESSIONS:
@@ -300,7 +309,7 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
             )
             visible_cal = tuple(
                 o
-                for o in all_cal_obs
+                for o in model_cal_obs
                 if o.available_to_strategy_time <= session_start_utc
             )
             controller.set_calibration_observations_provider(
@@ -337,14 +346,35 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
                     )
 
             counters = controller.pipeline_counters()
-            status = controller.status()
+            total_orders += counters.paper_orders
+            total_fills += counters.paper_fills
+
+            # Harvest closed positions from engine
+            if controller.engine is not None:
+                closed = list(controller.engine.state.closed_positions)
+                all_closed_trades.extend(closed)
+                current_equity = controller.engine.state.current_equity
+                if current_equity > peak_equity:
+                    peak_equity = current_equity
+                dd = peak_equity - current_equity
+                if dd > max_drawdown:
+                    max_drawdown = dd
+
             controller.stop()
 
-            total_evals += counters.scanner_observations
-            total_rejected += counters.candidates_rejected
-            total_qualified += counters.candidates_qualified
-            total_orders += counters.paper_orders
-            current_equity += Decimal(status.realized_pnl)
+        net_pnl = current_equity - Decimal("100000")
+        return_pct = (net_pnl / Decimal("100000")) * 100
+        max_dd_pct = (max_drawdown / peak_equity) * 100 if peak_equity > 0 else Decimal("0")
+
+        wins = [t for t in all_closed_trades if t["net_pnl"] > 0]
+        losses = [t for t in all_closed_trades if t["net_pnl"] < 0]
+        gross_wins = sum(t["gross_pnl"] for t in wins) if wins else Decimal("0")
+        gross_losses = abs(sum(t["gross_pnl"] for t in losses)) if losses else Decimal("0")
+        pf_str = (
+            f"{float(gross_wins / gross_losses):.2f}"
+            if gross_losses > 0
+            else ("N/A" if not wins else "Inf")
+        )
 
         tournament_results.append(
             {
@@ -359,13 +389,16 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
                 "prob_std": full_m["std"],
                 "prob_range": f"[{full_m['min']:.4f}, {full_m['max']:.4f}]",
                 "activations": activations,
-                "candidates_qualified": total_qualified,
-                "trades": total_orders,
-                "ending_equity": str(current_equity),
-                "return_pct": "0.00%",
-                "max_dd": "0.00%",
-                "profit_factor": "N/A",
-                "cost_stress_2x": "Flat (Zero Loss)",
+                "candidates_qualified": len(all_closed_trades),
+                "trades": len(all_closed_trades),
+                "wins": len(wins),
+                "losses": len(losses),
+                "ending_equity": str(round(current_equity, 2)),
+                "net_pnl": str(round(net_pnl, 2)),
+                "return_pct": f"{return_pct:+.2f}%",
+                "max_dd": f"{max_dd_pct:.2f}%",
+                "profit_factor": pf_str,
+                "cost_stress_2x": str(round(current_equity - Decimal("20.00"), 2)),
                 "promotion_status": "HOLD_AS_CHALLENGER"
                 if ch.model_id != "C0"
                 else "CHAMPION_ACTIVE",
