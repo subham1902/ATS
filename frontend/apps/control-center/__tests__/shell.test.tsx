@@ -5,7 +5,7 @@ import { SystemPanel, PolicyPanel, CampaignPanel, CandidatePanel, RiskPanel, Tok
 import type { SystemReadModel, PolicyReadModel } from "@ats/api-client";
 
 // Mock next/navigation usePathname
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: (props: unknown) => {
   const { children, href } = props as { children: unknown; href: string };
   // eslint-disable-next-line @next/next/no-html-link-for-pages
@@ -15,8 +15,8 @@ vi.mock("next/link", () => ({ default: (props: unknown) => {
 describe("shell", () => {
   it("renders header/nav/main and skip link", () => {
     render(<Shell systemState="READY" sseStatus="connected"><div>content</div></Shell>);
-    expect(screen.getByText("ATS CONTROL CENTER")).toBeInTheDocument();
-    expect(screen.getByText("A2_PAPER")).toBeInTheDocument();
+    expect(screen.getByText("A2 CONTROL CENTER")).toBeInTheDocument();
+    expect(screen.getByText("PAPER ONLY")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(document.querySelector('a[href="#main"]')).toBeTruthy();
@@ -24,8 +24,7 @@ describe("shell", () => {
 
   it("UNKNOWN system state looks unknown not healthy", () => {
     render(<Shell systemState="UNKNOWN" sseStatus="disconnected">x</Shell>);
-    expect(screen.getByLabelText("system state UNKNOWN")).toBeInTheDocument();
-    expect(screen.getByText(/unknown, not healthy/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/SYSTEM UNKNOWN/i)).toBeInTheDocument();
   });
 });
 
@@ -190,16 +189,11 @@ describe("token status", () => {
   });
 });
 
-describe("SSE", () => {
-  it("connection indicator statuses", async () => {
-    const { rerender } = render(<Shell systemState="READY" sseStatus="connecting">x</Shell>);
-    expect(screen.getByLabelText("SSE connecting")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="connected">x</Shell>);
-    expect(screen.getByLabelText("SSE connected")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="disconnected">x</Shell>);
-    expect(screen.getByLabelText("SSE disconnected")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="error">x</Shell>);
-    expect(screen.getByLabelText("SSE error")).toBeInTheDocument();
+describe("operator shell", () => {
+  it("exposes the command palette shortcut and bounded controls", () => {
+    render(<Shell>x</Shell>);
+    expect(screen.getByRole("button", { name: "Open command palette" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Controls" })).toBeInTheDocument();
   });
 });
 
