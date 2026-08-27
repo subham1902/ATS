@@ -1,0 +1,8 @@
+import type { ActivityReadModel, RuntimeCommandRequest, RuntimeStatusReadModel, SseStatus, StreamEvent, SystemReadModel } from "@ats/api-client";
+
+export interface PipelineStatus { nifty_last: string | null; banknifty_last: string | null; candidates_considered: number; candidates_qualified: number; attached: boolean; [key: string]: unknown }
+export interface HarnessStatus { harness: { state: string; authority?: string; active_sessions: number; execution_target?: string; live_money?: string; reason_codes?: string[]; [key: string]: unknown }; llm: { health: string; primary_model?: string; fallback_model?: string | null; [key: string]: unknown } | null; agents: Array<{ agent_type: string; status: string; last_trigger_at?: string | null; last_latency_ms?: number | null; model?: string | null; [key: string]: unknown }>; [key: string]: unknown }
+export type OperatorAlert = { id: string; severity: "critical" | "warning" | "info"; title: string; detail: string; href: string; dismissible: boolean; occurredAt?: string };
+export type CommandStatus = { state: "idle" | "submitting" | "success" | "error"; message: string | null };
+export interface OperatorSnapshot { system: SystemReadModel | null; runtime: RuntimeStatusReadModel | null; pipeline: PipelineStatus | null; harness: HarnessStatus | null; activity: ActivityReadModel[]; events: StreamEvent[]; sseStatus: SseStatus; loading: boolean; error: string | null; lastRefreshAt: string | null }
+export interface OperatorContextValue extends OperatorSnapshot { refresh: () => Promise<void>; command: (request: RuntimeCommandRequest) => Promise<boolean>; commandStatus: CommandStatus; alerts: OperatorAlert[]; dismissAlert: (id: string) => void }
