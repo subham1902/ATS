@@ -18,7 +18,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.market.history import load_historical_dataset
@@ -35,30 +34,13 @@ BANKNIFTY_DS_PATH = HISTORICAL_DIR / "banknifty_options_a2_replay_v1"
 REPLAY_OUTPUT_DIR = Path(r"D:\Projects\ATS\ats\data\replays\2026-08-25\ats-shadow-session")
 
 
-def _sample_calibration_observations(cutoff: datetime) -> tuple[CalibrationObservation, ...]:
-    return tuple(
-        CalibrationObservation(
-            observation_id=uuid4(),
-            forecast_probability=Decimal("0.75"),
-            outcome_occurred=i < 16,
-            observed_at=cutoff - timedelta(days=1, minutes=i),
-            available_to_strategy_time=cutoff - timedelta(days=1, minutes=i),
-            regime_evidence_id=None,
-            realized_return_fraction=0.02 if i < 16 else -0.01,
-            realized_volatility_fraction=0.015,
-            realized_mfe_fraction=0.02,
-            realized_mae_fraction=-0.01,
-        )
-        for i in range(20)
-    )
-
-
 def run_shadow_session_replay(
     *,
     mode: str = "NORMAL",
     harness_enabled: bool = True,
     r10x_enabled: bool = True,
     capital: Decimal = Decimal("100000"),
+    use_synthetic_calibration: bool = False,
     stress_delay_ms: int = 0,
 ) -> dict[str, Any]:
     """Execute one full, leakage-free shadow session replay."""
@@ -91,9 +73,30 @@ def run_shadow_session_replay(
     )
     controller = A2PaperSessionController(config=config, calendar=cal)
     controller.start(require_token=False)
-    controller.set_calibration_observations_provider(
-        lambda: _sample_calibration_observations(sorted_times[0])
-    )
+
+    if use_synthetic_calibration:
+        from uuid import uuid4
+
+        def _sample_cal(cutoff: datetime) -> tuple[CalibrationObservation, ...]:
+            return tuple(
+                CalibrationObservation(
+                    observation_id=uuid4(),
+                    forecast_probability=Decimal("0.75"),
+                    outcome_occurred=i < 16,
+                    observed_at=cutoff - timedelta(days=1, minutes=i),
+                    available_to_strategy_time=cutoff - timedelta(days=1, minutes=i),
+                    regime_evidence_id=None,
+                    realized_return_fraction=0.02 if i < 16 else -0.01,
+                    realized_volatility_fraction=0.015,
+                    realized_mfe_fraction=0.02,
+                    realized_mae_fraction=-0.01,
+                )
+                for i in range(20)
+            )
+
+        controller.set_calibration_observations_provider(
+            lambda: _sample_cal(sorted_times[0])
+        )
 
     for t in sorted_times:
         updates = by_time[t]
