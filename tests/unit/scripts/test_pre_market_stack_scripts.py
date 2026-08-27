@@ -26,7 +26,16 @@ def test_start_uses_hidden_bounded_local_services() -> None:
     assert source.count("-WindowStyle Hidden") == 3
     assert "127.0.0.1" in source
     assert "ats.api.app:app" in source
+    assert "$env:Path = $NodeRoot" in source
+    assert "Get-ListenerOwner 3000" in source
     assert "dsh-v0.1.1-rc.2" not in source  # version is verified by the built pinned source
+
+
+def test_stop_terminates_wrapper_descendants_before_removing_state() -> None:
+    source = (SCRIPTS / "stop_pre_market_stack.ps1").read_text(encoding="utf-8")
+    assert "Get-CimInstance Win32_Process" in source
+    assert "ParentProcessId -in $frontier" in source
+    assert source.index("Stop-Process") < source.index("Remove-Item")
 
 
 def test_harness_health_wrapper_pins_exact_source_commit() -> None:
