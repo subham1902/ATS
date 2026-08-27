@@ -106,6 +106,10 @@ export function createApiClient(options?: ClientOptions) {
       request<OperatorIntelligenceSnapshot>(ROUTES.operatorIntelligence, { method: "GET" }, opts),
     operatorIntelligenceStreamUrl: () =>
       `${resolveBaseUrl(opts)}${ROUTES.operatorIntelligenceStream}`,
+    getHarnessStatus: () => request<unknown>(ROUTES.harnessStatus, { method: "GET" }, opts),
+    harnessAdvisory: (body: unknown) =>
+      request<unknown>(ROUTES.harnessAdvisory, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
+    getPipelineCounters: () => request<unknown>(ROUTES.pipelineCounters, { method: "GET" }, opts),
     streamUrl: () => `${resolveBaseUrl(opts)}${ROUTES.stream}`,
   };
 }

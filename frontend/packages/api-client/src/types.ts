@@ -305,5 +305,8 @@ export const ROUTES = {
   runtimeCommand: "/v1/runtime/command",
   operatorIntelligence: "/v1/operator-intelligence",
   operatorIntelligenceStream: "/v1/operator-intelligence/stream",
+  harnessStatus: "/v1/harness/status",
+  harnessAdvisory: "/v1/harness/advisory",
+  pipelineCounters: "/v1/pipeline/counters",
   stream: "/v1/stream",
 } as const;

@@ -40,6 +40,8 @@ from .models import (
     RiskDecisionReadModel,
     SystemReadModel,
 )
+from .harness_router import router as harness_router
+from .pipeline_router import router as pipeline_router
 from .providers import ControlPlaneReader, EmptyControlPlaneReader
 from .runtime_router import router as runtime_router
 from .stream import iter_operator_sse, iter_sse
@@ -114,6 +116,8 @@ def create_app(
     app.state.runtime_change_proposals = proposal_log
     app.state.chat_service = chat_service or build_control_plane_chat(resolved_reader, proposal_log)
     app.include_router(runtime_router)
+    app.include_router(harness_router)
+    app.include_router(pipeline_router)
 
     @app.exception_handler(ResourceNotFound)
     async def not_found_handler(request: Request, exc: ResourceNotFound) -> JSONResponse:
