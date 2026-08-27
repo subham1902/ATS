@@ -121,7 +121,7 @@ a, button, input, textarea, select { outline-offset: 3px; }
   .operator-state-grid { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
   .operator-state-grid > * { display: inline-flex !important; }
   .quick-nav { position: fixed; inset: auto 0 0 0; width: 100%; height: 68px; border: 1px solid var(--ats-border); padding: 5px; overflow: hidden; }
-  .quick-nav .nav-heading, .quick-nav .nav-group h2, .quick-nav .nav-safety, .quick-nav .nav-group:nth-of-type(n+3) { display: none; }
+  .quick-nav .nav-heading, .quick-nav .nav-group h2, .quick-nav .nav-safety, .quick-nav .nav-group:nth-of-type(n+2) { display: none; }
   .quick-nav nav { display: flex; justify-content: space-around; }
   .quick-nav .nav-group { display: contents; }
   .quick-nav .nav-group a { min-width: 60px; display: grid; justify-items: center; gap: 2px; padding: 4px; font-size: 9px; }

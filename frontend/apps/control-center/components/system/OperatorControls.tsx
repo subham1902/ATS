@@ -11,6 +11,7 @@ export function OperatorControls({ open, onClose }: { open: boolean; onClose: ()
   const { runtime, command, commandStatus } = useOperatorState();
   const [pending, setPending] = useState<Pending | null>(null);
   const [positionId, setPositionId] = useState("");
+  useEffect(() => { if (!open) return; const close = (event: KeyboardEvent) => { if (event.key === "Escape" && !pending) onClose(); }; document.body.style.overflow = "hidden"; window.addEventListener("keydown", close); return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", close); }; }, [onClose, open, pending]);
   useEffect(() => { if (open && runtime?.open_positions.length && !positionId) setPositionId(runtime.open_positions[0].position_id); }, [open, positionId, runtime?.open_positions]);
   useEffect(() => { if (!open) setPending(null); }, [open]);
   if (!open) return null;
