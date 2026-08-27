@@ -43,6 +43,9 @@ _HARNESS_COMMIT: Final = "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e"
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _DEFAULT_HARNESS_ROOT = _REPO_ROOT / "tools" / "deepseek-harness"
 _DEFAULT_NODE_EXE = _REPO_ROOT / "toolchains" / "node-v24.19.0-win-x64" / "node.exe"
+# Canonical fallback when running from a worktree where tools is not linked
+_FALLBACK_HARNESS_ROOT = Path(r"D:\Projects\ATS\tools\deepseek-harness")
+_FALLBACK_NODE_EXE = Path(r"D:\Projects\ATS\toolchains\node-v24.19.0-win-x64\node.exe")
 
 # Keyword -> agent routing for MaterialAgentEvent.event_type (case-insensitive,
 # first match wins). Defaults keep the four agents wired without caller config.
@@ -72,6 +75,27 @@ _REQUIRED_AGENT_TYPES: tuple[HarnessAgentType, ...] = (
 _CLOCK = SystemClock()
 
 
+def _resolve_harness_root(explicit: str | Path | None) -> Path:
+    if explicit:
+        return Path(explicit)
+    import os
+
+    env = os.environ.get("ATS_HARNESS_ROOT")
+    if env and Path(env).exists():
+        return Path(env)
+    if _DEFAULT_HARNESS_ROOT.exists():
+        return _DEFAULT_HARNESS_ROOT
+    return _FALLBACK_HARNESS_ROOT
+
+
+def _resolve_node_exe(explicit: str | Path | None) -> Path:
+    if explicit:
+        return Path(explicit)
+    if _DEFAULT_NODE_EXE.exists():
+        return _DEFAULT_NODE_EXE
+    return _FALLBACK_NODE_EXE
+
+
 def build_pinned_harness_configuration(
     *,
     node_exe: str | Path | None = None,
@@ -83,8 +107,8 @@ def build_pinned_harness_configuration(
     the built binary/config is missing, so production startup fails fast rather
     than spawning an unverified process.
     """
-    root = Path(harness_root) if harness_root else _DEFAULT_HARNESS_ROOT
-    node = Path(node_exe) if node_exe else _DEFAULT_NODE_EXE
+    root = _resolve_harness_root(harness_root)
+    node = _resolve_node_exe(node_exe)
 
     actual = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "HEAD"],

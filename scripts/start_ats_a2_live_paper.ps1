@@ -27,6 +27,7 @@ $env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 # 1. Launch Backend A2 Paper Session (serves /v1/* including runtime/harness/pipeline)
+#    The backend manages the pinned DeepSeek Harness sidecar internally.
 $backend = Start-Process -FilePath 'uv' -ArgumentList @(
     'run', '--with', 'uvicorn==0.40.0', 'python', (Join-Path $repo 'scripts\run_a2_paper_session.py'),
     '--serve', '--host', '127.0.0.1', '--port', '8000'
@@ -41,25 +42,16 @@ $frontend = Start-Process -FilePath $corepack -ArgumentList @(
   -RedirectStandardOutput (Join-Path $stateRoot 'frontend.out.log') `
   -RedirectStandardError (Join-Path $stateRoot 'frontend.err.log')
 
-# 3. Launch pinned DeepSeek Harness sidecar (advisory-only) into the A2 stack
-$harness = Start-Process -FilePath 'uv' -ArgumentList @(
-    'run', 'python', (Join-Path $repo 'scripts\start_a2_harness.py'),
-    '--harness-root', $HarnessRoot, '--node', $node
-) -WorkingDirectory $repo -WindowStyle Hidden -PassThru `
-  -RedirectStandardOutput (Join-Path $stateRoot 'harness.out.log') `
-  -RedirectStandardError (Join-Path $stateRoot 'harness.err.log')
-
 @{
     backend = $backend.Id
     frontend = $frontend.Id
-    harness = $harness.Id
     started_at = (Get-Date).ToUniversalTime().ToString('o')
     execution_target = 'PAPER'
     live_money = 'DISABLED'
     real_orders_placed = 0
 } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
 
-Start-Sleep -Seconds 6
+Start-Sleep -Seconds 8
 
 function Get-ListenerOwner([int]$Port) {
     $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
@@ -71,10 +63,8 @@ try {
     @{
         backend = Get-ListenerOwner 8000
         frontend = Get-ListenerOwner 3000
-        harness = Get-ListenerOwner 8765
         backend_launcher = $backend.Id
         frontend_launcher = $frontend.Id
-        harness_launcher = $harness.Id
         started_at = (Get-Date).ToUniversalTime().ToString('o')
         execution_target = 'PAPER'
         live_money = 'DISABLED'

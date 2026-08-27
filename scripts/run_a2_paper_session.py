@@ -19,6 +19,7 @@ from decimal import Decimal
 import uvicorn
 
 from ats.contracts.common import SystemClock
+from ats.intelligence.harness.harness_integration import attach_and_start_a2_harness
 from ats.trading_runtime.a2_runner import (
     A2PaperSessionConfig,
     A2PaperSessionController,
@@ -111,6 +112,12 @@ def main() -> None:
         config = A2PaperSessionConfig(execution_target="PAPER", live_money="DISABLED")
         feed = UpstoxMarketFeedAdapter()
         controller = A2PaperSessionController(config=config, market_feed=feed)
+        # Attach & start the pinned DeepSeek Harness (ADVISORY_ONLY, governor-gated)
+        try:
+            attach_and_start_a2_harness(controller)
+            print("Harness integration: ATTACHED + STARTED")
+        except Exception as e:
+            print(f"Harness integration unavailable (continuing without): {e}")
         app = create_a2_paper_app(controller, require_token=args.require_token)
         uvicorn.run(app, host=args.host, port=args.port)
     else:
