@@ -109,9 +109,9 @@ def main() -> None:
 
     if args.serve:
         config = A2PaperSessionConfig(execution_target="PAPER", live_money="DISABLED")
-        controller = A2PaperSessionController(config=config)
-        controller.start(require_token=args.require_token)
-        app = create_a2_paper_app(controller)
+        feed = UpstoxMarketFeedAdapter()
+        controller = A2PaperSessionController(config=config, market_feed=feed)
+        app = create_a2_paper_app(controller, require_token=args.require_token)
         uvicorn.run(app, host=args.host, port=args.port)
     else:
         run_bounded_session(duration_seconds=args.duration, require_token=args.require_token)

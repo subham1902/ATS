@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 
 from starlette.requests import Request
@@ -22,11 +23,13 @@ def serialize_sse(event: StreamEvent) -> str:
 
 
 async def iter_sse(request: Request, reader: ControlPlaneReader) -> AsyncIterator[str]:
-    """Yield the current non-replayable projection and stop on disconnect."""
+    """Yield the current non-replayable projection and keep alive until disconnect."""
     for event in reader.stream_events():
         if await request.is_disconnected():
             return
         yield serialize_sse(event)
+    while not await request.is_disconnected():
+        await asyncio.sleep(2.0)
 
 
 async def iter_operator_sse(

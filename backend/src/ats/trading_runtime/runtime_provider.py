@@ -59,12 +59,18 @@ class TradingRuntimeProvider:
 
     def pause(self) -> None:
         self._state.paused = True
+        self._state.can_enter = False
 
     def resume(self) -> None:
         self._state.paused = False
+        self._state.can_enter = (
+            self._state.phase == RuntimeSessionPhase.ENTRY_ALLOWED and not self._state.is_halted
+        )
 
     def halt(self) -> None:
         self._state.is_halted = True
+        self._state.can_enter = False
+        self._state.phase = RuntimeSessionPhase.HALTED
         self._state.effective_mode = TradingMode.HALTED
 
     def update_from_engine(self, engine: object) -> None:
@@ -113,6 +119,26 @@ class TradingRuntimeProvider:
                 self._state.hwm_state = hwm
             if hasattr(st, "kill_switch"):
                 self._state.is_halted = st.kill_switch
+
+        if hasattr(engine, "config"):
+            cfg = engine.config
+            if hasattr(cfg, "calendar") and hasattr(cfg, "session"):
+                from ats.trading_runtime.session import resolve_session_status
+
+                kill_switch = self._state.is_halted
+                sess_status = resolve_session_status(
+                    calendar=cfg.calendar,
+                    config=cfg.session,
+                    now=SystemClock().now(),
+                    kill_switch_active=kill_switch,
+                )
+                self._state.phase = sess_status.phase
+                self._state.can_enter = (
+                    sess_status.can_enter and not self._state.paused and not self._state.is_halted
+                )
+                self._state.can_reduce = sess_status.can_reduce
+                self._state.must_flatten = sess_status.must_flatten
+                self._state.is_halted = sess_status.is_halted or self._state.is_halted
 
         if hasattr(engine, "market_feed"):
             feed = engine.market_feed

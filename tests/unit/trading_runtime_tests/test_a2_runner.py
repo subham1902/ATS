@@ -259,3 +259,42 @@ def test_process_tick_updates_marks_and_runtime() -> None:
     assert res["accepted"] is True
     assert feed.latest_mark("NIFTY") == Decimal("24550.00")
     assert controller.status().events_processed == 1
+
+
+def test_active_nse_session_fsm_and_can_enter() -> None:
+    from datetime import date, datetime, time, timezone
+    from ats.market.calendar.models import SessionCalendar
+    from ats.trading_runtime.session import RuntimeSessionPhase
+
+    # Fixed active market time: 11:00 AM IST on trading date
+    ist = timezone(timedelta(hours=5, minutes=30))
+    test_date = date(2026, 8, 27)
+    active_now = datetime(2026, 8, 27, 11, 0, 0, tzinfo=ist)
+
+    cal = SessionCalendar(
+        calendar_id="NSE_TEST",
+        calendar_version="1.0",
+        timezone="Asia/Kolkata",
+        trading_dates=(test_date,),
+        preopen_start=time(9, 0),
+        market_open=time(9, 15),
+        market_close=time(15, 30),
+        overrides=(),
+    )
+
+    controller = A2PaperSessionController(calendar=cal)
+    controller.start(require_token=False)
+    app = create_a2_paper_app(controller)
+    client = TestClient(app)
+
+    # Trigger tick at active market time
+    controller.process_tick("NIFTY", Decimal("24500.00"), at=active_now)
+
+    resp = client.get("/v1/runtime/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["session"]["phase"] == "ENTRY_ALLOWED"
+    assert data["session"]["can_enter"] is True
+    assert data["session"]["is_halted"] is False
+    assert data["feed_healthy"] is True
+    assert data["broker_healthy"] is True

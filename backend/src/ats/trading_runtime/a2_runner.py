@@ -75,21 +75,21 @@ from ats.trading_runtime.runtime_provider import (
 from ats.trading_runtime.session import SessionRuntimeConfig
 
 
-def default_a2_session_calendar() -> SessionCalendar:
-    """Return a standard NSE session calendar for A2 Paper runtime."""
-    try:
-        return nse_cash_alpha_v1_calendar()
-    except Exception:
-        return SessionCalendar(
-            calendar_id="NSE_STANDARD",
-            calendar_version="1.0.0",
-            timezone="Asia/Kolkata",
-            trading_dates=(date.today(),),
-            preopen_start=time(9, 0),
-            market_open=time(9, 15),
-            market_close=time(15, 30),
-            overrides=(),
-        )
+def default_a2_session_calendar(trading_dates: tuple[date, ...] | None = None) -> SessionCalendar:
+    """Return a standard NSE session calendar for A2 Paper runtime including today."""
+    today = date.today()
+    dates = trading_dates or (today, date(2024, 6, 3))
+    sorted_dates = tuple(sorted(set(dates)))
+    return SessionCalendar(
+        calendar_id="NSE_LIVE_SESSION",
+        calendar_version="1.0.0",
+        timezone="Asia/Kolkata",
+        trading_dates=sorted_dates,
+        preopen_start=time(9, 0),
+        market_open=time(9, 15),
+        market_close=time(15, 30),
+        overrides=(),
+    )
 
 
 class A2SessionState(StrEnum):
@@ -625,6 +625,11 @@ class A2PaperSessionController:
             try:
                 if self._engine is not None:
                     now = SystemClock().now()
+                    for und in self.config.underlyings:
+                        mark = self._market_feed.latest_mark(und)
+                        if mark is not None:
+                            self.process_tick(und, mark, at=now)
+
                     for pid, pos in list(self._engine.state.open_positions.items()):
                         mark = self._market_feed.latest_mark(pos.instrument_id)
                         if mark is not None:
@@ -643,6 +648,70 @@ class A2PaperSessionController:
             except Exception:
                 pass
             await asyncio.sleep(self.config.loop_interval_sec)
+
+
+class A2ControlPlaneReader:
+    """Live read adapter over A2PaperSessionController for Control Center dashboard."""
+
+    def __init__(self, controller: A2PaperSessionController) -> None:
+        self._controller = controller
+
+    def get_system(self) -> Any:
+        from ats.api.models import ReadinessState, SystemReadModel
+        from ats.contracts.domain.types import LossState
+        from ats.contracts.governance.types import SystemState
+
+        h = self._controller.health()
+        is_healthy = h.get("status") == "HEALTHY"
+        is_running = self._controller.state is A2SessionState.RUNNING
+
+        now = SystemClock().now()
+        return SystemReadModel(
+            system_state=SystemState.READY if is_healthy else SystemState.DEGRADED,
+            system_state_version=1,
+            readiness=ReadinessState.READY if is_running else ReadinessState.NOT_READY,
+            degradation_indicators=() if is_healthy else ("DEGRADED_FEED_OR_BROKER",),
+            loss_state=LossState.NORMAL,
+            active_policy_id=None,
+            active_policy_version=None,
+            active_campaign_id=None,
+            active_campaign_version=None,
+            authority_mode="A2_PAPER",
+            reconciliation_active=False,
+            halted=False,
+            last_state_at=now,
+            last_event_at=now,
+        )
+
+    def get_active_policy(self) -> Any:
+        return None
+
+    def get_policy(self, policy_id: UUID) -> Any:
+        return None
+
+    def get_campaign(self, campaign_id: UUID) -> Any:
+        return None
+
+    def get_candidate(self, candidate_id: UUID) -> Any:
+        return None
+
+    def get_governance_context(self, context_id: UUID) -> Any:
+        return None
+
+    def get_risk_decision(self, decision_id: UUID) -> Any:
+        return None
+
+    def get_advisory(self, advisory_id: UUID) -> Any:
+        return None
+
+    def get_token(self, token_id: UUID) -> Any:
+        return None
+
+    def list_activity(self) -> tuple[Any, ...]:
+        return ()
+
+    def stream_events(self) -> tuple[Any, ...]:
+        return ()
 
 
 def create_a2_paper_app(
@@ -673,13 +742,21 @@ def create_a2_paper_app(
     if start_immediately:
         session_controller.start(require_token=require_token)
 
+    resolved_reader = reader or A2ControlPlaneReader(session_controller)
+
     app = create_app(
-        reader=reader,
+        reader=resolved_reader,
         trading_runtime_provider=session_controller.runtime_provider,
         operator_intelligence_provider=session_controller.operator_provider,
         trading_runtime_engine=session_controller.engine or session_controller,
     )
     app.state.a2_session_controller = session_controller
+
+    @app.on_event("startup")
+    async def _startup() -> None:
+        if session_controller.state != A2SessionState.RUNNING:
+            await session_controller.start_async(require_token=require_token)
+
     return app
 
 
