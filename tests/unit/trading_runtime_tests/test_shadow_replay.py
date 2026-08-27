@@ -5,10 +5,12 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
 from ats.market.history import load_historical_dataset
-from ats.market.history.models import MarketBarPayload
-from scripts.run_ats_shadow_replay import run_shadow_session_replay
+
+from scripts.run_ats_shadow_replay import (
+    load_genuine_calibration_store,
+    run_shadow_session_replay,
+)
 
 HISTORICAL_DIR = Path(r"D:\Projects\ATS\ats\data\historical")
 NIFTY_DS_PATH = HISTORICAL_DIR / "nifty_options_a2_replay_v1"
@@ -34,11 +36,23 @@ def test_four_clock_no_lookahead_contract() -> None:
         assert t.available_to_strategy_time > t.event_time
 
 
+def test_genuine_calibration_store_and_as_of_visibility() -> None:
+    obs = load_genuine_calibration_store()
+    assert len(obs) == 2040
+    for o in obs:
+        assert o.available_to_strategy_time >= o.observed_at
+
+
 def test_shadow_replay_execution_invariants_and_determinism() -> None:
-    run1 = run_shadow_session_replay(mode="NORMAL", capital=Decimal("100000"))
-    run2 = run_shadow_session_replay(mode="NORMAL", capital=Decimal("100000"))
+    run1 = run_shadow_session_replay(
+        mode="NORMAL", capital=Decimal("100000"), use_real_calibration=True
+    )
+    run2 = run_shadow_session_replay(
+        mode="NORMAL", capital=Decimal("100000"), use_real_calibration=True
+    )
 
     assert run1["events_processed"] == 8450
+    assert run2["events_processed"] == 8450
     assert run2["events_processed"] == 8450
 
     assert run1["scanner_observations"] == 364

@@ -1,20 +1,10 @@
-"""Comprehensive Historical Shadow Session Replay Engine for ATS A2 Paper Strategy.
+"""Production-Faithful Historical Shadow Session Replay Engine.
 
-Executes a full, autonomous, zero-leakage shadow session replay over the latest
-completed NSE trading day (2026-08-25) using genuine Upstox historical market data.
-
-Strict Invariants Enforced:
-1. Live Money: DISABLED
-2. Real Orders: 0
-3. Execution Target: PAPER
-4. Harness: ADVISORY_ONLY (governor-gated)
-5. Zero Future Leakage: available_to_strategy_time > event_time
+Uses genuine empirical calibration store from prior completed sessions.
 """
 
-from __future__ import annotations
-
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -31,7 +21,15 @@ from ats.trading_runtime.a2_runner import (
 HISTORICAL_DIR = Path(r"D:\Projects\ATS\ats\data\historical")
 NIFTY_DS_PATH = HISTORICAL_DIR / "nifty_options_a2_replay_v1"
 BANKNIFTY_DS_PATH = HISTORICAL_DIR / "banknifty_options_a2_replay_v1"
-REPLAY_OUTPUT_DIR = Path(r"D:\Projects\ATS\ats\data\replays\2026-08-25\ats-shadow-session")
+CALIBRATION_STORE_PATH = HISTORICAL_DIR / "calibration_store_v1.json"
+
+
+def load_genuine_calibration_store() -> tuple[CalibrationObservation, ...]:
+    """Load genuine, frozen empirical calibration observations from prior completed sessions."""
+    if not CALIBRATION_STORE_PATH.exists():
+        return ()
+    data = json.loads(CALIBRATION_STORE_PATH.read_text(encoding="utf-8"))
+    return tuple(CalibrationObservation.model_validate_json(json.dumps(d)) for d in data)
 
 
 def run_shadow_session_replay(
@@ -40,10 +38,10 @@ def run_shadow_session_replay(
     harness_enabled: bool = True,
     r10x_enabled: bool = True,
     capital: Decimal = Decimal("100000"),
-    use_synthetic_calibration: bool = False,
+    use_real_calibration: bool = True,
     stress_delay_ms: int = 0,
 ) -> dict[str, Any]:
-    """Execute one full, leakage-free shadow session replay."""
+    """Execute one full, leakage-free shadow session replay using genuine calibration history."""
     nifty_ds = load_historical_dataset(NIFTY_DS_PATH)
     bn_ds = load_historical_dataset(BANKNIFTY_DS_PATH)
 
@@ -74,28 +72,14 @@ def run_shadow_session_replay(
     controller = A2PaperSessionController(config=config, calendar=cal)
     controller.start(require_token=False)
 
-    if use_synthetic_calibration:
-        from uuid import uuid4
+    if use_real_calibration:
+        all_cal_obs = load_genuine_calibration_store()
 
-        def _sample_cal(cutoff: datetime) -> tuple[CalibrationObservation, ...]:
-            return tuple(
-                CalibrationObservation(
-                    observation_id=uuid4(),
-                    forecast_probability=Decimal("0.75"),
-                    outcome_occurred=i < 16,
-                    observed_at=cutoff - timedelta(days=1, minutes=i),
-                    available_to_strategy_time=cutoff - timedelta(days=1, minutes=i),
-                    regime_evidence_id=None,
-                    realized_return_fraction=0.02 if i < 16 else -0.01,
-                    realized_volatility_fraction=0.015,
-                    realized_mfe_fraction=0.02,
-                    realized_mae_fraction=-0.01,
-                )
-                for i in range(20)
-            )
+        def as_of_cal_provider(as_of_time: datetime) -> tuple[CalibrationObservation, ...]:
+            return tuple(o for o in all_cal_obs if o.available_to_strategy_time <= as_of_time)
 
         controller.set_calibration_observations_provider(
-            lambda: _sample_cal(sorted_times[0])
+            lambda: as_of_cal_provider(sorted_times[0])
         )
 
     for t in sorted_times:
@@ -136,8 +120,8 @@ def run_shadow_session_replay(
 
 
 def main() -> None:
-    print("Running ATS Shadow Session Replay...")
-    res = run_shadow_session_replay()
+    print("Running ATS Real-Calibration EOD Shadow Session Replay...")
+    res = run_shadow_session_replay(use_real_calibration=True)
     print("Shadow Replay Result:", json.dumps(res, indent=2))
 
 
