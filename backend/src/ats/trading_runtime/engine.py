@@ -126,6 +126,8 @@ class RuntimeState:
     session_start_equity: Decimal = Decimal("100000")
     current_equity: Decimal = Decimal("100000")
     peak_equity: Decimal = Decimal("100000")
+    cumulative_realized_pnl: Decimal = Decimal("0")
+    closed_positions: list[dict[str, Any]] = field(default_factory=list)
     mode_state: ModeState | None = None
     open_positions: dict[str, MonitoredPosition] = field(default_factory=dict)
     kill_switch: bool = False
@@ -554,6 +556,30 @@ class TradingRuntime:
         self.state.last_thesis.pop(instrument, None)
         if exited is not None:
             self.state.last_exit_direction[instrument] = exited.direction
+            # Compute trade economics
+            exit_mark = exited.current_mark or exited.entry_price
+            gross_pnl = (exit_mark - exited.entry_price) * exited.quantity
+            # Slipped execution costs: 5 bps entry + 5 bps exit
+            costs = (exited.entry_price + exit_mark) * exited.quantity * Decimal("0.0005")
+            net_pnl = gross_pnl - costs
+            self.state.cumulative_realized_pnl += net_pnl
+            self.state.current_equity += net_pnl
+            if self.state.current_equity > self.state.peak_equity:
+                self.state.peak_equity = self.state.current_equity
+            self.state.closed_positions.append(
+                {
+                    "position_id": position_id,
+                    "instrument_id": exited.instrument_id,
+                    "direction": exited.direction,
+                    "entry_price": exited.entry_price,
+                    "exit_price": exit_mark,
+                    "quantity": exited.quantity,
+                    "gross_pnl": gross_pnl,
+                    "costs": costs,
+                    "net_pnl": net_pnl,
+                    "exited_at": at,
+                }
+            )
 
     def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
         """Backward-compatible terminal fill hook. Prefer ``handle_exit_fill``."""

@@ -68,11 +68,11 @@ def test_shadow_replay_execution_invariants_and_determinism() -> None:
 
 
 def test_walk_forward_multi_session_determinism() -> None:
-    res1 = run_walk_forward_simulation(initial_capital=Decimal("100000"))
-    res2 = run_walk_forward_simulation(initial_capital=Decimal("100000"))
+    res1 = run_walk_forward_simulation()
+    res2 = run_walk_forward_simulation()
 
-    assert res1["ending_equity"] == "100000"
-    assert res2["ending_equity"] == "100000"
-    assert res1["total_sessions"] == 16
-    assert res2["total_sessions"] == 16
+    assert res1["ending_equity"] == res2["ending_equity"]
+    assert res1["ending_equity"] == "99979.990000"
+    assert len(res1["daily_ledger"]) == 16
+    assert len(res2["daily_ledger"]) == 16
     assert res1 == res2, "Walk-forward simulation must be 100% deterministic"

@@ -106,7 +106,8 @@ class TradingRuntimeProvider:
                     )
                 self._state.open_positions = pos_list
                 self._state.unrealized = total_unrealized
-                self._state.realized = total_realized
+                cum_realized = getattr(st, "cumulative_realized_pnl", Decimal("0"))
+                self._state.realized = cum_realized + total_realized
 
             if hasattr(st, "peak_equity"):
                 self._state.peak_equity = st.peak_equity
