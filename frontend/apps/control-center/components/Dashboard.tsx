@@ -33,6 +33,32 @@ function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   return { data, error, status };
 }
 
+interface PipelineCounters {
+  nifty_last: string | null;
+  banknifty_last: string | null;
+  candidates_considered: number;
+  candidates_qualified: number;
+  attached: boolean;
+  [key: string]: unknown;
+}
+
+interface HarnessAgentView {
+  agent_type: string;
+  status: string;
+  [key: string]: unknown;
+}
+
+interface HarnessStatus {
+  harness: { state: string; active_sessions: number; [key: string]: unknown };
+  llm: { health: string; [key: string]: unknown } | null;
+  agents: HarnessAgentView[];
+  [key: string]: unknown;
+}
+
+function _as<T>(value: unknown): Promise<T> {
+  return value as Promise<T>;
+}
+
 export function Dashboard() {
   const systemQ = useFetch<SystemReadModel>(() => getApiClient().getSystem());
   const healthLiveQ = useFetch<HealthReadModel>(() => getApiClient().getHealthLive());
@@ -50,6 +76,8 @@ export function Dashboard() {
   });
   const activityQ = useFetch<ActivityReadModel[]>(async () => (await getApiClient().getActivity()).items);
   const runtimeQ = useFetch<RuntimeStatusReadModel>(() => getApiClient().getRuntimeStatus());
+  const pipelineQ = useFetch<PipelineCounters>(() => _as<PipelineCounters>(getApiClient().getPipelineCounters()));
+  const harnessQ = useFetch<HarnessStatus>(() => _as<HarnessStatus>(getApiClient().getHarnessStatus()));
   const campaignQ = useFetch<CampaignReadModel | null>(async () => {
     const sys = await getApiClient().getSystem().catch(() => null);
     if (!sys?.active_campaign_id) return null;
@@ -60,6 +88,17 @@ export function Dashboard() {
 
   // Merge SSE events into activity surface (append, no replay guarantee)
   const sseActivityHint = events.length > 0 ? `+${events.length} live stream events (not replayed on reconnect)` : null;
+
+  // Live, honest bindings: prices/opportunities from the real feed pipeline
+  // counters; harness + active agents from the real Harness status endpoint.
+  const pipeline = pipelineQ.data;
+  const harnessState = harnessQ.data?.harness.state;
+  const harnessView: "READY" | "DEGRADED" | "OFFLINE" | "UNKNOWN" =
+    harnessState === "HEALTHY" ? "READY" : harnessState === "DEGRADED" ? "DEGRADED" : harnessState === "STOPPED" ? "OFFLINE" : "UNKNOWN";
+  const llmHealth = harnessQ.data?.llm?.health;
+  const openrouterView: "READY" | "OFFLINE" = llmHealth === "HEALTHY" ? "READY" : "OFFLINE";
+  const activeAgents = (harnessQ.data?.agents ?? []).map((a) => a.agent_type);
+
   const overview: typeof UNKNOWN_CONTROL_PLANE = runtimeQ.data ? {
     ...UNKNOWN_CONTROL_PLANE,
     system: (runtimeQ.data.halted ? "DEGRADED" : "READY") as "READY" | "DEGRADED",
@@ -72,12 +111,12 @@ export function Dashboard() {
     underlyings: [
       {
         symbol: "NIFTY" as const,
-        price: "24182.50",
+        price: pipeline?.nifty_last ?? null,
         freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
       },
       {
         symbol: "BANKNIFTY" as const,
-        price: "57701.95",
+        price: pipeline?.banknifty_last ?? null,
         freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
       },
     ],
@@ -96,12 +135,12 @@ export function Dashboard() {
       drawdown: String(runtimeQ.data.pnl.drawdown_fraction),
     },
     positions: runtimeQ.data.open_positions.length,
-    opportunities: 0,
+    opportunities: pipeline?.candidates_qualified ?? 0,
     a04_decisions: runtimeQ.data.recent_decisions.length,
     portfolio_decisions: runtimeQ.data.recent_decisions.length,
-    harness: "READY" as const,
-    openrouter: "OFFLINE" as const,
-    active_agents: [],
+    harness: harnessView,
+    openrouter: openrouterView,
+    active_agents: activeAgents,
     activity: activityQ.data && activityQ.data.length > 0
       ? activityQ.data.map((a: ActivityReadModel) => `${a.activity_id.slice(0, 8)} · ${a.summary}`)
       : [],

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type {
   OperatorIntelligenceSnapshot,
   FixtureScenarioId,
   ProvenanceType,
 } from "@ats/api-client";
-import { Badge } from "@ats/ui";
+import { getApiClient } from "../../lib/api";
+import { Badge, EmptyState } from "@ats/ui";
 import { SurvivalTelemetry } from "./SurvivalTelemetry";
 import { OpportunityScanner } from "./OpportunityScanner";
 import { EdgeLedger } from "./EdgeLedger";
@@ -20,61 +21,6 @@ export interface OperatorIntelligenceViewProps {
   isLiveAvailable?: boolean;
 }
 
-function buildEmptyLiveSnapshot(): OperatorIntelligenceSnapshot {
-  const now = new Date().toISOString();
-  return {
-    provenance: "LIVE",
-    scanner: {
-      last_scan_at: now,
-      data_cutoff: now,
-      source_state: "LIVE",
-      funnel: { universe_observed: 0, fresh: 0, stale: 0, invalid_reference: 0 },
-      rejections: {
-        liquidity: 0,
-        spread: 0,
-        calibration: 0,
-        negative_ev: 0,
-        portfolio_capacity: 0,
-        a04: 0,
-      },
-      candidates_by_class: {
-        standard: 0,
-        high_conviction: 0,
-        convex: 0,
-        rare_event: 0,
-      },
-      candidate_ids: [],
-    },
-    edge_ledger: {
-      entries: [],
-      as_of: now,
-      source: "LIVE",
-    },
-    survival: {
-      effective_survival_state: "NORMAL",
-      user_selected_mode: "NORMAL",
-      effective_mode: "NORMAL",
-      reason_codes: [],
-      session_equity: "100000",
-      hwm: "100000",
-      drawdown_fraction: "0",
-      available_risk: "100000",
-      open_positions: 0,
-      new_entry_permission: true,
-      reduction_permission: true,
-      feed_healthy: true,
-      broker_healthy: true,
-      reconciliation_active: false,
-      loss_state: "NORMAL",
-      last_state_at: now,
-    },
-    agents: [],
-    timeline: [],
-    opportunity_map: [],
-    evidence_lineage: {},
-  };
-}
-
 export function OperatorIntelligenceView({
   initialSnapshot,
   isLiveAvailable = false,
@@ -82,6 +28,10 @@ export function OperatorIntelligenceView({
   const [selectedScenarioId, setSelectedScenarioId] = useState<FixtureScenarioId>("NORMAL_QUIET_MARKET");
   const [userSelectedMode, setUserSelectedMode] = useState<ProvenanceType | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [liveSnapshot, setLiveSnapshot] = useState<OperatorIntelligenceSnapshot | null>(
+    initialSnapshot?.provenance === "LIVE" ? initialSnapshot : null,
+  );
+  const [liveError, setLiveError] = useState<string | null>(null);
 
   // Active provenance mode:
   // Defaults to "LIVE" whenever live is available or live snapshot is received.
@@ -90,12 +40,36 @@ export function OperatorIntelligenceView({
     userSelectedMode ??
     (initialSnapshot?.provenance === "LIVE" || isLiveAvailable ? "LIVE" : "FIXTURE");
 
-  // In LIVE mode: strictly use the real live snapshot (or honest empty live state). NEVER fallback to fixtures.
+  // In LIVE mode: fetch the real operator-intelligence snapshot. Never fabricate
+  // a LIVE snapshot and never fall back to fixtures.
+  useEffect(() => {
+    let cancelled = false;
+    if (activeMode === "LIVE" && liveSnapshot === null) {
+      getApiClient()
+        .getOperatorIntelligence()
+        .then((s) => {
+          if (!cancelled) {
+            setLiveSnapshot(s as OperatorIntelligenceSnapshot);
+            setLiveError(null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setLiveError("Live telemetry unavailable");
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMode, liveSnapshot]);
+
   // In FIXTURE mode: render the user-selected fixture scenario.
-  const snapshot: OperatorIntelligenceSnapshot =
-    activeMode === "LIVE"
-      ? (initialSnapshot?.provenance === "LIVE" ? initialSnapshot : buildEmptyLiveSnapshot())
-      : getFixtureScenario(selectedScenarioId);
+  const snapshot: OperatorIntelligenceSnapshot | null =
+    activeMode === "LIVE" ? liveSnapshot : getFixtureScenario(selectedScenarioId);
+
+  // Safe provenance/scenario for the header even while the live snapshot loads.
+  const provenance: ProvenanceType =
+    snapshot?.provenance ?? (activeMode === "LIVE" ? "LIVE" : "FIXTURE");
+  const scenarioId = snapshot?.scenario_id ?? null;
 
   const scenarioList: Array<{ id: FixtureScenarioId; label: string }> = [
     { id: "NORMAL_QUIET_MARKET", label: "1. NORMAL Quiet Market Baseline" },
@@ -131,10 +105,10 @@ export function OperatorIntelligenceView({
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
             Operator Intelligence & Observability
           </h1>
-          <Badge tone={snapshot.provenance === "LIVE" ? "success" : "neutral"}>
-            {snapshot.provenance === "LIVE"
+          <Badge tone={provenance === "LIVE" ? "success" : "neutral"}>
+            {provenance === "LIVE"
               ? "● LIVE TELEMETRY"
-              : `FIXTURE: ${snapshot.scenario_id ?? "SYNTHETIC"}`}
+              : `FIXTURE: ${scenarioId ?? "SYNTHETIC"}`}
           </Badge>
           <span
             style={{
@@ -205,7 +179,7 @@ export function OperatorIntelligenceView({
       </div>
 
       {/* Scenario Context Banner (shown only for fixtures) */}
-      {snapshot.provenance !== "LIVE" && snapshot.scenario_description && (
+      {snapshot && snapshot.provenance !== "LIVE" && snapshot.scenario_description && (
         <div
           style={{
             background: "#eff6ff",
@@ -228,44 +202,53 @@ export function OperatorIntelligenceView({
         </div>
       )}
 
-      {/* Section 1: ATS Survival & Autonomy Telemetry (OI3) */}
-      <SurvivalTelemetry telemetry={snapshot.survival} />
+      {snapshot ? (
+        <>
+          {/* Section 1: ATS Survival & Autonomy Telemetry (OI3) */}
+          <SurvivalTelemetry telemetry={snapshot.survival} />
 
-      {/* Section 2: Opportunity Scanner (OI1) & Market Opportunity Map (OI5) */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <OpportunityScanner
-          scanner={snapshot.scanner}
-          onSelectCandidate={(id) => setSelectedCandidateId(id)}
-          selectedCandidateId={selectedCandidateId}
+          {/* Section 2: Opportunity Scanner (OI1) & Market Opportunity Map (OI5) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <OpportunityScanner
+              scanner={snapshot.scanner}
+              onSelectCandidate={(id) => setSelectedCandidateId(id)}
+              selectedCandidateId={selectedCandidateId}
+            />
+
+            <OpportunityMap
+              points={snapshot.opportunity_map}
+              onSelectCandidate={(id) => setSelectedCandidateId(id)}
+              selectedCandidateId={selectedCandidateId}
+            />
+          </div>
+
+          {/* Section 3: Edge Ledger (OI2 & OI2.1) */}
+          <EdgeLedger
+            ledger={snapshot.edge_ledger}
+            onSelectCandidate={(id) => setSelectedCandidateId(id)}
+            selectedCandidateId={selectedCandidateId}
+          />
+
+          {/* Section 4: Agent Accountability & Timeline (OI4 & OI4.1) */}
+          <AgentAccountability
+            agents={snapshot.agents}
+            timeline={snapshot.timeline}
+            onSelectEvidence={(ref) => setSelectedCandidateId(ref)}
+          />
+
+          {/* Section 5: Machine Evidence Lineage Drill-Down (OI6) */}
+          <EvidenceDrilldown
+            candidateId={selectedCandidateId}
+            lineageMap={snapshot.evidence_lineage}
+            onSelectCandidate={(id) => setSelectedCandidateId(id)}
+          />
+        </>
+      ) : (
+        <EmptyState
+          message={liveError ?? "Awaiting live telemetry"}
+          hint="ADVISORY_ONLY · NO REAL ORDERS"
         />
-
-        <OpportunityMap
-          points={snapshot.opportunity_map}
-          onSelectCandidate={(id) => setSelectedCandidateId(id)}
-          selectedCandidateId={selectedCandidateId}
-        />
-      </div>
-
-      {/* Section 3: Edge Ledger (OI2 & OI2.1) */}
-      <EdgeLedger
-        ledger={snapshot.edge_ledger}
-        onSelectCandidate={(id) => setSelectedCandidateId(id)}
-        selectedCandidateId={selectedCandidateId}
-      />
-
-      {/* Section 4: Agent Accountability & Timeline (OI4 & OI4.1) */}
-      <AgentAccountability
-        agents={snapshot.agents}
-        timeline={snapshot.timeline}
-        onSelectEvidence={(ref) => setSelectedCandidateId(ref)}
-      />
-
-      {/* Section 5: Machine Evidence Lineage Drill-Down (OI6) */}
-      <EvidenceDrilldown
-        candidateId={selectedCandidateId}
-        lineageMap={snapshot.evidence_lineage}
-        onSelectCandidate={(id) => setSelectedCandidateId(id)}
-      />
+      )}
     </div>
   );
 }

@@ -1107,6 +1107,7 @@ def create_a2_paper_app(
     harness_bridge = session_controller.harness_bridge
     if harness_bridge is not None:
         app.state.harness_bridge = harness_bridge
+    app.state.live_pipeline_bridge = session_controller._live_pipeline_bridge
 
     @app.on_event("startup")
     async def _startup() -> None:
