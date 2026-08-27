@@ -3,6 +3,7 @@
 import React from "react";
 import type { OpportunityScannerReadModel } from "@ats/api-client";
 import { Card, Badge } from "@ats/ui";
+import { formatTimeIST } from "../../lib/formatTime";
 
 export interface OpportunityScannerProps {
   scanner: OpportunityScannerReadModel | null;
@@ -92,11 +93,11 @@ export function OpportunityScanner({
           <div style={{ display: "flex", gap: 16, color: "#64748b", flexWrap: "wrap" }}>
             <span>
               <strong>Last Scan:</strong>{" "}
-              {last_scan_at ? new Date(last_scan_at).toLocaleTimeString() : "UNKNOWN"}
+              {formatTimeIST(last_scan_at)}
             </span>
             <span>
               <strong>Data Cutoff:</strong>{" "}
-              {data_cutoff ? new Date(data_cutoff).toLocaleTimeString() : "UNKNOWN"}
+              {formatTimeIST(data_cutoff)}
             </span>
             <span>
               <strong>Active Candidates:</strong> {candidate_ids.length}
@@ -367,7 +368,7 @@ export function OpportunityScanner({
         </div>
 
         {/* 4. Active Candidate IDs Quick Selector */}
-        {candidate_ids.length > 0 && (
+        {candidate_ids.length > 0 ? (
           <div>
             <div
               style={{
@@ -405,6 +406,20 @@ export function OpportunityScanner({
                 );
               })}
             </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
+              borderRadius: 6,
+              fontSize: 12,
+              color: "#64748b",
+              textAlign: "center",
+            }}
+          >
+            NO LIVE CANDIDATES · Zero candidates currently qualifying for risk allocation
           </div>
         )}
       </div>

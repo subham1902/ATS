@@ -8,6 +8,7 @@ import type {
   PortfolioBrainOutcome,
 } from "@ats/api-client";
 import { Card, Badge } from "@ats/ui";
+import { formatTimeIST } from "../../lib/formatTime";
 
 export interface EdgeLedgerProps {
   ledger: EdgeLedgerReadModel | null;
@@ -417,7 +418,7 @@ export function EdgeLedger({ ledger, onSelectCandidate, selectedCandidateId }: E
                             {row.candidate_id.slice(0, 8)}
                           </div>
                           <div style={{ fontSize: 10, color: "#64748b" }}>
-                            {row.timestamp ? new Date(row.timestamp).toLocaleTimeString() : "—"}
+                            {formatTimeIST(row.timestamp)}
                           </div>
                         </td>
 

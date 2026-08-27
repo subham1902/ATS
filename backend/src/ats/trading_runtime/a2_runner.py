@@ -26,7 +26,7 @@ from ats.contracts.domain.types import (
     LossState,
 )
 from ats.contracts.governance.models import OpportunityCandidate
-from ats.market.calendar.models import SessionCalendar, nse_cash_alpha_v1_calendar
+from ats.market.calendar.models import SessionCalendar
 from ats.observability.operator_provider import OperatorIntelligenceProvider
 from ats.portfolio.brain import (
     AllocationOutcome,

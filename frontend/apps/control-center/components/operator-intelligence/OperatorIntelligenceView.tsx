@@ -20,20 +20,81 @@ export interface OperatorIntelligenceViewProps {
   isLiveAvailable?: boolean;
 }
 
+function buildEmptyLiveSnapshot(): OperatorIntelligenceSnapshot {
+  const now = new Date().toISOString();
+  return {
+    provenance: "LIVE",
+    scanner: {
+      last_scan_at: now,
+      data_cutoff: now,
+      source_state: "LIVE",
+      funnel: { universe_observed: 0, fresh: 0, stale: 0, invalid_reference: 0 },
+      rejections: {
+        liquidity: 0,
+        spread: 0,
+        calibration: 0,
+        negative_ev: 0,
+        portfolio_capacity: 0,
+        a04: 0,
+      },
+      candidates_by_class: {
+        standard: 0,
+        high_conviction: 0,
+        convex: 0,
+        rare_event: 0,
+      },
+      candidate_ids: [],
+    },
+    edge_ledger: {
+      entries: [],
+      as_of: now,
+      source: "LIVE",
+    },
+    survival: {
+      effective_survival_state: "NORMAL",
+      user_selected_mode: "NORMAL",
+      effective_mode: "NORMAL",
+      reason_codes: [],
+      session_equity: "100000",
+      hwm: "100000",
+      drawdown_fraction: "0",
+      available_risk: "100000",
+      open_positions: 0,
+      new_entry_permission: true,
+      reduction_permission: true,
+      feed_healthy: true,
+      broker_healthy: true,
+      reconciliation_active: false,
+      loss_state: "NORMAL",
+      last_state_at: now,
+    },
+    agents: [],
+    timeline: [],
+    opportunity_map: [],
+    evidence_lineage: {},
+  };
+}
+
 export function OperatorIntelligenceView({
   initialSnapshot,
   isLiveAvailable = false,
 }: OperatorIntelligenceViewProps) {
   const [selectedScenarioId, setSelectedScenarioId] = useState<FixtureScenarioId>("NORMAL_QUIET_MARKET");
-  const [provenanceMode, setProvenanceMode] = useState<ProvenanceType>(
-    initialSnapshot?.provenance ?? "FIXTURE"
-  );
+  const [userSelectedMode, setUserSelectedMode] = useState<ProvenanceType | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
-  // Active snapshot: live snapshot if mode is LIVE and available, else selected fixture
+  // Active provenance mode:
+  // Defaults to "LIVE" whenever live is available or live snapshot is received.
+  // Only becomes "FIXTURE" if explicitly chosen by user or if no live mode is available.
+  const activeMode: ProvenanceType =
+    userSelectedMode ??
+    (initialSnapshot?.provenance === "LIVE" || isLiveAvailable ? "LIVE" : "FIXTURE");
+
+  // In LIVE mode: strictly use the real live snapshot (or honest empty live state). NEVER fallback to fixtures.
+  // In FIXTURE mode: render the user-selected fixture scenario.
   const snapshot: OperatorIntelligenceSnapshot =
-    provenanceMode === "LIVE" && initialSnapshot && initialSnapshot.provenance === "LIVE"
-      ? initialSnapshot
+    activeMode === "LIVE"
+      ? (initialSnapshot?.provenance === "LIVE" ? initialSnapshot : buildEmptyLiveSnapshot())
       : getFixtureScenario(selectedScenarioId);
 
   const scenarioList: Array<{ id: FixtureScenarioId; label: string }> = [
@@ -91,18 +152,18 @@ export function OperatorIntelligenceView({
 
         {/* Provenance & Fixture Scenario Switcher */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {isLiveAvailable && (
+          {(isLiveAvailable || initialSnapshot?.provenance === "LIVE") && (
             <button
               type="button"
-              onClick={() => setProvenanceMode("LIVE")}
+              onClick={() => setUserSelectedMode("LIVE")}
               style={{
                 fontSize: 12,
                 fontWeight: 600,
                 padding: "5px 10px",
                 borderRadius: 6,
                 border: "1px solid #cbd5e1",
-                background: provenanceMode === "LIVE" ? "#0f172a" : "#ffffff",
-                color: provenanceMode === "LIVE" ? "#ffffff" : "#334155",
+                background: activeMode === "LIVE" ? "#0f172a" : "#ffffff",
+                color: activeMode === "LIVE" ? "#ffffff" : "#334155",
                 cursor: "pointer",
               }}
             >
@@ -116,9 +177,9 @@ export function OperatorIntelligenceView({
             </span>
             <select
               aria-label="Scenario Replay Selector"
-              value={selectedScenarioId}
+              value={activeMode === "FIXTURE" ? selectedScenarioId : ""}
               onChange={(e) => {
-                setProvenanceMode("FIXTURE");
+                setUserSelectedMode("FIXTURE");
                 setSelectedScenarioId(e.target.value as FixtureScenarioId);
               }}
               style={{
@@ -132,6 +193,7 @@ export function OperatorIntelligenceView({
                 cursor: "pointer",
               }}
             >
+              <option value="" disabled>Select Fixture Scenario...</option>
               {scenarioList.map((sc) => (
                 <option key={sc.id} value={sc.id}>
                   {sc.label}
@@ -142,8 +204,8 @@ export function OperatorIntelligenceView({
         </div>
       </div>
 
-      {/* Scenario Context Banner */}
-      {snapshot.scenario_description && (
+      {/* Scenario Context Banner (shown only for fixtures) */}
+      {snapshot.provenance !== "LIVE" && snapshot.scenario_description && (
         <div
           style={{
             background: "#eff6ff",

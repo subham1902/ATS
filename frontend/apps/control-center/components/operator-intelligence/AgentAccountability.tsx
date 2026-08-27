@@ -8,6 +8,7 @@ import type {
   GovernorResult,
 } from "@ats/api-client";
 import { Card, Badge } from "@ats/ui";
+import { formatTimeIST } from "../../lib/formatTime";
 
 export interface AgentAccountabilityProps {
   agents: AgentAccountabilityEntry[] | null;
@@ -171,13 +172,13 @@ export function AgentAccountability({
                   <div>
                     Last Wake:{" "}
                     <strong>
-                      {agent.last_wake ? new Date(agent.last_wake).toLocaleTimeString() : "NEVER"}
+                      {formatTimeIST(agent.last_wake)}
                     </strong>
                   </div>
                   <div>
                     Data Cutoff:{" "}
                     <strong>
-                      {agent.data_cutoff ? new Date(agent.data_cutoff).toLocaleTimeString() : "UNKNOWN"}
+                      {formatTimeIST(agent.data_cutoff)}
                     </strong>
                   </div>
                   <div>
@@ -264,7 +265,7 @@ export function AgentAccountability({
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>
-                        {new Date(event.timestamp).toLocaleTimeString()}
+                        {formatTimeIST(event.timestamp)}
                       </span>
                       <strong style={{ color: "#0f172a" }}>{event.material_event}</strong>
                       <span style={{ color: "#94a3b8" }}>&rarr;</span>

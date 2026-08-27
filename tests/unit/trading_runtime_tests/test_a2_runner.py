@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import os
 from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-
 from ats.contracts.common import SystemClock
-from ats.contracts.governance.models import OpportunityCandidate
 from ats.portfolio.brain import ExposureDirection
 from ats.trading_runtime.a2_runner import (
     A2PaperSessionConfig,
@@ -18,8 +14,8 @@ from ats.trading_runtime.a2_runner import (
     UpstoxMarketFeedAdapter,
     create_a2_paper_app,
 )
-from ats.trading_runtime.broker import PaperBrokerAdapter
 from ats.trading_runtime.candidate_factory import build_opportunity_candidate
+from fastapi.testclient import TestClient
 
 
 def test_controller_start_and_stop() -> None:
@@ -263,8 +259,8 @@ def test_process_tick_updates_marks_and_runtime() -> None:
 
 def test_active_nse_session_fsm_and_can_enter() -> None:
     from datetime import date, datetime, time, timezone
+
     from ats.market.calendar.models import SessionCalendar
-    from ats.trading_runtime.session import RuntimeSessionPhase
 
     # Fixed active market time: 11:00 AM IST on trading date
     ist = timezone(timedelta(hours=5, minutes=30))

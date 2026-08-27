@@ -6,6 +6,7 @@ import type {
   EvidenceNodeType,
 } from "@ats/api-client";
 import { Card, Badge } from "@ats/ui";
+import { formatTimeIST } from "../../lib/formatTime";
 
 export interface EvidenceDrilldownProps {
   candidateId?: string | null;
@@ -197,7 +198,7 @@ export function EvidenceDrilldown({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                            {node.timestamp ? new Date(node.timestamp).toLocaleTimeString() : "—"}
+                            {formatTimeIST(node.timestamp)}
                           </span>
                           {renderNodeStatusBadge(node.status)}
                         </div>

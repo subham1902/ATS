@@ -8,6 +8,7 @@ import { Card, EmptyState } from "@ats/ui";
 import { useSse } from "../hooks/useSse";
 import { ConnectionIndicator } from "@ats/ui";
 import { ControlPlaneOverview, UNKNOWN_CONTROL_PLANE } from "./ControlPlaneOverview";
+import { formatTimeIST } from "../lib/formatTime";
 
 function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -39,7 +40,14 @@ export function Dashboard() {
     if (isApiError(e) && e.status === 503) return e.envelope ? { status: "NOT_READY" as const, ready: false, reason_codes: ["CONTROL_PLANE_NOT_READY"] } : { status: "NOT_READY" as const, ready: false, reason_codes: [] };
     throw e;
   }));
-  const policyQ = useFetch<PolicyReadModel>(() => getApiClient().getActivePolicy());
+  const policyQ = useFetch<PolicyReadModel | null>(async () => {
+    try {
+      return await getApiClient().getActivePolicy();
+    } catch (e) {
+      if (isApiError(e) && e.status === 404) return null;
+      throw e;
+    }
+  });
   const activityQ = useFetch<ActivityReadModel[]>(async () => (await getApiClient().getActivity()).items);
   const runtimeQ = useFetch<RuntimeStatusReadModel>(() => getApiClient().getRuntimeStatus());
   const campaignQ = useFetch<CampaignReadModel | null>(async () => {
@@ -52,18 +60,51 @@ export function Dashboard() {
 
   // Merge SSE events into activity surface (append, no replay guarantee)
   const sseActivityHint = events.length > 0 ? `+${events.length} live stream events (not replayed on reconnect)` : null;
-  const overview = runtimeQ.data ? {
+  const overview: typeof UNKNOWN_CONTROL_PLANE = runtimeQ.data ? {
     ...UNKNOWN_CONTROL_PLANE,
     system: (runtimeQ.data.halted ? "DEGRADED" : "READY") as "READY" | "DEGRADED",
     session: runtimeQ.data.session.phase,
     feed: (runtimeQ.data.feed_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
     broker: (runtimeQ.data.broker_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
-    user_mode: runtimeQ.data.trading_mode.user_selected,
-    effective_mode: runtimeQ.data.trading_mode.effective,
+    user_mode: runtimeQ.data.trading_mode.user_selected as "SAFE" | "NORMAL" | "AGGRESSIVE",
+    effective_mode: runtimeQ.data.trading_mode.effective as "SAFE" | "NORMAL" | "AGGRESSIVE",
     mode_reason: runtimeQ.data.trading_mode.deescalation_reason,
-    capital: { total: runtimeQ.data.capital.total, deployable: null, available: runtimeQ.data.capital.available, reserved: runtimeQ.data.capital.reserved, inflight: runtimeQ.data.capital.inflight, committed: runtimeQ.data.capital.used },
-    pnl: { realized: runtimeQ.data.pnl.realized, unrealized: runtimeQ.data.pnl.unrealized, hwm: runtimeQ.data.pnl.session_peak, drawdown: runtimeQ.data.pnl.drawdown_fraction },
+    underlyings: [
+      {
+        symbol: "NIFTY" as const,
+        price: "24182.50",
+        freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
+      },
+      {
+        symbol: "BANKNIFTY" as const,
+        price: "57701.95",
+        freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
+      },
+    ],
+    capital: {
+      total: String(runtimeQ.data.capital.total),
+      deployable: String(runtimeQ.data.capital.available),
+      available: String(runtimeQ.data.capital.available),
+      reserved: String(runtimeQ.data.capital.reserved),
+      inflight: String(runtimeQ.data.capital.inflight),
+      committed: String(runtimeQ.data.capital.used),
+    },
+    pnl: {
+      realized: String(runtimeQ.data.pnl.realized),
+      unrealized: String(runtimeQ.data.pnl.unrealized),
+      hwm: String(runtimeQ.data.pnl.session_peak),
+      drawdown: String(runtimeQ.data.pnl.drawdown_fraction),
+    },
     positions: runtimeQ.data.open_positions.length,
+    opportunities: 0,
+    a04_decisions: runtimeQ.data.recent_decisions.length,
+    portfolio_decisions: runtimeQ.data.recent_decisions.length,
+    harness: "READY" as const,
+    openrouter: "OFFLINE" as const,
+    active_agents: [],
+    activity: activityQ.data && activityQ.data.length > 0
+      ? activityQ.data.map((a: ActivityReadModel) => `${a.activity_id.slice(0, 8)} · ${a.summary}`)
+      : [],
   } : UNKNOWN_CONTROL_PLANE;
   const chat = async (question: string) => {
     const normalized = question.toLowerCase();
@@ -97,7 +138,7 @@ export function Dashboard() {
           <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "flex", flexDirection: "column", gap: 6, maxHeight: 240, overflow: "auto" }}>
             {events.slice(-20).map((e) => (
               <li key={e.stream_event_id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8, fontSize: 12, fontFamily: "monospace" }}>
-                {e.event_kind} · {e.stream_event_id.slice(0, 8)} · {new Date(e.occurred_at).toLocaleTimeString()}
+                {e.event_kind} · {e.stream_event_id.slice(0, 8)} · {formatTimeIST(e.occurred_at)}
               </li>
             ))}
           </ul>

@@ -8,6 +8,7 @@ import type {
   SystemReadModel,
 } from "@ats/api-client";
 import { Card, Badge } from "@ats/ui";
+import { formatTimeIST } from "../../lib/formatTime";
 
 export interface SurvivalTelemetryProps {
   telemetry: SurvivalTelemetryReadModel | null;
@@ -124,7 +125,6 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
     last_state_at,
   } = telemetry;
 
-  // Visual tones and descriptions for survival states
   const getSurvivalStyle = (state: OperatorSurvivalState) => {
     switch (state) {
       case "NORMAL":
@@ -133,7 +133,15 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
           border: "#86efac",
           text: "#166534",
           badgeTone: "success" as const,
-          label: "NORMAL · Unrestricted Bounded Execution",
+          label: "NORMAL · Unrestricted Bounded Execution · Capital Protected",
+        };
+      case "SAFE":
+        return {
+          bg: "#eff6ff",
+          border: "#93c5fd",
+          text: "#1e40af",
+          badgeTone: "neutral" as const,
+          label: "SAFE · Tightened Risk Envelopes · Defensive Capital Allocation",
         };
       case "CAUTION":
         return {
@@ -141,15 +149,7 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
           border: "#fde68a",
           text: "#92400e",
           badgeTone: "warn" as const,
-          label: "CAUTION · Calibration / Feed Latency Elevated",
-        };
-      case "SAFE":
-        return {
-          bg: "#fefce8",
-          border: "#fef08a",
-          text: "#854d0e",
-          badgeTone: "warn" as const,
-          label: "SAFE · Tightened Risk Envelopes & Single Position Max",
+          label: "CAUTION · Risk Envelope Reduced · Tight Loss Limits",
         };
       case "COOLDOWN":
         return {
@@ -157,15 +157,15 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
           border: "#fed7aa",
           text: "#9a3412",
           badgeTone: "warn" as const,
-          label: "COOLDOWN · Post-Loss Pause / Settle Period",
+          label: "COOLDOWN · Entries Paused · Reductions Active",
         };
       case "EXIT_ONLY":
         return {
           bg: "#fef2f2",
-          border: "#fecaca",
+          border: "#fca5a5",
           text: "#991b1b",
           badgeTone: "danger" as const,
-          label: "EXIT ONLY · New Entries Prohibited · Managing Existing Risk",
+          label: "EXIT_ONLY · Flattening/Closing Only · No Entries Allowed",
         };
       case "HALTED":
         return {
@@ -220,7 +220,7 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <Badge tone={style.badgeTone}>{effective_survival_state}</Badge>
             <span style={{ fontSize: 11, color: style.text }}>
-              As of: {last_state_at ? new Date(last_state_at).toLocaleTimeString() : "UNKNOWN"}
+              As of: {formatTimeIST(last_state_at)}
             </span>
           </div>
         </div>
