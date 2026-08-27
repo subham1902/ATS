@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from ats.api.app import create_app
 from ats.contracts.domain.types import AutonomyLevel
+from ats.trading_runtime.runtime_provider import TradingRuntimeProvider
 from fastapi.testclient import TestClient
 
 from tests.unit.api.fixtures import make_api_fixture
@@ -47,6 +48,46 @@ def test_default_agent_chat_is_evidence_bound_and_changes_are_proposals() -> Non
 def test_runtime_status_is_truthfully_unavailable_without_provider() -> None:
     response = TestClient(create_app()).get("/v1/runtime/status")
     assert response.status_code == 503
+
+
+def test_runtime_status_and_all_bounded_a2_commands_use_only_injected_provider() -> None:
+    provider = TradingRuntimeProvider()
+    client = TestClient(create_app(trading_runtime_provider=provider))
+
+    status = client.get("/v1/runtime/status")
+    assert status.status_code == 200
+    assert status.json()["trading_mode"] == {
+        "user_selected": "NORMAL",
+        "effective": "NORMAL",
+        "deescalation_reason": None,
+    }
+    assert status.json()["capital"]["total"] == "100000"
+    assert status.json()["open_positions"] == []
+
+    mode = client.post("/v1/runtime/command", json={"command": "SET_MODE", "mode": "SAFE"})
+    assert mode.json() == {
+        "accepted": True,
+        "reason_codes": ["MODE_UPDATED"],
+        "effective_mode": "SAFE",
+    }
+    paused = client.post("/v1/runtime/command", json={"command": "PAUSE_NEW_ENTRIES"})
+    assert paused.json()["reason_codes"] == ["PAUSED"]
+    assert provider.get_state().paused is True
+    resumed = client.post("/v1/runtime/command", json={"command": "RESUME_NEW_ENTRIES"})
+    assert resumed.json()["reason_codes"] == ["RESUMED"]
+    assert provider.get_state().paused is False
+
+    exit_result = client.post(
+        "/v1/runtime/command",
+        json={"command": "EXIT_POSITION", "position_id": str(uuid4())},
+    )
+    flatten = client.post("/v1/runtime/command", json={"command": "FLATTEN_PORTFOLIO"})
+    assert exit_result.json()["reason_codes"] == ["COMMAND_ACCEPTED_AWAITING_ENGINE"]
+    assert flatten.json()["reason_codes"] == ["COMMAND_ACCEPTED_AWAITING_ENGINE"]
+
+    halted = client.post("/v1/runtime/command", json={"command": "HALT_SYSTEM"})
+    assert halted.json()["reason_codes"] == ["HALTED"]
+    assert provider.get_state().is_halted is True
 
 
 def test_policy_campaign_candidate_governance_and_risk_reads() -> None:

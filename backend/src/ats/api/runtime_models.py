@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
+
+from pydantic import Field
 
 from ats.contracts.common import ATSBaseModel, UTCDateTime
 from ats.contracts.domain.types import LossState
@@ -73,7 +75,7 @@ class RuntimeCommandRequest(ATSBaseModel):
         "HALT_SYSTEM",
     ]
     mode: Literal["SAFE", "NORMAL", "AGGRESSIVE"] | None = None
-    position_id: UUID | None = None
+    position_id: Annotated[UUID, Field(strict=False)] | None = None
 
 
 class RuntimeCommandResult(ATSBaseModel):
