@@ -53,8 +53,7 @@ from ats.trading_runtime.session import (
     resolve_session_status,
 )
 from pydantic import SecretStr
-
-from scripts.run_d10_live_acceptance import _extract_ltp, _fetch_reference
+from run_d10_live_acceptance import _extract_ltp, _fetch_reference
 
 
 class ReadOnlyUpstoxSupervisor:
