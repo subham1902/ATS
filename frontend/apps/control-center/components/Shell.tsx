@@ -8,6 +8,7 @@ import type { SystemState, SseStatus } from "@ats/api-client";
 
 const NAV = [
   { href: "/", label: "Dashboard" },
+  { href: "/operator-intelligence", label: "Operator Intel" },
   { href: "/policies", label: "Policies" },
   { href: "/candidates", label: "Candidates" },
   { href: "/governance", label: "Governance" },
