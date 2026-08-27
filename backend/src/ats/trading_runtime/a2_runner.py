@@ -27,6 +27,14 @@ from ats.contracts.domain.types import (
 )
 from ats.contracts.governance.models import OpportunityCandidate
 from ats.market.calendar.models import SessionCalendar
+from ats.market.derivatives.providers.models import SourceFreshness
+from ats.market.feeds.upstox_v3.instrument_keys import (
+    BANKNIFTY_INDEX_FEED_KEY,
+    NIFTY_INDEX_FEED_KEY,
+)
+from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate
+from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
+from ats.observability.live_pipeline_bridge import LivePipelineBridge
 from ats.observability.operator_provider import OperatorIntelligenceProvider
 from ats.portfolio.brain import (
     AllocationOutcome,
@@ -239,6 +247,10 @@ class A2PaperSessionController:
         self._stop_event = asyncio.Event()
         self._loop_task: asyncio.Task[None] | None = None
 
+        # Real Upstox V3 runtime feed (read-only market data) and pipeline bridge
+        self._upstox_feed: UpstoxV3RuntimeFeed | None = None
+        self._live_pipeline_bridge = LivePipelineBridge()
+
     @property
     def state(self) -> A2SessionState:
         return self._state
@@ -430,6 +442,82 @@ class A2PaperSessionController:
                 self._engine.handle_exit_fill(pid, now)
 
         # 4. Sync runtime provider
+        self._runtime_provider.update_from_engine(self._engine)
+        return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
+
+    def attach_upstox_runtime_feed(self, feed: UpstoxV3RuntimeFeed) -> None:
+        """Attach the read-only Upstox V3 runtime feed to this A2 session.
+
+        The feed is strictly market-data: it can never place, modify or cancel
+        orders (no such method exists on :class:`UpstoxV3Transport`). Normalized
+        updates are routed into the deterministic runtime via
+        :meth:`_on_normalized_update`.
+        """
+
+        self._upstox_feed = feed
+        self._live_pipeline_bridge.board = feed.board
+        feed._on_normalized = self._on_normalized_update
+
+    def _on_normalized_update(
+        self, update: NormalizedFeedUpdate, freshness: SourceFreshness
+    ) -> None:
+        price = update.last_traded_price
+        if price is None:
+            return
+        self.ingest_market_update(
+            update.instrument_key, price, update.received_at, freshness
+        )
+
+    def ingest_market_update(
+        self,
+        instrument_key: str,
+        price: Decimal,
+        at: UTCDateTime | None = None,
+        freshness: SourceFreshness | None = None,
+    ) -> dict[str, Any]:
+        """Route one normalized market update through the full deterministic pipeline."""
+
+        if self._state is not A2SessionState.RUNNING or self._engine is None:
+            return {"accepted": False, "reason": "SESSION_NOT_RUNNING"}
+
+        now = at or SystemClock().now()
+        self._last_event_time = now
+        self._events_processed += 1
+
+        # Index keys map to canonical underlying identities for the bridge.
+        bridge_key = instrument_key
+        if instrument_key == NIFTY_INDEX_FEED_KEY:
+            bridge_key = "NIFTY"
+        elif instrument_key == BANKNIFTY_INDEX_FEED_KEY:
+            bridge_key = "BANKNIFTY"
+
+        # 1. Update the runtime feed mark (read by the engine for positions).
+        if isinstance(self._market_feed, UpstoxMarketFeedAdapter | InMemoryMarketFeed):
+            self._market_feed.set_mark(instrument_key, price, now)
+
+        # 2. Truthful pipeline telemetry (no synthetic counts).
+        self._live_pipeline_bridge.record_tick(bridge_key, price, received_at=now)
+        if freshness is not None:
+            fresh = 1 if freshness is SourceFreshness.FRESH else 0
+            self._live_pipeline_bridge.record_scan(
+                fresh_count=fresh, stale_count=0 if fresh else 1
+            )
+
+        # 3. Drive the deterministic engine mark / position monitor.
+        event = RuntimeEvent(
+            kind=RuntimeEventKind.TICK,
+            instrument_id=instrument_key,
+            payload={"price": str(price)},
+            at=now,
+        )
+        runtime_outcome = self._engine.process_event(event)
+
+        if runtime_outcome.get("exits"):
+            for exit_info in runtime_outcome["exits"]:
+                pid = exit_info["position_id"]
+                self._engine.request_exit(pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR")
+                self._engine.handle_exit_fill(pid, now)
+
         self._runtime_provider.update_from_engine(self._engine)
         return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
 
