@@ -89,6 +89,7 @@ def create_app(
     chat_service: EvidenceBackedChatService | None = None,
     trading_runtime_provider: object | None = None,
     operator_intelligence_provider: OperatorIntelligenceProvider | None = None,
+    trading_runtime_engine: object | None = None,
 ) -> FastAPI:
     """Create an A05 app over an injected read provider; no runtime is fabricated."""
     app = FastAPI(
@@ -102,6 +103,7 @@ def create_app(
     app.state.operator_intelligence_provider = (
         operator_intelligence_provider or OperatorIntelligenceProvider()
     )
+    app.state.trading_runtime_engine = trading_runtime_engine
     app.add_middleware(
         CORSMiddleware,
         allow_origins=("http://127.0.0.1:3000", "http://localhost:3000"),

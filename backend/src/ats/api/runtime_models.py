@@ -73,6 +73,8 @@ class RuntimeCommandRequest(ATSBaseModel):
         "EXIT_POSITION",
         "FLATTEN_PORTFOLIO",
         "HALT_SYSTEM",
+        "START_A2_PAPER_SESSION",
+        "STOP_A2_PAPER_SESSION",
     ]
     mode: Literal["SAFE", "NORMAL", "AGGRESSIVE"] | None = None
     position_id: Annotated[UUID, Field(strict=False)] | None = None

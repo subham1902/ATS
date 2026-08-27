@@ -68,7 +68,63 @@ class TradingRuntimeProvider:
         self._state.effective_mode = TradingMode.HALTED
 
     def update_from_engine(self, engine: object) -> None:
-        _ = engine
+        if engine is None:
+            return
+        from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
+
+        from ats.contracts.common import SystemClock
+
+        if hasattr(engine, "state"):
+            st = engine.state
+            if hasattr(st, "open_positions"):
+                pos_list: list[dict[str, object]] = []
+                total_unrealized = Decimal("0")
+                total_realized = Decimal("0")
+                for pos in getattr(st, "open_positions", {}).values():
+                    total_unrealized += getattr(pos, "unrealized_pnl", Decimal("0"))
+                    total_realized += getattr(pos, "realized_pnl", Decimal("0"))
+                    raw_pid = getattr(pos, "position_id", str(uuid4()))
+                    try:
+                        pid = UUID(str(raw_pid))
+                    except (ValueError, TypeError):
+                        pid = uuid5(NAMESPACE_DNS, str(raw_pid))
+                    pos_list.append(
+                        {
+                            "position_id": pid,
+                            "instrument_id": getattr(pos, "instrument_id", "UNKNOWN"),
+                            "quantity": getattr(pos, "quantity", Decimal("0")),
+                            "entry_price": getattr(pos, "entry_price", Decimal("0")),
+                            "mark_price": getattr(pos, "current_mark", None),
+                            "unrealized_pnl": getattr(pos, "unrealized_pnl", Decimal("0")),
+                        }
+                    )
+                self._state.open_positions = pos_list
+                self._state.unrealized = total_unrealized
+                self._state.realized = total_realized
+
+            if hasattr(st, "peak_equity"):
+                self._state.peak_equity = st.peak_equity
+            if hasattr(st, "current_equity"):
+                self._state.total = st.current_equity
+                self._state.available = st.current_equity
+            if hasattr(st, "hwm_state") and st.hwm_state is not None:
+                hwm = st.hwm_state
+                self._state.drawdown_fraction = getattr(hwm, "drawdown_fraction", Decimal("0"))
+                self._state.hwm_state = hwm
+            if hasattr(st, "kill_switch"):
+                self._state.is_halted = st.kill_switch
+
+        if hasattr(engine, "market_feed"):
+            feed = engine.market_feed
+            if hasattr(feed, "is_healthy"):
+                self._state.feed_healthy = feed.is_healthy()
+
+        if hasattr(engine, "broker"):
+            broker = engine.broker
+            if hasattr(broker, "is_healthy"):
+                self._state.broker_healthy = broker.is_healthy()
+
+        self._state.updated_at = SystemClock().now()
 
     def to_status_dict(self) -> dict[str, object]:
         s = self._state

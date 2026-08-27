@@ -86,6 +86,8 @@ _ALLOWED = frozenset(
         "EXIT_POSITION",
         "FLATTEN_PORTFOLIO",
         "HALT_SYSTEM",
+        "START_A2_PAPER_SESSION",
+        "STOP_A2_PAPER_SESSION",
     }
 )
 
@@ -127,6 +129,32 @@ def post_runtime_command(
         provider.halt()
         return RuntimeCommandResult(
             accepted=True, reason_codes=("HALTED",), effective_mode="HALTED"
+        )
+    if body.command == "START_A2_PAPER_SESSION":
+        controller = getattr(request.app.state, "a2_session_controller", None) or getattr(
+            request.app.state, "trading_runtime_engine", None
+        )
+        if controller is not None and hasattr(controller, "start"):
+            success = controller.start()
+            return RuntimeCommandResult(
+                accepted=success,
+                reason_codes=("SESSION_STARTED",) if success else ("SESSION_START_FAILED",),
+            )
+        return RuntimeCommandResult(
+            accepted=False, reason_codes=("SESSION_CONTROLLER_NOT_ATTACHED",)
+        )
+    if body.command == "STOP_A2_PAPER_SESSION":
+        controller = getattr(request.app.state, "a2_session_controller", None) or getattr(
+            request.app.state, "trading_runtime_engine", None
+        )
+        if controller is not None and hasattr(controller, "stop"):
+            success = controller.stop()
+            return RuntimeCommandResult(
+                accepted=success,
+                reason_codes=("SESSION_STOPPED",) if success else ("SESSION_STOP_FAILED",),
+            )
+        return RuntimeCommandResult(
+            accepted=False, reason_codes=("SESSION_CONTROLLER_NOT_ATTACHED",)
         )
     if body.command in ("EXIT_POSITION", "FLATTEN_PORTFOLIO"):
         engine = getattr(request.app.state, "trading_runtime_engine", None)
