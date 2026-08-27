@@ -99,6 +99,7 @@ export function EdgeLedger({ ledger, onSelectCandidate, selectedCandidateId }: E
       "theta_cost",
       "execution_uncertainty",
       "calibration_uncertainty",
+      "calibration_health",
       "expected_net_value",
       "portfolio_penalty",
       "approved_capital",
@@ -127,6 +128,7 @@ export function EdgeLedger({ ledger, onSelectCandidate, selectedCandidateId }: E
         e.theta_cost ?? "",
         e.execution_uncertainty ?? "",
         e.calibration_uncertainty ?? "",
+        e.calibration_health ?? "UNKNOWN",
         e.expected_net_value ?? "",
         e.portfolio_penalty ?? "",
         e.approved_capital ?? "",
@@ -563,6 +565,7 @@ export function EdgeLedger({ ledger, onSelectCandidate, selectedCandidateId }: E
                                 <div style={{ marginTop: 4, color: "#64748b", lineHeight: 1.6 }}>
                                   Execution Uncert: <strong>{row.execution_uncertainty !== null ? `${row.execution_uncertainty}R` : "UNKNOWN"}</strong><br />
                                   Calibration Uncert: <strong>{row.calibration_uncertainty !== null ? `${row.calibration_uncertainty}R` : "UNKNOWN"}</strong><br />
+                                  Calibration Health: <strong>{row.calibration_health ?? "UNKNOWN"}</strong><br />
                                   Portfolio Penalty: <strong>{row.portfolio_penalty !== null ? `${row.portfolio_penalty}R` : "0R"}</strong>
                                 </div>
                               </div>

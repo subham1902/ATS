@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
@@ -17,6 +18,8 @@ from ats.contracts.governance.types import SystemState
 from ats.intelligence.agent_chat import AgentChatAnswer, EvidenceBackedChatService
 from ats.intelligence.agent_governance import RuntimeChangeProposal
 from ats.kernel.policy import validate_strategy_policy
+from ats.observability.operator_intelligence import OperatorIntelligenceSnapshot
+from ats.observability.operator_provider import OperatorIntelligenceProvider
 
 from .chat import AgentChatHttpRequest, build_control_plane_chat
 from .models import (
@@ -39,7 +42,7 @@ from .models import (
 )
 from .providers import ControlPlaneReader, EmptyControlPlaneReader
 from .runtime_router import router as runtime_router
-from .stream import iter_sse
+from .stream import iter_operator_sse, iter_sse
 
 _CORRELATION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
 
@@ -85,6 +88,7 @@ def create_app(
     *,
     chat_service: EvidenceBackedChatService | None = None,
     trading_runtime_provider: object | None = None,
+    operator_intelligence_provider: OperatorIntelligenceProvider | None = None,
 ) -> FastAPI:
     """Create an A05 app over an injected read provider; no runtime is fabricated."""
     app = FastAPI(
@@ -95,6 +99,15 @@ def create_app(
     resolved_reader = reader or EmptyControlPlaneReader()
     app.state.control_plane_reader = resolved_reader
     app.state.trading_runtime_provider = trading_runtime_provider
+    app.state.operator_intelligence_provider = (
+        operator_intelligence_provider or OperatorIntelligenceProvider()
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=("http://127.0.0.1:3000", "http://localhost:3000"),
+        allow_methods=("GET", "POST", "OPTIONS"),
+        allow_headers=("Accept", "Content-Type", "X-Correlation-ID"),
+    )
     proposal_log: list[RuntimeChangeProposal] = []
     app.state.runtime_change_proposals = proposal_log
     app.state.chat_service = chat_service or build_control_plane_chat(resolved_reader, proposal_log)
@@ -325,6 +338,36 @@ def create_app(
     @app.get("/v1/activity", response_model=ActivityPage, tags=["activity"])
     def list_activity(control: ReaderDependency) -> ActivityPage:
         return ActivityPage(items=control.list_activity())
+
+    @app.get(
+        "/v1/operator-intelligence",
+        response_model=OperatorIntelligenceSnapshot,
+        tags=["observability"],
+    )
+    def get_operator_intelligence(request: Request) -> OperatorIntelligenceSnapshot:
+        provider = cast(
+            OperatorIntelligenceProvider,
+            request.app.state.operator_intelligence_provider,
+        )
+        runtime_provider = request.app.state.trading_runtime_provider
+        runtime_state = runtime_provider.get_state() if runtime_provider is not None else None
+        return provider.snapshot(runtime_state)
+
+    @app.get(
+        "/v1/operator-intelligence/stream",
+        response_class=StreamingResponse,
+        tags=["observability"],
+    )
+    def operator_intelligence_stream(request: Request) -> StreamingResponse:
+        provider = cast(
+            OperatorIntelligenceProvider,
+            request.app.state.operator_intelligence_provider,
+        )
+        return StreamingResponse(
+            iter_operator_sse(request, provider),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-ATS-Replay-Supported": "false"},
+        )
 
     @app.post("/v1/agent-chat", response_model=AgentChatAnswer, tags=["agents"])
     def agent_chat(body: AgentChatHttpRequest, request: Request) -> AgentChatAnswer:

@@ -27,6 +27,7 @@ def test_start_uses_hidden_bounded_local_services() -> None:
     assert "127.0.0.1" in source
     assert "ats.api.app:app" in source
     assert "$env:Path = $NodeRoot" in source
+    assert "$env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'" in source
     assert "Get-ListenerOwner 3000" in source
     assert "dsh-v0.1.1-rc.2" not in source  # version is verified by the built pinned source
 

@@ -19,6 +19,8 @@ EXPECTED_OPERATIONS = {
     ("get", "/v1/autonomy-tokens/{token_id}"),
     ("get", "/v1/activity"),
     ("get", "/v1/stream"),
+    ("get", "/v1/operator-intelligence"),
+    ("get", "/v1/operator-intelligence/stream"),
     ("get", "/v1/runtime/status"),
     ("post", "/v1/runtime/command"),
     ("post", "/v1/agent-chat"),

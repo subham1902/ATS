@@ -41,7 +41,7 @@ describe("EvidenceDrilldown (OI6)", () => {
           status: "VERIFIED",
           metrics: { candidate_class: "HIGH_CONVICTION", net_ev: 1.45, reward_risk: 3.2 },
           hash: "e457d11099238475aabbcda8f3b20c91",
-          summary: "Candidate proposed: NIFTY Bull Call Spread 24500/24700 CE.",
+          summary: "Candidate proposed: NIFTY long 24600 CE.",
         },
         {
           node_type: "PortfolioAllocationDecision",

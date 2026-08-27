@@ -141,6 +141,7 @@ class EdgeLedgerEntry(BaseModel):
     theta_cost: float | None = None
     execution_uncertainty: float | None = None
     calibration_uncertainty: float | None = None
+    calibration_health: str = "UNKNOWN"
     expected_net_value: float | None = None
     portfolio_penalty: float | None = None
     approved_capital: str | None = None
@@ -203,6 +204,54 @@ class AgentAccountabilityEntry(BaseModel):
     is_stale: bool = False
 
 
+class TimelineEvent(BaseModel):
+    event_id: str
+    timestamp: UTCDateTime
+    material_event: str
+    agent_wake: str
+    evidence_queried: tuple[str, ...] = ()
+    recommendation: str
+    proposal_id: str | None = None
+    governor_result: GovernorResult = GovernorResult.UNKNOWN
+    authority_note: str = "ADVISORY_ONLY — deterministic governor authorized"
+
+
+class OpportunityMapPoint(BaseModel):
+    candidate_id: str
+    instrument: str
+    underlying: str
+    candidate_class: CandidateClass = CandidateClass.STANDARD
+    calibrated_probability: float | None = None
+    expected_net_value: float | None = None
+    asymmetry: float | None = None
+    liquidity_score: float | None = None
+    spread_ticks: float | None = None
+    analogue_support: int | None = None
+    portfolio_brain_outcome: PortfolioBrainOutcome = PortfolioBrainOutcome.UNKNOWN
+    a04_outcome: A04Outcome = A04Outcome.UNKNOWN
+
+
+class EvidenceLineageNode(BaseModel):
+    node_type: str
+    node_id: str
+    timestamp: UTCDateTime
+    status: str = "UNKNOWN"
+    metrics: dict[str, str | int | float | None] = Field(default_factory=dict)
+    hash: str
+    summary: str
+
+
+class OperatorIntelligenceSnapshot(BaseModel):
+    scanner: OpportunityScannerReadModel
+    edge_ledger: EdgeLedgerReadModel
+    survival: SurvivalTelemetryReadModel
+    agents: tuple[AgentAccountabilityEntry, ...] = ()
+    timeline: tuple[TimelineEvent, ...] = ()
+    opportunity_map: tuple[OpportunityMapPoint, ...] = ()
+    evidence_lineage: dict[str, tuple[EvidenceLineageNode, ...]] = Field(default_factory=dict)
+    provenance: ProvenanceType = ProvenanceType.LIVE
+
+
 # ============================================================================
 # DETERMINISTIC SURVIVAL RESOLUTION HELPER
 # ============================================================================
@@ -254,7 +303,6 @@ def resolve_operator_survival_state(
 
     if (
         effective_mode == "SAFE"
-        or loss_state == "CAUTION"
         or feed_healthy is False
         or broker_healthy is False
         or system_state == "DEGRADED"
@@ -264,13 +312,14 @@ def resolve_operator_survival_state(
             reasons.append("FEED_DEGRADED")
         if broker_healthy is False:
             reasons.append("BROKER_DEGRADED")
-        if loss_state == "CAUTION":
-            reasons.append("LOSS_CAUTION")
         if effective_mode == "SAFE":
             reasons.append("SAFE_ENVELOPE")
         if reconciliation_active:
             reasons.append("RECONCILING")
         return OperatorSurvivalState.SAFE, tuple(reasons)
+
+    if loss_state == "CAUTION":
+        return OperatorSurvivalState.CAUTION, ("LOSS_CAUTION",)
 
     if (
         effective_mode in ("NORMAL", "AGGRESSIVE")

@@ -160,7 +160,7 @@ export const SCENARIO_NORMAL_QUIET_MARKET: OperatorIntelligenceSnapshot = {
 export const SCENARIO_HIGH_CONVICTION_CANDIDATE: OperatorIntelligenceSnapshot = {
   provenance: "FIXTURE",
   scenario_id: "HIGH_CONVICTION_CANDIDATE",
-  scenario_description: "NIFTY Bull Call Spread with 0.78 probability and strong net edge.",
+  scenario_description: "NIFTY long CE with 0.78 probability and strong net edge.",
   survival: {
     effective_survival_state: "NORMAL",
     user_selected_mode: "NORMAL",
@@ -196,7 +196,7 @@ export const SCENARIO_HIGH_CONVICTION_CANDIDATE: OperatorIntelligenceSnapshot = 
         candidate_id: "cand-hc-99",
         timestamp: "2026-08-27T10:15:00Z",
         underlying: "NIFTY",
-        instrument: "NIFTY26AUG24600CE_SPREAD",
+        instrument: "NIFTY26AUG24600CE",
         direction: "CALL",
         strategy: "VOL_EXPANSION",
         candidate_class: "HIGH_CONVICTION",
@@ -229,7 +229,7 @@ export const SCENARIO_HIGH_CONVICTION_CANDIDATE: OperatorIntelligenceSnapshot = 
       wake_reason: "VOLATILITY_EXPANSION_TRIGGER",
       data_cutoff: "2026-08-27T10:14:50Z",
       evidence_refs: ["ev-snap-hc-01", "ev-regime-hc-02"],
-      recommendation: "VOL_EXPANSION_BULL_CALL",
+      recommendation: "VOL_EXPANSION_LONG_CE",
       proposal_id: "prop-hc-01",
       authority: "ADVISORY_ONLY",
       latency_ms: 240,
@@ -245,7 +245,7 @@ export const SCENARIO_HIGH_CONVICTION_CANDIDATE: OperatorIntelligenceSnapshot = 
       material_event: "NIFTY BREAKOUT & IV SURGE",
       agent_wake: "Session Market Agent",
       evidence_queried: ["RegimeEvidence", "EnsembleForecast"],
-      recommendation: "VOL_EXPANSION_BULL_CALL",
+      recommendation: "VOL_EXPANSION_LONG_CE",
       proposal_id: "prop-hc-01",
       governor_result: "APPROVED",
       authority_note: "ADVISORY_ONLY — deterministic governor authorized",
@@ -254,7 +254,7 @@ export const SCENARIO_HIGH_CONVICTION_CANDIDATE: OperatorIntelligenceSnapshot = 
   opportunity_map: [
     {
       candidate_id: "cand-hc-99",
-      instrument: "NIFTY26AUG24600CE_SPREAD",
+      instrument: "NIFTY26AUG24600CE",
       underlying: "NIFTY",
       candidate_class: "HIGH_CONVICTION",
       calibrated_probability: 0.78,

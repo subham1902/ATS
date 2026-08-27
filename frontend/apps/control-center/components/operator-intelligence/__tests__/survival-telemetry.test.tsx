@@ -76,6 +76,12 @@ describe("SurvivalTelemetry (OI3)", () => {
     } as unknown as RuntimeStatusReadModel;
     expect(resolveSurvivalState(degradedRuntime, readySystem)).toBe("SAFE");
 
+    const cautionRuntime = {
+      ...normalRuntime,
+      loss_state: "CAUTION",
+    } as unknown as RuntimeStatusReadModel;
+    expect(resolveSurvivalState(cautionRuntime, readySystem)).toBe("CAUTION");
+
     // 4. Null state returns UNKNOWN
     expect(resolveSurvivalState(null, null)).toBe("UNKNOWN");
   });

@@ -19,6 +19,7 @@ import type {
   SystemReadModel,
 } from "./types";
 import { ROUTES } from "./types";
+import type { OperatorIntelligenceSnapshot } from "./operator-intelligence";
 
 export class ApiError extends Error {
   constructor(
@@ -101,6 +102,10 @@ export function createApiClient(options?: ClientOptions) {
     getRuntimeStatus: () => request<RuntimeStatusReadModel>(ROUTES.runtimeStatus, { method: "GET" }, opts),
     runtimeCommand: (body: RuntimeCommandRequest) =>
       request<RuntimeCommandResult>(ROUTES.runtimeCommand, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
+    getOperatorIntelligence: () =>
+      request<OperatorIntelligenceSnapshot>(ROUTES.operatorIntelligence, { method: "GET" }, opts),
+    operatorIntelligenceStreamUrl: () =>
+      `${resolveBaseUrl(opts)}${ROUTES.operatorIntelligenceStream}`,
     streamUrl: () => `${resolveBaseUrl(opts)}${ROUTES.stream}`,
   };
 }

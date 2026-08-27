@@ -16,7 +16,15 @@ export type PortfolioBrainOutcome = "ALLOW" | "ALLOW_REDUCED" | "DEFER" | "DENY"
 
 export type A04Outcome = "ALLOW" | "DENY" | "UNKNOWN";
 
-export type DirectionType = "LONG" | "SHORT" | "CALL" | "PUT" | "INCREASE" | "REDUCE";
+export type DirectionType =
+  | "BUY"
+  | "SELL"
+  | "LONG"
+  | "SHORT"
+  | "CALL"
+  | "PUT"
+  | "INCREASE"
+  | "REDUCE";
 
 export type EventualOutcomeType = "WIN" | "LOSS" | "SCRATCH" | "OPEN" | "UNKNOWN";
 
@@ -125,6 +133,7 @@ export interface EdgeLedgerEntry {
   theta_cost: number | null;
   execution_uncertainty: number | null;
   calibration_uncertainty: number | null;
+  calibration_health?: "HEALTHY" | "DEGRADED" | "INVALID" | "UNKNOWN";
   expected_net_value: number | null;
   portfolio_penalty: number | null;
   approved_capital: string | null;

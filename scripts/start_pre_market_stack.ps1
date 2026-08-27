@@ -16,6 +16,7 @@ if ((& $node --version) -ne 'v24.19.0') { throw 'NODE_VERSION_MISMATCH' }
 if ((& $corepack pnpm --version) -ne '11.9.0') { throw 'PNPM_VERSION_MISMATCH' }
 if (-not (Test-Path -LiteralPath $harnessBin)) { throw 'HARNESS_BINARY_MISSING' }
 $env:Path = $NodeRoot + [IO.Path]::PathSeparator + $env:Path
+$env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 $backend = Start-Process -FilePath 'uv' -ArgumentList @(

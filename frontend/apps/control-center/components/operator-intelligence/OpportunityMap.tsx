@@ -214,7 +214,7 @@ export function OpportunityMap({
               opacity={0.5}
             />
             <text x={xMid + 10} y={padding.top + plotHeight - 12} fontSize="10" fill="#3b82f6" fontWeight="600">
-              High Conviction / Normal Asymmetry (Directional Spreads)
+              High Conviction / Normal Asymmetry (Directional Long Options)
             </text>
 
             {/* 4. High Conviction / High Convexity (Prime Opportunities) */}

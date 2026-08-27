@@ -34,6 +34,16 @@ def test_operator_survival_state_resolution() -> None:
     assert state == OperatorSurvivalState.SAFE
     assert "FEED_DEGRADED" in reasons
 
+    state, reasons = resolve_operator_survival_state(
+        loss_state="CAUTION",
+        effective_mode="NORMAL",
+        feed_healthy=True,
+        broker_healthy=True,
+        system_state="READY",
+    )
+    assert state == OperatorSurvivalState.CAUTION
+    assert reasons == ("LOSS_CAUTION",)
+
     # 5. Normal mode
     state, reasons = resolve_operator_survival_state(
         effective_mode="NORMAL",

@@ -38,7 +38,7 @@ export function OperatorIntelligenceView({
 
   const scenarioList: Array<{ id: FixtureScenarioId; label: string }> = [
     { id: "NORMAL_QUIET_MARKET", label: "1. NORMAL Quiet Market Baseline" },
-    { id: "HIGH_CONVICTION_CANDIDATE", label: "2. HIGH_CONVICTION Candidate (Bull Call Spread)" },
+    { id: "HIGH_CONVICTION_CANDIDATE", label: "2. HIGH_CONVICTION Candidate (Long CE)" },
     { id: "HYPOTHETICAL_CONVEX_CANDIDATE", label: "3. Hypothetical CONVEX Candidate (OTM Tail)" },
     { id: "HYPOTHETICAL_RARE_EVENT_CANDIDATE", label: "4. Hypothetical RARE_EVENT Candidate (Gap Trigger)" },
     { id: "SAFE_DUE_DRAWDOWN", label: "5. SAFE Due Drawdown (-1.8% Auto De-escalation)" },

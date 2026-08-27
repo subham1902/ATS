@@ -6,6 +6,8 @@ from collections.abc import AsyncIterator
 
 from starlette.requests import Request
 
+from ats.observability.operator_provider import OperatorIntelligenceProvider
+
 from .models import StreamEvent
 from .providers import ControlPlaneReader
 
@@ -27,4 +29,15 @@ async def iter_sse(request: Request, reader: ControlPlaneReader) -> AsyncIterato
         yield serialize_sse(event)
 
 
-__all__ = ["iter_sse", "serialize_sse"]
+async def iter_operator_sse(
+    request: Request,
+    provider: OperatorIntelligenceProvider,
+) -> AsyncIterator[str]:
+    """Forward canonical material events without back-pressuring their producers."""
+    async for event in provider.stream():
+        if await request.is_disconnected():
+            return
+        yield serialize_sse(event)
+
+
+__all__ = ["iter_operator_sse", "iter_sse", "serialize_sse"]

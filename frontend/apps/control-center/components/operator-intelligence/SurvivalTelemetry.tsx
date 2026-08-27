@@ -49,14 +49,16 @@ export function resolveSurvivalState(
 
   if (
     runtime?.trading_mode?.effective === "SAFE" ||
-    runtime?.loss_state === "CAUTION" ||
-    system?.loss_state === "CAUTION" ||
     !runtime?.feed_healthy ||
     !runtime?.broker_healthy ||
     system?.system_state === "DEGRADED" ||
     system?.reconciliation_active
   ) {
     return "SAFE";
+  }
+
+  if (runtime?.loss_state === "CAUTION" || system?.loss_state === "CAUTION") {
+    return "CAUTION";
   }
 
   if (

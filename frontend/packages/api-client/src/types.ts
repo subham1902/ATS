@@ -303,5 +303,7 @@ export const ROUTES = {
   agentChat: "/v1/agent-chat",
   runtimeStatus: "/v1/runtime/status",
   runtimeCommand: "/v1/runtime/command",
+  operatorIntelligence: "/v1/operator-intelligence",
+  operatorIntelligenceStream: "/v1/operator-intelligence/stream",
   stream: "/v1/stream",
 } as const;
