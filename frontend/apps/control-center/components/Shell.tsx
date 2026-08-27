@@ -13,13 +13,25 @@ export function Shell({ children, systemState: _legacySystemState, sseStatus: _l
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   const closePalette = useCallback(() => setPaletteOpen(false), []);
   useEffect(() => {
-    const stored = window.localStorage.getItem("ats.sidebar.collapsed");
-    if (stored !== null) setCollapsed(stored === "true");
+    try {
+      const stored = typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("ats.sidebar.collapsed") : null;
+      if (stored !== null && stored !== undefined) setCollapsed(stored === "true");
+    } catch {
+      // Ignore storage access errors in test/headless environments
+    }
     const onKeyDown = (event: KeyboardEvent) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setPaletteOpen(true); } };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-  const toggle = () => setCollapsed((value) => { const next = !value; window.localStorage.setItem("ats.sidebar.collapsed", String(next)); return next; });
+  const toggle = () => setCollapsed((value) => {
+    const next = !value;
+    try {
+      if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem("ats.sidebar.collapsed", String(next));
+    } catch {
+      // Ignore
+    }
+    return next;
+  });
   return <div className="ats-shell" data-collapsed={collapsed}>
     <a href="#main" className="ats-skip">Skip to content</a>
     <GlobalOperatorBar onOpenPalette={openPalette} />

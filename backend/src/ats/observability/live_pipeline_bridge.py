@@ -44,6 +44,9 @@ class LivePipelineCounters:
     scanner_observations: int = 0
     feature_bundles: int = 0
     regime_evaluations: int = 0
+    calibration_evaluations: int = 0
+    r10_evaluations: int = 0
+    r10x_evaluations: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
     candidates_qualified: int = 0
@@ -143,6 +146,9 @@ class LivePipelineBridge:
             "scanner_observations": self.counters.scanner_observations,
             "feature_bundles": self.counters.feature_bundles,
             "regime_evaluations": self.counters.regime_evaluations,
+            "calibration_evaluations": self.counters.calibration_evaluations,
+            "r10_evaluations": self.counters.r10_evaluations,
+            "r10x_evaluations": self.counters.r10x_evaluations,
             "candidates_considered": self.counters.candidates_considered,
             "candidates_rejected": self.counters.candidates_rejected,
             "candidates_qualified": self.counters.candidates_qualified,

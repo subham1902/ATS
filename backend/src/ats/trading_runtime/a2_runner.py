@@ -22,11 +22,13 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from ats.contracts.common import SystemClock, UTCDateTime
+from ats.contracts.domain import MarketSnapshot
 from ats.contracts.domain.types import (
     LossState,
 )
 from ats.contracts.governance.models import OpportunityCandidate
 from ats.intelligence.calibration.models import CalibrationObservation
+from ats.intelligence.harness.models import MaterialAgentEvent
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.providers.models import SourceFreshness
 from ats.market.feeds.upstox_v3.instrument_keys import (
@@ -145,6 +147,7 @@ class PipelineCounters:
     calibration_evaluations: int = 0
     r10_evaluations: int = 0
     r10x_evaluations: int = 0
+    scanner_observations: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
     candidates_qualified: int = 0
@@ -309,6 +312,14 @@ class A2PaperSessionController:
         self._pipeline_counters = PipelineCounters()
         self._last_event_time: UTCDateTime | None = None
 
+        # Autonomous scanner scheduling & state
+        self._last_scanned_state_id: str | None = None
+        self._scan_in_flight: bool = False
+        self._calibration_observations_provider: Any = None
+        self._last_detected_regime: str | None = None
+        self._consecutive_rejections: int = 0
+        self._snapshot_history: dict[str, list[MarketSnapshot]] = {}
+
         # Background loop task
         self._stop_event = asyncio.Event()
         self._loop_task: asyncio.Task[None] | None = None
@@ -370,6 +381,120 @@ class A2PaperSessionController:
 
         return self._upstox_feed
 
+    def _compute_decision_state_id(self, now: UTCDateTime) -> str | None:
+        """Compute canonical deterministic identity of the current decision-ready state."""
+        marks: list[tuple[str, str]] = []
+        for und in self.config.underlyings:
+            mark = self._market_feed.latest_mark(und)
+            if mark is None:
+                return None
+            marks.append((und, str(mark)))
+        offset = now.minute % 5
+        from datetime import timedelta
+
+        bar_ts = now - timedelta(
+            minutes=offset,
+            seconds=now.second,
+            microseconds=now.microsecond,
+        )
+        sorted_marks = tuple(sorted(marks))
+        return f"{bar_ts.isoformat()}|{sorted_marks}"
+
+    def _maybe_scan_decision_ready_state(
+        self, now: UTCDateTime | None = None
+    ) -> dict[str, Any] | None:
+        """Evaluate autonomous scanner if a new decision-ready market state exists."""
+        if self._state is not A2SessionState.RUNNING or self._engine is None:
+            return None
+        if self._scan_in_flight:
+            return None
+
+        eval_now = now or SystemClock().now()
+
+        # Feed must be healthy to scan
+        if not self._market_feed.is_healthy():
+            return None
+
+        # Check if all underlyings have fresh data
+        for und in self.config.underlyings:
+            if not self._market_feed.data_fresh(
+                und, now=eval_now, max_age_ms=self.config.max_quote_age_ms
+            ):
+                return None
+
+        state_id = self._compute_decision_state_id(eval_now)
+        if state_id is None or state_id == self._last_scanned_state_id:
+            return None
+
+        self._scan_in_flight = True
+        self._last_scanned_state_id = state_id
+        try:
+            cal_obs = ()
+            if callable(self._calibration_observations_provider):
+                try:
+                    cal_obs = self._calibration_observations_provider() or ()
+                except Exception:
+                    cal_obs = ()
+            return self.scan_market_for_candidates(
+                calibration_observations=cal_obs, now=eval_now
+            )
+        except Exception:
+            # Scanner exceptions are isolated and must never crash P0 safety or event loop
+            return None
+        finally:
+            self._scan_in_flight = False
+
+    def notify_material_event(
+        self,
+        event_type: str,
+        summary: str,
+        *,
+        evidence_refs: tuple[UUID, ...] = (),
+        now: UTCDateTime | None = None,
+    ) -> None:
+        """Route a material runtime event to the advisory-only Harness (non-blocking)."""
+        if self._harness_integration is None:
+            return
+        try:
+            event = MaterialAgentEvent(
+                event_type=event_type,
+                occurred_at=now or SystemClock().now(),
+                summary=summary,
+                evidence_refs=evidence_refs or (uuid4(),),
+            )
+            if hasattr(self._harness_integration, "route_material_event"):
+                self._harness_integration.route_material_event(event)
+        except Exception:
+            pass  # Harness is advisory only; failures must never affect trading runtime
+
+    def set_calibration_observations_provider(self, provider: Any) -> None:
+        """Set a callable provider returning calibration observations (for testing/replay)."""
+        self._calibration_observations_provider = provider
+
+    def _sync_live_pipeline_bridge(self) -> None:
+        """Sync internal truthful pipeline counters to live pipeline bridge for API/dashboard."""
+        c = self._live_pipeline_bridge.counters
+        c.scanner_observations = self._pipeline_counters.scanner_observations
+        c.feature_bundles = self._pipeline_counters.feature_bundles
+        c.regime_evaluations = self._pipeline_counters.regime_evaluations
+        c.calibration_evaluations = self._pipeline_counters.calibration_evaluations
+        c.r10_evaluations = self._pipeline_counters.r10_evaluations
+        c.r10x_evaluations = self._pipeline_counters.r10x_evaluations
+        c.candidates_considered = self._pipeline_counters.candidates_considered
+        c.candidates_rejected = self._pipeline_counters.candidates_rejected
+        c.candidates_qualified = self._pipeline_counters.candidates_qualified
+        c.portfolio_brain_decisions = (
+            self._pipeline_counters.portfolio_brain_allow
+            + self._pipeline_counters.portfolio_brain_reduced
+            + self._pipeline_counters.portfolio_brain_defer
+            + self._pipeline_counters.portfolio_brain_deny
+        )
+        c.a04_decisions = (
+            self._pipeline_counters.a04_allow + self._pipeline_counters.a04_deny
+        )
+        c.paper_orders = self._pipeline_counters.paper_orders
+        c.paper_fills = self._pipeline_counters.paper_fills
+
     def start(self, *, require_token: bool = True) -> bool:
         """Start the A2 paper session synchronously."""
         if self._state in (A2SessionState.RUNNING, A2SessionState.STARTING):
@@ -377,6 +502,9 @@ class A2PaperSessionController:
 
         self._state = A2SessionState.STARTING
         self._reason_codes = []
+        self._last_scanned_state_id = None
+        self._scan_in_flight = False
+        self._consecutive_rejections = 0
 
         # 1. Token check: verify presence without printing
         token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN", "").strip()
@@ -538,9 +666,18 @@ class A2PaperSessionController:
                 pid = exit_info["position_id"]
                 self._engine.request_exit(pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR")
                 self._engine.handle_exit_fill(pid, now)
+                self.notify_material_event(
+                    "POSITION_DETERIORATION",
+                    f"Exit triggered on position {pid}: {exit_info.get('reasons', ())}",
+                    now=now,
+                )
 
         # 4. Sync runtime provider
         self._runtime_provider.update_from_engine(self._engine)
+
+        # 5. Trigger autonomous scanner if new decision-ready state exists
+        self._maybe_scan_decision_ready_state(now)
+
         return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
 
     def attach_upstox_runtime_feed(self, feed: UpstoxV3RuntimeFeed) -> None:
@@ -617,8 +754,17 @@ class A2PaperSessionController:
                 pid = exit_info["position_id"]
                 self._engine.request_exit(pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR")
                 self._engine.handle_exit_fill(pid, now)
+                self.notify_material_event(
+                    "POSITION_DETERIORATION",
+                    f"Exit triggered on position {pid}: {exit_info.get('reasons', ())}",
+                    now=now,
+                )
 
         self._runtime_provider.update_from_engine(self._engine)
+
+        # 4. Trigger autonomous scanner if new decision-ready state exists
+        self._maybe_scan_decision_ready_state(now)
+
         return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
 
     def evaluate_and_execute_candidate(
@@ -816,6 +962,8 @@ class A2PaperSessionController:
         )
 
         self._runtime_provider.update_from_engine(self._engine)
+        self._consecutive_rejections = 0
+        self._sync_live_pipeline_bridge()
         return {
             "allowed": True,
             "position_id": pos_id,
@@ -839,6 +987,16 @@ class A2PaperSessionController:
         self._live_pipeline_bridge.counters.candidates_rejected += 1
         rb = self._live_pipeline_bridge.counters.rejection_reasons
         rb[category] = rb.get(category, 0) + 1
+        self._consecutive_rejections += 1
+        if self._consecutive_rejections >= 5 and self._consecutive_rejections % 5 == 0:
+            self.notify_material_event(
+                "CANDIDATE_REJECTION_CLUSTER",
+                f"Candidate rejection cluster: {self._consecutive_rejections} rejections (latest: {category})",
+            )
+
+    def seed_snapshot_history(self, underlying: str, snapshots: Any) -> None:
+        """Seed snapshot history for an underlying (used for testing/replay)."""
+        self._snapshot_history[underlying] = list(snapshots)
 
     def scan_market_for_candidates(
         self,
@@ -859,6 +1017,7 @@ class A2PaperSessionController:
 
         evaluation_time = now or SystemClock().now()
         self._pipeline_counters.market_updates_received += 1
+        self._pipeline_counters.scanner_observations += 1
 
         from uuid import uuid4
 
@@ -872,122 +1031,175 @@ class A2PaperSessionController:
             MarketIntelligencePipeline,
         )
 
-        snapshots: list[MarketSnapshot] = []
+        offset = evaluation_time.minute % 5
+        from datetime import timedelta
+
+        bar_ts = (
+            evaluation_time
+            - timedelta(
+                minutes=offset,
+                seconds=evaluation_time.second,
+                microseconds=evaluation_time.microsecond,
+            )
+        )
+
+        pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
+        last_reason_codes: tuple[str, ...] = ()
+        valid_underlyings_scanned = 0
+
         for und in self.config.underlyings:
             mark = self._market_feed.latest_mark(und)
             if mark is None:
                 continue
-            from datetime import timedelta
 
-            offset = evaluation_time.minute % 5
-            bar_ts = (
-                evaluation_time
-                - timedelta(
-                    minutes=offset,
-                    seconds=evaluation_time.second,
-                    microseconds=evaluation_time.microsecond,
+            history = self._snapshot_history.setdefault(und, [])
+            if not history or history[-1].bar_timestamp != bar_ts:
+                seq = len(history) + 1
+                snap = MarketSnapshot(
+                    schema_version="1.0",
+                    snapshot_id=uuid4(),
+                    instrument_id=und,
+                    exchange="NSE",
+                    segment="CASH",
+                    timeframe="5m",
+                    sequence=seq,
+                    bar_timestamp=bar_ts,
+                    received_at=evaluation_time,
+                    open=mark,
+                    high=mark,
+                    low=mark,
+                    close=mark,
+                    volume=Decimal("1000"),
+                    quality_state=DataQualityState.GOOD,
+                    quality_flags=(),
+                    source="feed",
+                    source_version="1.0.0",
+                    session_state=SessionState.OPEN,
+                    payload_hash="0" * 64,
                 )
-            )
-            snap = MarketSnapshot(
+                snap = snap.model_copy(update={"payload_hash": compute_payload_hash(snap)})
+                history.append(snap)
+                if len(history) > 20:
+                    history.pop(0)
+                    history = [
+                        h.model_copy(update={"sequence": idx})
+                        for idx, h in enumerate(history, start=1)
+                    ]
+                    self._snapshot_history[und] = history
+            else:
+                cur = history[-1]
+                updated_cur = cur.model_copy(
+                    update={
+                        "high": max(cur.high, mark),
+                        "low": min(cur.low, mark),
+                        "close": mark,
+                        "received_at": evaluation_time,
+                    }
+                )
+                updated_cur = updated_cur.model_copy(
+                    update={"payload_hash": compute_payload_hash(updated_cur)}
+                )
+                history[-1] = updated_cur
+
+            self._pipeline_counters.snapshots_emitted += 1
+            valid_underlyings_scanned += 1
+            latest_snap = history[-1]
+
+            ctx = MarketContext(
                 schema_version="1.0",
-                snapshot_id=uuid4(),
+                market_context_id=uuid4(),
+                instrument_spec_id=uuid4(),
                 instrument_id=und,
-                exchange="NSE",
-                segment="CASH",
                 timeframe="5m",
-                sequence=self._pipeline_counters.market_updates_received,
-                bar_timestamp=bar_ts,
-                received_at=evaluation_time,
-                open=mark,
-                high=mark,
-                low=mark,
-                close=mark,
-                volume=Decimal("0"),
-                quality_state=DataQualityState.GOOD,
-                quality_flags=(),
-                source="feed",
-                source_version="1.0.0",
+                snapshot_id=latest_snap.snapshot_id,
+                feature_bundle_id=uuid4(),
+                as_of_time=evaluation_time,
+                data_cutoff=evaluation_time,
                 session_state=SessionState.OPEN,
+                data_quality_state=DataQualityState.GOOD,
+                freshness_ms=0,
+                liquidity_state=LiquidityState.NORMAL,
+                volatility_state=VolatilityState.NORMAL,
+                higher_timeframe_context_refs=(),
+                related_market_context_refs=(),
+                cost_model_version="1.0.0",
+                input_hash="0" * 64,
                 payload_hash="0" * 64,
             )
-            snapshots.append(snap.model_copy(update={"payload_hash": compute_payload_hash(snap)}))
-            self._pipeline_counters.snapshots_emitted += 1
+            ctx = ctx.model_copy(update={"payload_hash": compute_payload_hash(ctx)})
 
-        if not snapshots:
+            self._pipeline_counters.feature_bundles += 1
+            self._pipeline_counters.regime_evaluations += 1
+            if calibration_observations:
+                self._pipeline_counters.calibration_evaluations += 1
+            self._pipeline_counters.r10_evaluations += 1
+            self._pipeline_counters.r10x_evaluations += 1
+
+            result = pipeline.evaluate(
+                snapshots=tuple(history),
+                cutoff_sequence=len(history),
+                market_context=ctx,
+                campaign_id=uuid4(),
+                strategy_id=uuid4(),
+                evaluation_time=evaluation_time,
+                calibration_observations=tuple(calibration_observations),
+            )
+
+            if result.regime is not None:
+                regime_val = str(getattr(result.regime, "regime", result.regime))
+                if self._last_detected_regime != regime_val:
+                    self._last_detected_regime = regime_val
+                    self.notify_material_event(
+                        "REGIME_CHANGE",
+                        f"Market regime transition detected: {regime_val}",
+                        now=evaluation_time,
+                    )
+
+            if result.is_actionable and result.candidate is not None:
+                from ats.portfolio.brain import ExposureDirection
+
+                direction = (
+                    ExposureDirection.BULLISH
+                    if result.direction == "BULLISH"
+                    else ExposureDirection.BEARISH
+                )
+                outcome = self.evaluate_and_execute_candidate(
+                    result.candidate,
+                    underlying=und,
+                    direction=direction,
+                    requested_capital=Decimal("50000"),
+                    requested_quantity=Decimal("50"),
+                    now=evaluation_time,
+                )
+                if outcome.get("allowed"):
+                    self.notify_material_event(
+                        "OPPORTUNITY_QUALIFIED",
+                        f"Actionable candidate qualified and submitted to PaperBroker for {result.candidate.instrument_id}",
+                        now=evaluation_time,
+                    )
+                self._sync_live_pipeline_bridge()
+                return outcome
+
+            last_reason_codes = tuple(result.reason_codes) or ("NEGATIVE_NET_EV",)
+            self._record_rejection(last_reason_codes)
+
+        if valid_underlyings_scanned == 0:
             self._record_rejection(("INVALID_REFERENCE",))
+            self._sync_live_pipeline_bridge()
             return {"considered": 0, "qualified": 0, "reason": "INVALID_REFERENCE"}
 
-        ctx = MarketContext(
-            schema_version="1.0",
-            market_context_id=uuid4(),
-            instrument_spec_id=uuid4(),
-            instrument_id=snapshots[0].instrument_id,
-            timeframe="5m",
-            snapshot_id=snapshots[0].snapshot_id,
-            feature_bundle_id=uuid4(),
-            as_of_time=evaluation_time,
-            data_cutoff=evaluation_time,
-            session_state=SessionState.OPEN,
-            data_quality_state=DataQualityState.GOOD,
-            freshness_ms=0,
-            liquidity_state=LiquidityState.NORMAL,
-            volatility_state=VolatilityState.NORMAL,
-            higher_timeframe_context_refs=(),
-            related_market_context_refs=(),
-            cost_model_version="1.0.0",
-            input_hash="0" * 64,
-            payload_hash="0" * 64,
-        )
-        ctx = ctx.model_copy(update={"payload_hash": compute_payload_hash(ctx)})
-
-        pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
-        self._pipeline_counters.feature_bundles += 1
-        self._pipeline_counters.regime_evaluations += 1
-        if calibration_observations:
-            self._pipeline_counters.calibration_evaluations += 1
-        self._pipeline_counters.r10_evaluations += 1
-        self._pipeline_counters.candidates_considered += 0  # counted in evaluate_and_execute_candidate
-
-        result = pipeline.evaluate(
-            snapshots=snapshots,
-            cutoff_sequence=len(snapshots),
-            market_context=ctx,
-            campaign_id=uuid4(),
-            strategy_id=uuid4(),
-            evaluation_time=evaluation_time,
-            calibration_observations=tuple(calibration_observations),
-        )
-
-        if not result.is_actionable or result.candidate is None:
-            self._record_rejection(tuple(result.reason_codes) or ("NEGATIVE_NET_EV",))
-            return {
-                "considered": 1,
-                "qualified": 0,
-                "reason_codes": result.reason_codes,
-            }
-
-        # A real candidate emerged: route through the governed execution path.
-        from ats.portfolio.brain import ExposureDirection
-
-        direction = (
-            ExposureDirection.BULLISH
-            if result.direction == "BULLISH"
-            else ExposureDirection.BEARISH
-        )
-        return self.evaluate_and_execute_candidate(
-            result.candidate,
-            underlying=snapshots[0].instrument_id,
-            direction=direction,
-            requested_capital=Decimal("50000"),
-            requested_quantity=Decimal("50"),
-            now=evaluation_time,
-        )
+        self._sync_live_pipeline_bridge()
+        return {
+            "considered": valid_underlyings_scanned,
+            "qualified": 0,
+            "reason_codes": last_reason_codes,
+        }
 
     async def _event_loop(self) -> None:
-        """Background loop monitoring runtime marks and session health."""
+        """Background loop monitoring runtime marks, position health, and autonomous candidate scanner."""
         while not self._stop_event.is_set():
             try:
-                if self._engine is not None:
+                if self._engine is not None and self._state is A2SessionState.RUNNING:
                     now = SystemClock().now()
                     for und in self.config.underlyings:
                         mark = self._market_feed.latest_mark(und)
@@ -1007,8 +1219,16 @@ class A2PaperSessionController:
                             if dec.should_exit_now:
                                 self._engine.request_exit(pid, now, reason_codes=dec.reason_codes, source="MONITOR")
                                 self._engine.handle_exit_fill(pid, now)
+                                self.notify_material_event(
+                                    "POSITION_DETERIORATION",
+                                    f"Exit triggered on {pos.instrument_id}: {dec.reason_codes}",
+                                    now=now,
+                                )
 
                     self._runtime_provider.update_from_engine(self._engine)
+
+                    # Autonomous candidate scanner invocation for decision-ready states
+                    self._maybe_scan_decision_ready_state(now)
             except Exception:
                 pass
             await asyncio.sleep(self.config.loop_interval_sec)

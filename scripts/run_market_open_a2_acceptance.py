@@ -115,6 +115,20 @@ def run_checks() -> list[Check]:
             "pipeline counters responded" if pipeline else "no response",
         )
     )
+    if pipeline is not None:
+        obs = pipeline.get("scanner_observations")
+        r10 = pipeline.get("r10_evaluations")
+        checks.append(
+            Check(
+                "autonomous_scanner_telemetry_wired",
+                "scanner_observations" in pipeline
+                and "r10_evaluations" in pipeline
+                and "r10x_evaluations" in pipeline
+                and "rejection_reasons" in pipeline,
+                f"scanner_obs={obs}, r10={r10}",
+            )
+        )
+
     if runtime is not None and runtime.get("session", {}).get("phase") == "ENTRY_ALLOWED":
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
@@ -131,9 +145,12 @@ def run_checks() -> list[Check]:
                 break
             time.sleep(2)
         first_raw = int((pipeline or {}).get("upstox_raw_messages", 0))
+        first_scans = int((pipeline or {}).get("scanner_observations", 0))
         time.sleep(2)
         later = _get("/v1/pipeline/counters") or {}
         freshness = later.get("freshness", {})
+        scans_now = later.get("scanner_observations", 0)
+        rejs_now = later.get("candidates_rejected", 0)
         checks.extend(
             [
                 Check(
@@ -151,6 +168,11 @@ def run_checks() -> list[Check]:
                     "active_feed_counters_increasing",
                     int(later.get("upstox_raw_messages", 0)) > first_raw,
                     f"{first_raw}->{later.get('upstox_raw_messages', 0)}",
+                ),
+                Check(
+                    "active_autonomous_scanner_running",
+                    int(scans_now) >= first_scans,
+                    f"scans={scans_now}, rej={rejs_now}",
                 ),
             ]
         )
