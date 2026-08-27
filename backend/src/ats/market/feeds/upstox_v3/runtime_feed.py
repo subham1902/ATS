@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from ats.contracts.common import ClockProtocol, SystemClock, UTCDateTime
 from ats.market.derivatives.providers.models import SourceFreshness
 from ats.market.feeds.upstox_v3.adapter import ConnectionState, UpstoxV3FeedAdapter
+from ats.market.feeds.upstox_v3.codec import FeedPayloadDecoder
 from ats.market.feeds.upstox_v3.config import (
     UpstoxFeedAuthorization,
     UpstoxFeedConfiguration,
@@ -69,7 +70,9 @@ class UpstoxV3RuntimeFeed:
     ) -> None:
         self._authorization = authorization
         self._configuration = configuration
-        self._decoder = decoder or UpstoxV3ProtobufDecoder()
+        self._decoder = cast(
+            "FeedPayloadDecoder", decoder if decoder is not None else UpstoxV3ProtobufDecoder()
+        )
         self._clock = clock or SystemClock()
         self._registry = SubscriptionRegistry()
         self._board = FeedFreshnessBoard()
@@ -106,9 +109,7 @@ class UpstoxV3RuntimeFeed:
     def connection_state(self) -> ConnectionState:
         return self._adapter.state
 
-    def register_universe(
-        self, subscriptions: tuple[Any, ...]
-    ) -> None:
+    def register_universe(self, subscriptions: tuple[Any, ...]) -> None:
         from ats.market.derivatives.option_universe import OptionUniverseSubscription
 
         for sub in subscriptions:
@@ -137,9 +138,22 @@ class UpstoxV3RuntimeFeed:
     def connect_live(self) -> None:
         if self._transport is None:
             raise RuntimeError("attach_transport must be called before connect_live")
-        self._transport.authorize_feed()
         connection = self._transport.connect()
         self._adapter.connect(connection)
+
+    def receive_live(self) -> int:
+        """Receive and ingest one frame from the attached read-only transport."""
+
+        if self._transport is None:
+            raise RuntimeError("attach_transport must be called before receive_live")
+        return self.ingest_frame(self._transport.receive())
+
+    def disconnect_live(self) -> None:
+        """Close the live market-data transport and fail freshness closed."""
+
+        self._adapter.disconnect()
+        if self._transport is not None:
+            self._transport.close()
 
     def connect_replay(self) -> None:
         """Enter LIVE state without a socket for deterministic offline ingestion."""
@@ -148,9 +162,7 @@ class UpstoxV3RuntimeFeed:
         self._adapter.connect(connection)
         self._state_for_replay = ConnectionState.LIVE
 
-    def ingest_frame(
-        self, frame: bytes | str, *, received_at: UTCDateTime | None = None
-    ) -> int:
+    def ingest_frame(self, frame: bytes | str, *, received_at: UTCDateTime | None = None) -> int:
         """Decode one binary/JSON frame and update runtime telemetry.
 
         Returns the number of normalized updates applied from this frame.

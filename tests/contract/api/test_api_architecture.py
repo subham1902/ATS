@@ -39,6 +39,7 @@ def test_api_has_no_state_mutation_or_token_authority_routes() -> None:
     post_paths = {path for path, operations in schema["paths"].items() if "post" in operations}
     assert post_paths == {
         "/v1/agent-chat",
+        "/v1/harness/advisory",
         "/v1/policies/validate",
         "/v1/runtime/command",
     }

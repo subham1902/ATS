@@ -8,10 +8,7 @@ import urllib.request
 
 from pydantic import SecretStr
 
-from ats.contracts.common import ATSBaseModel
-from ats.contracts.domain.types import NonNegativeInt
-
-from .transport import InferenceHttpResponse, InferenceTransport
+from .transport import InferenceHttpResponse
 
 
 class OllamaHttpTransport:

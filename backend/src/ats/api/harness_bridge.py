@@ -8,11 +8,20 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any
+from enum import Enum
+from typing import Any, cast
+
+from pydantic import BaseModel
 
 from ats.contracts.common import SystemClock
 
-from .harness_router import AdvisoryResponse, AgentHealthView, HarnessHealthView, HarnessStatusView, LlmProviderView
+from .harness_router import (
+    AdvisoryResponse,
+    AgentHealthView,
+    HarnessHealthView,
+    HarnessStatusView,
+    LlmProviderView,
+)
 
 
 def _now_iso() -> str:
@@ -67,20 +76,35 @@ class HarnessBridge:
 
             payload = AdvisoryEvidencePayload(
                 prompt=prompt,
-                evidence_summary=evidence_summary or "No specific evidence supplied; summarize regime and opportunity availability from general ATS state.",
+                evidence_summary=evidence_summary
+                or (
+                    "No specific evidence supplied; summarize regime and opportunity "
+                    "availability from general ATS state."
+                ),
                 as_of=as_of or _now_iso(),
                 data_cutoff=data_cutoff or _now_iso(),
                 evidence_refs=evidence_refs,
             )
             text, provider_label, meta = self.advisory_bridge.advise(payload)
             latency_ms = int((time.monotonic() - started) * 1000)
-            self._record_advisory(prompt=prompt, answer=text, provider=provider_label, latency_ms=latency_ms, evidence_refs=evidence_refs)
+            self._record_advisory(
+                prompt=prompt,
+                answer=text,
+                provider=provider_label,
+                latency_ms=latency_ms,
+                evidence_refs=evidence_refs,
+            )
             model = None
             if isinstance(meta, dict):
                 metrics = meta.get("metrics") if isinstance(meta.get("metrics"), dict) else None
                 if isinstance(metrics, dict):
                     model = metrics.get("selected_model")
-            return AdvisoryResponse(provider=provider_label, model=str(model) if model else None, latency_ms=latency_ms, answer=text)
+            return AdvisoryResponse(
+                provider=provider_label,
+                model=str(model) if model else None,
+                latency_ms=latency_ms,
+                answer=text,
+            )
         if self.ollama_provider is not None:
             from ats.intelligence.inference.advisory_llm_bridge import (
                 AdvisoryEvidencePayload,
@@ -98,58 +122,107 @@ class HarnessBridge:
             )
             advisory_prompt = build_advisory_prompt(payload)
             try:
-                result = self.ollama_provider.infer(prompt=advisory_prompt, response_type=AdvisoryStructuredResponse)
-                text = render_advisory_text(result)  # type: ignore[arg-type]
+                result = self.ollama_provider.infer(
+                    prompt=advisory_prompt, response_type=AdvisoryStructuredResponse
+                )
+                text = render_advisory_text(cast("AdvisoryStructuredResponse", result))
                 latency_ms = int((time.monotonic() - started) * 1000)
-                self._record_advisory(prompt=prompt, answer=text, provider="LOCAL_OLLAMA", latency_ms=latency_ms, evidence_refs=evidence_refs)
-                return AdvisoryResponse(provider="LOCAL_OLLAMA", model=getattr(self.ollama_provider, "_configuration", None) and getattr(self.ollama_provider._configuration, "model", None), latency_ms=latency_ms, answer=text)
+                self._record_advisory(
+                    prompt=prompt,
+                    answer=text,
+                    provider="LOCAL_OLLAMA",
+                    latency_ms=latency_ms,
+                    evidence_refs=evidence_refs,
+                )
+                return AdvisoryResponse(
+                    provider="LOCAL_OLLAMA",
+                    model=getattr(self.ollama_provider, "_configuration", None)
+                    and getattr(self.ollama_provider._configuration, "model", None),
+                    latency_ms=latency_ms,
+                    answer=text,
+                )
             except Exception:
                 pass
         latency_ms = int((time.monotonic() - started) * 1000)
-        fallback = f"SUMMARY: Advisory fallback — evidence refs: {len(evidence_refs)} | prompt: {prompt[:200]}\nAUTHORITY: ADVISORY_ONLY"
-        self._record_advisory(prompt=prompt, answer=fallback, provider="DETERMINISTIC_FALLBACK", latency_ms=latency_ms, evidence_refs=evidence_refs)
-        return AdvisoryResponse(provider="DETERMINISTIC_FALLBACK", latency_ms=latency_ms, answer=fallback)
+        fallback = (
+            f"SUMMARY: Advisory fallback — evidence refs: {len(evidence_refs)} | "
+            f"prompt: {prompt[:200]}\nAUTHORITY: ADVISORY_ONLY"
+        )
+        self._record_advisory(
+            prompt=prompt,
+            answer=fallback,
+            provider="DETERMINISTIC_FALLBACK",
+            latency_ms=latency_ms,
+            evidence_refs=evidence_refs,
+        )
+        return AdvisoryResponse(
+            provider="DETERMINISTIC_FALLBACK", latency_ms=latency_ms, answer=fallback
+        )
 
     def _harness_view(self) -> HarnessHealthView:
         now = _now_iso()
         if self.harness_adapter is not None:
             try:
                 health = self.harness_adapter.health()
-                state = getattr(getattr(health, "state", None), "value", str(getattr(health, "state", "UNKNOWN")))
+                state = getattr(
+                    getattr(health, "state", None),
+                    "value",
+                    str(getattr(health, "state", "UNKNOWN")),
+                )
+                checked_at = getattr(health, "checked_at", None)
+                checked_at_iso = getattr(checked_at, "isoformat", None)
                 return HarnessHealthView(
                     state=str(state),
-                    checked_at=getattr(health, "checked_at", now).isoformat() if hasattr(getattr(health, "checked_at", None), "isoformat") else now,
+                    checked_at=str(checked_at_iso()) if callable(checked_at_iso) else now,
                     active_sessions=int(getattr(health, "active_sessions", 0)),
                     reason_codes=tuple(getattr(health, "reason_codes", ()) or ()),
                 )
             except Exception:
                 pass
-        return HarnessHealthView(state="STOPPED", checked_at=now, active_sessions=0, reason_codes=("HARNESS_NOT_STARTED",))
+        return HarnessHealthView(
+            state="STOPPED",
+            checked_at=now,
+            active_sessions=0,
+            reason_codes=("HARNESS_NOT_STARTED",),
+        )
 
     def _llm_view(self) -> LlmProviderView | None:
         provider = self.ollama_provider
         if provider is None:
             return None
-        cfg = getattr(provider, "_configuration", None) or getattr(provider, "ollama_configuration", None)
+        cfg = getattr(provider, "_configuration", None) or getattr(
+            provider, "ollama_configuration", None
+        )
         metrics = None
         try:
-            metrics = provider.metrics  # type: ignore[union-attr]
+            metrics = provider.metrics
         except Exception:
             metrics = None
-        md = metrics.model_dump(mode="json") if hasattr(metrics, "model_dump") else (metrics if isinstance(metrics, dict) else {})
+        md = (
+            metrics.model_dump(mode="json")
+            if isinstance(metrics, BaseModel)
+            else (metrics if isinstance(metrics, dict) else {})
+        )
         md = md if isinstance(md, dict) else {}
-        endpoint = getattr(cfg, "endpoint", "http://127.0.0.1:11434") if cfg is not None else "http://127.0.0.1:11434"
+        endpoint = (
+            getattr(cfg, "endpoint", "http://127.0.0.1:11434")
+            if cfg is not None
+            else "http://127.0.0.1:11434"
+        )
         primary = getattr(cfg, "model", "qwen3:14b") if cfg is not None else "qwen3:14b"
         fallback = getattr(cfg, "fallback_model", None) if cfg is not None else "qwen2.5:14b"
         availability = md.get("availability") if isinstance(md, dict) else None
-        if hasattr(availability, "value"):
+        if isinstance(availability, Enum):
             availability = availability.value
         return LlmProviderView(
             provider="LOCAL_OLLAMA",
             primary_model=str(primary),
             fallback_model=str(fallback) if fallback else None,
             endpoint=str(endpoint),
-            health="HEALTHY" if md.get("availability", "AVAILABLE") in ("AVAILABLE", None) or availability == "AVAILABLE" else str(availability or "UNKNOWN"),
+            health="HEALTHY"
+            if md.get("availability", "AVAILABLE") in ("AVAILABLE", None)
+            or availability == "AVAILABLE"
+            else str(availability or "UNKNOWN"),
             availability=str(availability) if availability else None,
             last_latency_ms=getattr(provider, "last_latency_ms", None),
             last_error_code=getattr(provider, "last_error_code", None),
@@ -171,7 +244,7 @@ class HarnessBridge:
                 return ()
         views: list[AgentHealthView] = []
         try:
-            for agent_type, policy in registry.items():
+            for agent_type, _policy in registry.items():
                 name = getattr(agent_type, "value", str(agent_type))
                 model = getattr(self.ollama_provider, "_configuration", None)
                 model_name = getattr(model, "model", None) if model is not None else None
@@ -188,7 +261,15 @@ class HarnessBridge:
             return tuple(views)
         return tuple(views)
 
-    def _record_advisory(self, *, prompt: str, answer: str, provider: str, latency_ms: int, evidence_refs: tuple[str, ...]) -> None:
+    def _record_advisory(
+        self,
+        *,
+        prompt: str,
+        answer: str,
+        provider: str,
+        latency_ms: int,
+        evidence_refs: tuple[str, ...],
+    ) -> None:
         now = _now_iso()
         self._last_advisory_at = now
         self._last_advisory_latency_ms = latency_ms

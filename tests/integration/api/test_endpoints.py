@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -173,9 +174,25 @@ def test_safe_autonomy_activity_and_sse_visibility() -> None:
     activity = x["client"].get("/v1/activity")
     assert activity.status_code == 200
     assert activity.json()["replay_supported"] is False
-    stream = x["client"].get("/v1/stream")
-    assert stream.status_code == 200
-    assert stream.headers["content-type"].startswith("text/event-stream")
+    class DisconnectAfterFirstEvent:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def is_disconnected(self) -> bool:
+            self.calls += 1
+            return self.calls > 1
+
+    route = next(
+        route for route in x["app"].routes if getattr(route, "path", None) == "/v1/stream"
+    )
+    stream = route.endpoint(DisconnectAfterFirstEvent(), x["reader"])
+    assert stream.media_type == "text/event-stream"
     assert stream.headers["x-ats-replay-supported"] == "false"
-    assert "event: RISK_EVALUATED" in stream.text
-    assert "command" not in stream.text.lower()
+
+    async def consume() -> str:
+        chunks = [chunk async for chunk in stream.body_iterator]
+        return "".join(chunk.decode() if isinstance(chunk, bytes) else chunk for chunk in chunks)
+
+    body = asyncio.run(consume())
+    assert "event: RISK_EVALUATED" in body
+    assert "command" not in body.lower()

@@ -9,13 +9,15 @@ sanitized — no prompt/content beyond bounded echo, no credential leakage.
 
 from __future__ import annotations
 
-import time
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import Field
 
 from ats.contracts.common import ATSBaseModel
+
+if TYPE_CHECKING:
+    from .harness_bridge import HarnessBridge
 
 
 class HarnessHealthView(ATSBaseModel):
@@ -110,20 +112,33 @@ def get_harness_status(request: Request) -> HarnessStatusView:
                 "REAL_ORDERS_PLACED": "0",
             },
         )
-    return bridge.status_view()
+    return cast("HarnessBridge", bridge).status_view()
 
 
 @router.post("/advisory", response_model=AdvisoryResponse)
 def post_harness_advisory(body: AdvisoryRequest, request: Request) -> AdvisoryResponse:
     bridge = _harness_bridge(request)
     if bridge is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="harness bridge not attached")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="harness bridge not attached"
+        )
     try:
-        return bridge.advisory(prompt=body.prompt, evidence_summary=body.evidence_summary, evidence_refs=tuple(body.evidence_refs), as_of=body.as_of, data_cutoff=body.data_cutoff)
+        return cast("HarnessBridge", bridge).advisory(
+            prompt=body.prompt,
+            evidence_summary=body.evidence_summary,
+            evidence_refs=tuple(body.evidence_refs),
+            as_of=body.as_of,
+            data_cutoff=body.data_cutoff,
+        )
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"HARNESS_UNAVAILABLE: {type(error).__name__}") from error
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"HARNESS_UNAVAILABLE: {type(error).__name__}",
+        ) from error
 
 
 @router.get("/agents", response_model=tuple[AgentHealthView, ...])
@@ -131,7 +146,7 @@ def get_harness_agents(request: Request) -> tuple[AgentHealthView, ...]:
     bridge = _harness_bridge(request)
     if bridge is None:
         return ()
-    return bridge.status_view().agents
+    return cast("HarnessBridge", bridge).status_view().agents
 
 
 __all__ = ["router"]

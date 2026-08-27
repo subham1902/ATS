@@ -8,8 +8,6 @@ deterministic evidence summary — ATS safety is never compromised.
 
 from __future__ import annotations
 
-import json
-import time
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -49,8 +47,12 @@ def build_advisory_prompt(payload: AdvisoryEvidencePayload) -> str:
         "You are an ATS advisory assistant (ADVISORY_ONLY). You must NOT invent market data. "
         "Cite only supplied ATS evidence. If evidence is insufficient, say so explicitly.\n\n"
         "Respond with ONLY a JSON object with EXACTLY these keys and no others:\n"
-        '{"summary": str, "regime": str, "opportunity_status": str, "key_observations": [str], "evidence_refs_cited": [str], "confidence": "LOW"|"MEDIUM"|"HIGH", "risks_or_caveats": [str]}\n'
-        "Example: {\"summary\":\"...\",\"regime\":\"...\",\"opportunity_status\":\"...\",\"key_observations\":[],\"evidence_refs_cited\":[],\"confidence\":\"LOW\",\"risks_or_caveats\":[]}\n\n"
+        '{"summary": str, "regime": str, "opportunity_status": str, '
+        '"key_observations": [str], "evidence_refs_cited": [str], '
+        '"confidence": "LOW"|"MEDIUM"|"HIGH", "risks_or_caveats": [str]}\n'
+        'Example: {"summary":"...","regime":"...","opportunity_status":"...",'
+        '"key_observations":[],"evidence_refs_cited":[],"confidence":"LOW",'
+        '"risks_or_caveats":[]}\n\n'
         f"EVIDENCE_SUMMARY:\n{payload.evidence_summary[:6000]}\n\n"
         f"EVIDENCE_REFS: [{refs}]\n"
         f"AS_OF: {payload.as_of}\n"
@@ -70,13 +72,24 @@ def deterministic_fallback_answer(payload: AdvisoryEvidencePayload) -> AdvisoryS
             key_observations=[],
             evidence_refs_cited=[],
             confidence="LOW",
-            risks_or_caveats=["ATS evidence was not supplied; defer any action until evidence is available."],
+            risks_or_caveats=[
+                "ATS evidence was not supplied; defer any action until evidence is available."
+            ],
         )
     return AdvisoryStructuredResponse(
-        summary="ATS evidence was supplied but LLM inference was unavailable; advisory fell back to deterministic evidence summary.",
+        summary=(
+            "ATS evidence was supplied but LLM inference was unavailable; advisory "
+            "fell back to deterministic evidence summary."
+        ),
         regime="UNKNOWN — defer to deterministic regime evidence",
-        opportunity_status="NO QUALIFYING LIVE OPPORTUNITIES (deterministic fallback)" if evidence_count == 0 else f"EVIDENCE_PRESENT ({evidence_count} refs) — defer to deterministic candidate pipeline",
-        key_observations=[payload.evidence_summary[:400]] if payload.evidence_summary.strip() else [],
+        opportunity_status="NO QUALIFYING LIVE OPPORTUNITIES (deterministic fallback)"
+        if evidence_count == 0
+        else (
+            f"EVIDENCE_PRESENT ({evidence_count} refs) — defer to deterministic candidate pipeline"
+        ),
+        key_observations=[payload.evidence_summary[:400]]
+        if payload.evidence_summary.strip()
+        else [],
         evidence_refs_cited=list(payload.evidence_refs[:6]),
         confidence="LOW",
         risks_or_caveats=["LLM unavailable; ATS deterministic controls remain authoritative."],
@@ -110,7 +123,11 @@ class AdvisoryLlmBridge:
         self._deterministic = deterministic_advisor
 
     def providers(self) -> dict[str, object | None]:
-        return {"ollama": self._ollama, "openrouter": self._openrouter, "deterministic": self._deterministic}
+        return {
+            "ollama": self._ollama,
+            "openrouter": self._openrouter,
+            "deterministic": self._deterministic,
+        }
 
     def advise(self, payload: AdvisoryEvidencePayload) -> tuple[str, str, dict[str, object]]:
         prompt = build_advisory_prompt(payload)
@@ -118,30 +135,56 @@ class AdvisoryLlmBridge:
             try:
                 result = self._ollama.infer(prompt=prompt, response_type=AdvisoryStructuredResponse)
                 assert isinstance(result, AdvisoryStructuredResponse)
-                metrics = _metrics_dict(self._ollama.metrics) if hasattr(self._ollama, "metrics") else {}
-                return render_advisory_text(result), "LOCAL_OLLAMA", {"provider": "LOCAL_OLLAMA", "model": getattr(metrics, "get", lambda *_: None)("selected_model") if isinstance(metrics, dict) else None, **({"metrics": metrics} if metrics else {})}
+                metrics = (
+                    _metrics_dict(self._ollama.metrics) if hasattr(self._ollama, "metrics") else {}
+                )
+                return (
+                    render_advisory_text(result),
+                    "LOCAL_OLLAMA",
+                    {
+                        "provider": "LOCAL_OLLAMA",
+                        "model": getattr(metrics, "get", lambda *_: None)("selected_model")
+                        if isinstance(metrics, dict)
+                        else None,
+                        **({"metrics": metrics} if metrics else {}),
+                    },
+                )
             except Exception:
                 pass
         if self._openrouter is not None:
             try:
-                result = self._openrouter.infer(prompt=prompt, response_type=AdvisoryStructuredResponse)
+                result = self._openrouter.infer(
+                    prompt=prompt, response_type=AdvisoryStructuredResponse
+                )
                 assert isinstance(result, AdvisoryStructuredResponse)
-                metrics = _metrics_dict(self._openrouter.metrics) if hasattr(self._openrouter, "metrics") else {}
-                return render_advisory_text(result), "OPENROUTER", {"provider": "OPENROUTER", **({"metrics": metrics} if metrics else {})}
+                metrics = (
+                    _metrics_dict(self._openrouter.metrics)
+                    if hasattr(self._openrouter, "metrics")
+                    else {}
+                )
+                return (
+                    render_advisory_text(result),
+                    "OPENROUTER",
+                    {"provider": "OPENROUTER", **({"metrics": metrics} if metrics else {})},
+                )
             except Exception:
                 pass
         fallback = deterministic_fallback_answer(payload)
-        return render_advisory_text(fallback), "DETERMINISTIC_FALLBACK", {"provider": "DETERMINISTIC_FALLBACK"}
+        return (
+            render_advisory_text(fallback),
+            "DETERMINISTIC_FALLBACK",
+            {"provider": "DETERMINISTIC_FALLBACK"},
+        )
 
 
 def _metrics_dict(metrics: object) -> dict[str, object]:
-    if hasattr(metrics, "model_dump"):
+    if isinstance(metrics, BaseModel):
         try:
-            return metrics.model_dump(mode="json")  # type: ignore[union-attr]
+            return metrics.model_dump(mode="json")
         except Exception:
             pass
     if isinstance(metrics, dict):
-        return metrics
+        return {str(key): value for key, value in metrics.items()}
     return {}
 
 

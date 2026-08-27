@@ -1,0 +1,82 @@
+Set-StrictMode -Version Latest
+
+$script:AtsRepo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$script:AtsStateRoot = Join-Path $env:TEMP 'ats-a2-live-paper'
+$script:AtsStateFile = Join-Path $script:AtsStateRoot 'processes.json'
+$script:AtsNodeRoot = 'D:\Projects\ATS\toolchains\node-v24.19.0-win-x64'
+$script:AtsHarnessRoot = 'D:\Projects\ATS\tools\deepseek-harness'
+$script:AtsHarnessCommit = 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e'
+$script:AtsRuntimeBase = 'a7658c8e95c560f1d50cf81afe8068cd8481a983'
+
+function Get-AtsUserEnvironmentValue([string]$Name) {
+    $value = [Environment]::GetEnvironmentVariable($Name, 'Process')
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $value = [Environment]::GetEnvironmentVariable($Name, 'User')
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            [Environment]::SetEnvironmentVariable($Name, $value, 'Process')
+        }
+    }
+    return $value
+}
+
+function Assert-AtsReleaseTruth {
+    $branch = (& git -C $script:AtsRepo branch --show-current).Trim()
+    if ($branch -ne 'eng/final-a2-integration') { throw "ATS_RELEASE_BRANCH_MISMATCH: $branch" }
+    & git -C $script:AtsRepo merge-base --is-ancestor $script:AtsRuntimeBase HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'ATS_RUNTIME_BASE_MISSING' }
+    $dirty = @(& git -C $script:AtsRepo status --porcelain=v1)
+    $unexpected = @($dirty | Where-Object { $_ -notmatch '^ M frontend/apps/control-center/next-env\.d\.ts$' })
+    if ($unexpected.Count -gt 0) { throw "ATS_UNEXPLAINED_DIRTY_STATE: $($unexpected -join '; ')" }
+    if ($dirty.Count -gt 0) {
+        $diff = (& git -C $script:AtsRepo diff -- frontend/apps/control-center/next-env.d.ts) -join "`n"
+        if ($diff -notmatch '\.next/dev/types/routes\.d\.ts' -or $diff -notmatch '\.next/types/routes\.d\.ts') {
+            throw 'ATS_NEXT_ENV_DIRTY_STATE_NOT_RECOGNIZED'
+        }
+    }
+}
+
+function Assert-AtsToolchain {
+    $node = Join-Path $script:AtsNodeRoot 'node.exe'
+    $corepack = Join-Path $script:AtsNodeRoot 'corepack.cmd'
+    if (-not (Test-Path -LiteralPath $node)) { throw 'ATS_NODE_24_19_0_MISSING' }
+    if ((& $node --version).Trim() -ne 'v24.19.0') { throw 'ATS_NODE_VERSION_MISMATCH' }
+    if ((& $corepack pnpm --version).Trim() -ne '11.9.0') { throw 'ATS_PNPM_VERSION_MISMATCH' }
+    if ($null -eq (Get-Command uv -ErrorAction SilentlyContinue)) { throw 'ATS_UV_MISSING' }
+    if ((& uv run --directory $script:AtsRepo python --version 2>&1) -notmatch 'Python 3\.11\.15') { throw 'ATS_PYTHON_VERSION_MISMATCH' }
+}
+
+function Assert-AtsHarness {
+    $actual = (& git -C $script:AtsHarnessRoot rev-parse HEAD).Trim()
+    if ($actual -ne $script:AtsHarnessCommit) { throw "ATS_HARNESS_PIN_MISMATCH: $actual" }
+    $binary = Join-Path $script:AtsHarnessRoot 'packages\examples\acp-demo\lib\bin.js'
+    if (-not (Test-Path -LiteralPath $binary)) { throw 'ATS_HARNESS_BINARY_MISSING' }
+}
+
+function Assert-AtsOllama {
+    $ollama = Get-Command ollama.exe -ErrorAction SilentlyContinue
+    if ($null -eq $ollama) { throw 'ATS_OLLAMA_MISSING' }
+    try { $tags = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 4 } catch { throw 'ATS_OLLAMA_OFFLINE' }
+    $models = @($tags.models | ForEach-Object { $_.name })
+    foreach ($required in @('qwen3:14b', 'qwen2.5:14b')) {
+        if ($required -notin $models) { throw "ATS_OLLAMA_MODEL_MISSING: $required" }
+    }
+}
+
+function Get-AtsChromePath {
+    $candidates = @(
+        (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+        (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
+    )
+    return $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+
+function Invoke-AtsJson([string]$Path, [int]$TimeoutSec = 4) {
+    try { return Invoke-RestMethod -Uri "http://127.0.0.1:8000$Path" -TimeoutSec $TimeoutSec -ErrorAction Stop } catch { return $null }
+}
+
+function Test-AtsStackRunning {
+    $runtime = Invoke-AtsJson '/v1/runtime/status' 2
+    try { $frontend = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3000/' -TimeoutSec 2 -ErrorAction Stop } catch { $frontend = $null }
+    return $null -ne $runtime -and $null -ne $frontend -and $frontend.StatusCode -eq 200
+}

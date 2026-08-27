@@ -14,19 +14,151 @@ import asyncio
 import os
 import sys
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
+from uuid import uuid4
 
 import uvicorn
-
 from ats.contracts.common import SystemClock
 from ats.intelligence.harness.harness_integration import attach_and_start_a2_harness
+from ats.intelligence.inference.advisory_llm_bridge import AdvisoryLlmBridge
+from ats.intelligence.inference.ollama import (
+    OllamaConfiguration,
+    OllamaInferenceProvider,
+)
+from ats.intelligence.inference.ollama_transport import OllamaHttpTransport
+from ats.market.data_acquisition.upstox_client import UpstoxReadOnlyClient
+from ats.market.derivatives.contract_master import DerivativeUnderlying
+from ats.market.derivatives.option_universe import build_dynamic_option_universe
+from ats.market.feeds.upstox_v3 import (
+    BANKNIFTY_INDEX_FEED_KEY,
+    NIFTY_INDEX_FEED_KEY,
+    UpstoxFeedAuthorization,
+    UpstoxFeedConfiguration,
+    UpstoxFeedLimits,
+    UpstoxV3FeedAuthorizer,
+    UpstoxV3Transport,
+    WireFormat,
+)
+from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
 from ats.trading_runtime.a2_runner import (
     A2PaperSessionConfig,
     A2PaperSessionController,
-    A2SessionState,
     UpstoxMarketFeedAdapter,
     create_a2_paper_app,
 )
+from ats.trading_runtime.session import (
+    RuntimeSessionPhase,
+    SessionRuntimeConfig,
+    resolve_session_status,
+)
+from pydantic import SecretStr
+
+from scripts.run_d10_live_acceptance import _extract_ltp, _fetch_reference
+
+
+class ReadOnlyUpstoxSupervisor:
+    """Own the session-aware read-only Upstox feed lifecycle for A2 Paper."""
+
+    def __init__(self, controller: A2PaperSessionController, token: str) -> None:
+        self._controller = controller
+        self._token = token
+        self._stop = asyncio.Event()
+        self._feed: UpstoxV3RuntimeFeed | None = None
+
+    async def run(self) -> None:
+        while not self._stop.is_set():
+            status = resolve_session_status(
+                calendar=self._controller._calendar,
+                config=SessionRuntimeConfig(),
+                now=SystemClock().now(),
+            )
+            if status.phase in (RuntimeSessionPhase.CLOSED, RuntimeSessionPhase.HALTED):
+                self._set_feed_health(True)
+                await self._wait(15.0)
+                continue
+            try:
+                feed = await asyncio.to_thread(self._build_feed)
+                self._feed = feed
+                self._controller.attach_upstox_runtime_feed(feed)
+                await asyncio.to_thread(feed.connect_live)
+                self._set_feed_health(True)
+                while not self._stop.is_set():
+                    await asyncio.to_thread(feed.receive_live)
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                self._set_feed_health(False)
+                print(f"Upstox read-only feed unavailable: {type(error).__name__}")
+                await self._wait(5.0)
+            finally:
+                self._disconnect()
+
+    def stop(self) -> None:
+        self._stop.set()
+        self._disconnect()
+
+    def _build_feed(self) -> UpstoxV3RuntimeFeed:
+        now = datetime.now(UTC)
+        contracts = _fetch_reference(now)
+        quote_client = UpstoxReadOnlyClient(token=self._token)
+        spots = {
+            DerivativeUnderlying.NIFTY.value: _extract_ltp(
+                quote_client.ltp(NIFTY_INDEX_FEED_KEY), NIFTY_INDEX_FEED_KEY
+            ),
+            DerivativeUnderlying.BANKNIFTY.value: _extract_ltp(
+                quote_client.ltp(BANKNIFTY_INDEX_FEED_KEY), BANKNIFTY_INDEX_FEED_KEY
+            ),
+        }
+        universe = build_dynamic_option_universe(
+            contracts=contracts,
+            spots=spots,
+            as_of=now,
+        )
+        if len(universe) != 22:
+            raise RuntimeError("DYNAMIC_OPTION_UNIVERSE_NOT_22")
+        authorization = UpstoxFeedAuthorization(bearer_token=SecretStr(self._token))
+        configuration = UpstoxFeedConfiguration(
+            wire_format=WireFormat.PROTOBUF_BINARY,
+            client_guid=str(uuid4()),
+            limits=UpstoxFeedLimits(
+                maximum_silence_ms=5_000,
+                stale_after_ms=10_000,
+                maximum_buffered_frames=32,
+                receive_timeout_ms=5_000,
+            ),
+        )
+        feed = UpstoxV3RuntimeFeed(
+            authorization=authorization,
+            configuration=configuration,
+        )
+        feed.register_universe(universe)
+        feed.attach_transport(
+            UpstoxV3Transport(
+                configuration=configuration,
+                authorizer=UpstoxV3FeedAuthorizer(authorization),
+            )
+        )
+        return feed
+
+    async def _wait(self, seconds: float) -> None:
+        try:
+            await asyncio.wait_for(self._stop.wait(), timeout=seconds)
+        except TimeoutError:
+            pass
+
+    def _disconnect(self) -> None:
+        feed, self._feed = self._feed, None
+        if feed is not None:
+            try:
+                feed.disconnect_live()
+            except Exception:
+                pass
+
+    def _set_feed_health(self, healthy: bool) -> None:
+        setter = getattr(self._controller.market_feed, "set_healthy", None)
+        if callable(setter):
+            setter(healthy)
 
 
 def run_bounded_session(
@@ -46,7 +178,8 @@ def run_bounded_session(
 
     token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN", "").strip()
     has_token = bool(token)
-    print(f"Upstox Token Auth: {'PRESENT (Protected)' if has_token else 'NOT SET (Mock/Offline mode)'}")
+    token_state = "PRESENT (Protected)" if has_token else "NOT SET (Mock/Offline mode)"
+    print(f"Upstox Token Auth: {token_state}")
 
     config = A2PaperSessionConfig(
         execution_target="PAPER",
@@ -101,11 +234,17 @@ def run_bounded_session(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ATS A2 Paper Session Launcher")
-    parser.add_argument("--duration", type=int, default=30, help="Duration in seconds for bounded session")
+    parser.add_argument(
+        "--duration", type=int, default=30, help="Duration in seconds for bounded session"
+    )
     parser.add_argument("--host", default="127.0.0.1", help="API Host")
     parser.add_argument("--port", type=int, default=8000, help="API Port")
-    parser.add_argument("--serve", action="store_true", help="Start FastAPI server with A2 controller")
-    parser.add_argument("--require-token", action="store_true", help="Require ATS_UPSTOX_ACCESS_TOKEN")
+    parser.add_argument(
+        "--serve", action="store_true", help="Start FastAPI server with A2 controller"
+    )
+    parser.add_argument(
+        "--require-token", action="store_true", help="Require ATS_UPSTOX_ACCESS_TOKEN"
+    )
     args = parser.parse_args()
 
     if args.serve:
@@ -119,6 +258,43 @@ def main() -> None:
         except Exception as e:
             print(f"Harness integration unavailable (continuing without): {e}")
         app = create_a2_paper_app(controller, require_token=args.require_token)
+        # Attach the existing local advisory provider to the Harness observability
+        # facade. This adds no authority: every response remains ADVISORY_ONLY.
+        ollama = OllamaInferenceProvider(
+            configuration=OllamaConfiguration(
+                model="qwen3:14b",
+                fallback_model="qwen2.5:14b",
+                max_tokens=256,
+                timeout_ms=90_000,
+            ),
+            transport=OllamaHttpTransport(endpoint="http://127.0.0.1:11434"),
+            monotonic_ms=lambda: int(time.monotonic() * 1000),
+            wait=lambda seconds: time.sleep(seconds),
+        )
+        bridge = getattr(app.state, "harness_bridge", None)
+        if bridge is not None:
+            bridge.ollama_provider = ollama
+            bridge.advisory_bridge = AdvisoryLlmBridge(ollama_provider=ollama)
+        app.state.ollama_provider = ollama
+        token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN", "").strip()
+        live_feed = ReadOnlyUpstoxSupervisor(controller, token) if token else None
+        live_feed_task: asyncio.Task[None] | None = None
+
+        @app.on_event("startup")  # type: ignore[misc]
+        async def _start_live_feed() -> None:
+            nonlocal live_feed_task
+            if live_feed is not None:
+                live_feed_task = asyncio.create_task(live_feed.run())
+
+        @app.on_event("shutdown")  # type: ignore[misc]
+        async def _stop_live_feed() -> None:
+            if live_feed is not None:
+                live_feed.stop()
+            if live_feed_task is not None:
+                live_feed_task.cancel()
+                await asyncio.gather(live_feed_task, return_exceptions=True)
+
+        app.state.upstox_live_feed_supervisor = live_feed
         uvicorn.run(app, host=args.host, port=args.port)
     else:
         run_bounded_session(duration_seconds=args.duration, require_token=args.require_token)

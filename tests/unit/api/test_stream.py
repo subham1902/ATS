@@ -15,6 +15,15 @@ class DisconnectRequest:
         return self.disconnected
 
 
+class DisconnectAfterFirstEvent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def is_disconnected(self) -> bool:
+        self.calls += 1
+        return self.calls > 1
+
+
 def test_sse_serialization_is_typed_and_read_only() -> None:
     x = make_api_fixture()
     rendered = serialize_sse(x["stream_event"])
@@ -37,7 +46,7 @@ def test_sse_connected_reader_preserves_provider_order() -> None:
     x = make_api_fixture()
 
     async def consume() -> list[str]:
-        return [item async for item in iter_sse(DisconnectRequest(False), x["reader"])]
+        return [item async for item in iter_sse(DisconnectAfterFirstEvent(), x["reader"])]
 
     rendered = asyncio.run(consume())
     assert len(rendered) == 1

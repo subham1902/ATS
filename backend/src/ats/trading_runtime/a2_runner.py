@@ -364,6 +364,12 @@ class A2PaperSessionController:
             agent_registry=None,
         )
 
+    @property
+    def upstox_feed(self) -> UpstoxV3RuntimeFeed | None:
+        """Return the attached read-only market-data feed for observability."""
+
+        return self._upstox_feed
+
     def start(self, *, require_token: bool = True) -> bool:
         """Start the A2 paper session synchronously."""
         if self._state in (A2SessionState.RUNNING, A2SessionState.STARTING):
@@ -443,6 +449,9 @@ class A2PaperSessionController:
 
         if self._engine is not None:
             self._runtime_provider.update_from_engine(self._engine)
+
+        if self._harness_integration is not None:
+            self._harness_integration.stop()
 
         self._state = A2SessionState.STOPPED
         self._reason_codes = ["A2_PAPER_SESSION_STOPPED"]
@@ -583,6 +592,8 @@ class A2PaperSessionController:
         # 1. Update the runtime feed mark (read by the engine for positions).
         if isinstance(self._market_feed, UpstoxMarketFeedAdapter | InMemoryMarketFeed):
             self._market_feed.set_mark(instrument_key, price, now)
+            if bridge_key != instrument_key:
+                self._market_feed.set_mark(bridge_key, price, now)
 
         # 2. Truthful pipeline telemetry (no synthetic counts).
         self._live_pipeline_bridge.record_tick(bridge_key, price, received_at=now)
@@ -1113,6 +1124,10 @@ def create_a2_paper_app(
     async def _startup() -> None:
         if session_controller.state != A2SessionState.RUNNING:
             await session_controller.start_async(require_token=require_token)
+
+    @app.on_event("shutdown")
+    async def _shutdown() -> None:
+        await session_controller.stop_async()
 
     return app
 

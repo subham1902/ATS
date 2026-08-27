@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/v1/pipeline", tags=["pipeline"])
@@ -23,7 +25,22 @@ def get_pipeline_counters(request: Request) -> dict[str, object]:
             "banknifty_last": None,
             "attached": False,
         }
-    snap = bridge.snapshot_dict()
+    snap = cast("dict[str, object]", bridge.snapshot_dict())
+    controller = getattr(request.app.state, "a2_session_controller", None)
+    feed = getattr(controller, "upstox_feed", None)
+    if feed is not None:
+        telemetry = feed.telemetry()
+        snap.update(
+            {
+                "upstox_raw_messages": telemetry["upstox_raw_messages"],
+                "normalized_messages": telemetry["normalized_updates"],
+                "fresh_messages": telemetry["fresh_updates"],
+                "subscription_count": telemetry["subscription_count"],
+                "connection_state": telemetry["connection_state"],
+            }
+        )
+    else:
+        snap.update({"subscription_count": 0, "connection_state": "DISCONNECTED"})
     snap["attached"] = True
     return snap
 

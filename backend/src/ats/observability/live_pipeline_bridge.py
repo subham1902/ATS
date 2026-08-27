@@ -7,7 +7,6 @@ remain honest: if no candidate qualifies, scanner shows qualified=0 with reasons
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Protocol
@@ -69,7 +68,9 @@ class LivePipelineBridge:
     counters: LivePipelineCounters = field(default_factory=LivePipelineCounters)
     pipeline_evaluations: int = 0
 
-    def record_tick(self, instrument_key: str, price: Decimal, *, received_at: UTCDateTime | None = None) -> None:
+    def record_tick(
+        self, instrument_key: str, price: Decimal, *, received_at: UTCDateTime | None = None
+    ) -> None:
         now = received_at or SystemClock().now()
         self.marks[instrument_key] = price
         self.counters.upstox_raw_messages += 1
@@ -81,11 +82,13 @@ class LivePipelineBridge:
         self.counters.last_updated_at = now
 
     def record_scan(self, *, fresh_count: int, stale_count: int) -> None:
-        self.counters.scanner_observations = fresh_count + stale_count
-        self.counters.fresh_messages = fresh_count
+        self.counters.scanner_observations += fresh_count + stale_count
+        self.counters.fresh_messages += fresh_count
         self.counters.last_updated_at = SystemClock().now()
 
-    def build_projection_input(self, *, as_of: UTCDateTime | None = None) -> OperatorProjectionInput:
+    def build_projection_input(
+        self, *, as_of: UTCDateTime | None = None
+    ) -> OperatorProjectionInput:
         now = as_of or SystemClock().now()
         data_cutoff = self.counters.last_updated_at or now
         instruments: list[InstrumentObservation] = []
@@ -95,7 +98,11 @@ class LivePipelineBridge:
                 freshness_map = self.board.evaluate(now)
             except Exception:
                 freshness_map = {}
-        keys = self.instrument_keys or tuple(sorted(set(list(freshness_map.keys()) + list(self.marks.keys())))) or ("NIFTY", "BANKNIFTY")
+        keys = (
+            self.instrument_keys
+            or tuple(sorted(set(list(freshness_map.keys()) + list(self.marks.keys()))))
+            or ("NIFTY", "BANKNIFTY")
+        )
         for key in keys:
             freshness = freshness_map.get(key)
             if freshness is not None:
@@ -109,10 +116,24 @@ class LivePipelineBridge:
             else:
                 state = SourceState.LIVE if key in self.marks else SourceState.UNKNOWN
             observed_at = self.counters.last_updated_at or now
-            instruments.append(InstrumentObservation(instrument_key=key, source_state=state, reference_valid=True, observed_at=observed_at))
+            instruments.append(
+                InstrumentObservation(
+                    instrument_key=key,
+                    source_state=state,
+                    reference_valid=True,
+                    observed_at=observed_at,
+                )
+            )
         candidates: tuple[CandidateObservation, ...] = ()
         agents: tuple[AgentObservation, ...] = ()
-        return OperatorProjectionInput(as_of=now, data_cutoff=data_cutoff, instruments=tuple(instruments), candidates=candidates, agents=agents, provenance=ProvenanceType.LIVE)
+        return OperatorProjectionInput(
+            as_of=now,
+            data_cutoff=data_cutoff,
+            instruments=tuple(instruments),
+            candidates=candidates,
+            agents=agents,
+            provenance=ProvenanceType.LIVE,
+        )
 
     def snapshot_dict(self) -> dict[str, Any]:
         return {

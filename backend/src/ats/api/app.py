@@ -22,6 +22,7 @@ from ats.observability.operator_intelligence import OperatorIntelligenceSnapshot
 from ats.observability.operator_provider import OperatorIntelligenceProvider
 
 from .chat import AgentChatHttpRequest, build_control_plane_chat
+from .harness_router import router as harness_router
 from .models import (
     ActivityPage,
     AdvisoryReadModel,
@@ -40,7 +41,6 @@ from .models import (
     RiskDecisionReadModel,
     SystemReadModel,
 )
-from .harness_router import router as harness_router
 from .pipeline_router import router as pipeline_router
 from .providers import ControlPlaneReader, EmptyControlPlaneReader
 from .runtime_router import router as runtime_router

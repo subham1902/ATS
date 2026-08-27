@@ -11,6 +11,7 @@ $stateRoot = Join-Path $env:TEMP 'ats-a2-live-paper'
 $stateFile = Join-Path $stateRoot 'processes.json'
 $node = Join-Path $NodeRoot 'node.exe'
 $corepack = Join-Path $NodeRoot 'corepack.cmd'
+$harnessBin = Join-Path $HarnessRoot 'packages\examples\acp-demo\lib\bin.js'
 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host " ATS A2 LIVE-PAPER MARKET-OPEN LAUNCHER (READ-ONLY MARKET DATA)" -ForegroundColor Cyan
@@ -22,22 +23,33 @@ Write-Host " Harness          : ADVISORY_ONLY (GOVERNOR-GATED)" -ForegroundColor
 Write-Host "----------------------------------------------------------------" -ForegroundColor Gray
 
 if (-not (Test-Path -LiteralPath $node)) { throw 'NODE_BINARY_MISSING' }
+if ((& $node --version).Trim() -ne 'v24.19.0') { throw 'NODE_VERSION_MISMATCH' }
+if ((& $corepack pnpm --version).Trim() -ne '11.9.0') { throw 'PNPM_VERSION_MISMATCH' }
+if (-not (Test-Path -LiteralPath $harnessBin)) { throw 'HARNESS_BINARY_MISSING' }
+if ((& git -C $HarnessRoot rev-parse HEAD).Trim() -ne 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e') { throw 'HARNESS_COMMIT_MISMATCH' }
+$hasToken = -not [string]::IsNullOrWhiteSpace($env:ATS_UPSTOX_ACCESS_TOKEN)
+if ($RequireToken -and -not $hasToken) { throw 'ATS_UPSTOX_ACCESS_TOKEN_REQUIRED_BUT_MISSING' }
+$existing = @(Get-NetTCPConnection -State Listen -LocalPort 8000,3000 -ErrorAction SilentlyContinue)
+if ($existing.Count -gt 0) { throw 'ATS_PORT_ALREADY_IN_USE' }
+if (Test-Path -LiteralPath $stateFile) { throw 'ATS_STATE_FILE_ALREADY_EXISTS' }
 $env:Path = $NodeRoot + [IO.Path]::PathSeparator + $env:Path
 $env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 # 1. Launch Backend A2 Paper Session (serves /v1/* including runtime/harness/pipeline)
 #    The backend manages the pinned DeepSeek Harness sidecar internally.
-$backend = Start-Process -FilePath 'uv' -ArgumentList @(
+$backendArguments = @(
     'run', '--with', 'uvicorn==0.40.0', 'python', (Join-Path $repo 'scripts\run_a2_paper_session.py'),
     '--serve', '--host', '127.0.0.1', '--port', '8000'
-) -WorkingDirectory $repo -WindowStyle Hidden -PassThru `
+)
+if ($RequireToken) { $backendArguments += '--require-token' }
+$backend = Start-Process -FilePath 'uv' -ArgumentList $backendArguments -WorkingDirectory $repo -WindowStyle Hidden -PassThru `
   -RedirectStandardOutput (Join-Path $stateRoot 'backend.out.log') `
   -RedirectStandardError (Join-Path $stateRoot 'backend.err.log')
 
 # 2. Launch Next.js Control Center frontend
 $frontend = Start-Process -FilePath $corepack -ArgumentList @(
-    'pnpm', '--filter', '@ats/control-center', 'exec', 'next', 'dev', '-p', '3000'
+    'pnpm', '--filter', '@ats/control-center', 'exec', 'next', 'start', '-p', '3000', '-H', '127.0.0.1'
 ) -WorkingDirectory $repo -WindowStyle Hidden -PassThru `
   -RedirectStandardOutput (Join-Path $stateRoot 'frontend.out.log') `
   -RedirectStandardError (Join-Path $stateRoot 'frontend.err.log')
@@ -51,7 +63,15 @@ $frontend = Start-Process -FilePath $corepack -ArgumentList @(
     real_orders_placed = 0
 } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
 
-Start-Sleep -Seconds 8
+$deadline = (Get-Date).AddSeconds(45)
+do {
+    Start-Sleep -Milliseconds 500
+    $backendReady = $false
+    $frontendReady = $false
+    try { $backendReady = (Invoke-RestMethod -Uri 'http://127.0.0.1:8000/health/live' -TimeoutSec 2).status -eq 'LIVE' } catch {}
+    try { $frontendReady = (Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3000/' -TimeoutSec 2).StatusCode -eq 200 } catch {}
+} while ((-not $backendReady -or -not $frontendReady) -and (Get-Date) -lt $deadline)
+if (-not $backendReady -or -not $frontendReady) { throw 'ATS_STARTUP_HEALTH_TIMEOUT' }
 
 function Get-ListenerOwner([int]$Port) {
     $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)

@@ -6,12 +6,12 @@ import json
 from collections.abc import Callable
 from typing import Literal, TypeVar
 
-from pydantic import BaseModel, Field, ValidationError, SecretStr
+from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 from ats.contracts.common import ATSBaseModel, FiniteFloat
-from ats.contracts.domain.types import NonEmptyStr, NonNegativeInt, PositiveInt
+from ats.contracts.domain.types import NonEmptyStr, PositiveInt
 
-from .models import InferenceMetrics, ModelAvailability, OpenRouterError, ReasoningMode
+from .models import InferenceMetrics, ModelAvailability, OpenRouterError
 from .transport import InferenceHttpResponse, InferenceTransport
 
 ResponseT = TypeVar("ResponseT", bound=BaseModel)
@@ -19,9 +19,9 @@ ResponseT = TypeVar("ResponseT", bound=BaseModel)
 
 class OllamaConfiguration(ATSBaseModel):
     provider: Literal["LOCAL_OLLAMA"] = "LOCAL_OLLAMA"
-    endpoint: NonEmptyStr = "http://127.0.0.1:11434"  # type: ignore[assignment]
-    model: NonEmptyStr = "qwen3:14b"  # type: ignore[assignment]
-    fallback_model: NonEmptyStr | None = "qwen2.5:14b"  # type: ignore[assignment]
+    endpoint: NonEmptyStr = "http://127.0.0.1:11434"
+    model: NonEmptyStr = "qwen3:14b"
+    fallback_model: NonEmptyStr | None = "qwen2.5:14b"
     max_tokens: PositiveInt = 1024
     timeout_ms: PositiveInt = 90_000
     temperature: FiniteFloat = Field(default=0.0, ge=0.0, le=2.0)
@@ -119,14 +119,23 @@ class OllamaInferenceProvider:
                 return result
             except OpenRouterError as error:
                 last_error = error
-                if error.code in ("TIMEOUT", "PROVIDER_UNAVAILABLE", "RATE_LIMITED", "ATTEMPTS_EXHAUSTED", "MALFORMED_STRUCTURED_OUTPUT", "MODEL_NOT_AVAILABLE"):
+                if error.code in (
+                    "TIMEOUT",
+                    "PROVIDER_UNAVAILABLE",
+                    "RATE_LIMITED",
+                    "ATTEMPTS_EXHAUSTED",
+                    "MALFORMED_STRUCTURED_OUTPUT",
+                    "MODEL_NOT_AVAILABLE",
+                ):
                     if idx + 1 < len(models):
                         continue
                 raise
         assert last_error is not None
         raise last_error
 
-    def _infer_with_model(self, prompt: str, response_type: type[ResponseT], model: str) -> ResponseT:
+    def _infer_with_model(
+        self, prompt: str, response_type: type[ResponseT], model: str
+    ) -> ResponseT:
         self._requests += 1
         started = self._monotonic_ms()
         try:
@@ -173,25 +182,33 @@ class OllamaInferenceProvider:
             self._total_latency_ms += elapsed
             self._last_latency_ms = elapsed
 
-    def _payload(self, prompt: str, response_type: type[BaseModel], model: str) -> dict[str, object]:
+    def _payload(
+        self, prompt: str, response_type: type[BaseModel], model: str
+    ) -> dict[str, object]:
         schema = response_type.model_json_schema()
         if self._configuration.supports_chat_api:
             return {
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "format": "json",
+                "format": schema,
                 "think": False,
-                "options": {"num_predict": self._configuration.max_tokens, "temperature": self._configuration.temperature},
+                "options": {
+                    "num_predict": self._configuration.max_tokens,
+                    "temperature": self._configuration.temperature,
+                },
                 "_ollama_path": "/api/chat",
             }
         return {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "format": "json",
+            "format": schema,
             "think": False,
-            "options": {"num_predict": self._configuration.max_tokens, "temperature": self._configuration.temperature},
+            "options": {
+                "num_predict": self._configuration.max_tokens,
+                "temperature": self._configuration.temperature,
+            },
             "_ollama_path": "/api/generate",
         }
 
@@ -201,7 +218,9 @@ class OllamaInferenceProvider:
         if isinstance(document.get("message"), dict):
             content = document["message"].get("content")
         if content is None:
-            content = document.get("response") if isinstance(document.get("response"), str) else None
+            content = (
+                document.get("response") if isinstance(document.get("response"), str) else None
+            )
         if not isinstance(content, str):
             raise ValueError("missing structured content from Ollama")
         content_stripped = content.strip()
@@ -240,7 +259,11 @@ class OllamaInferenceProvider:
                             filtered[key] = []
                         elif not isinstance(filtered[key], list):
                             filtered[key] = [str(filtered[key])]
-                    if "confidence" not in filtered or filtered["confidence"] not in ("LOW", "MEDIUM", "HIGH"):
+                    if "confidence" not in filtered or filtered["confidence"] not in (
+                        "LOW",
+                        "MEDIUM",
+                        "HIGH",
+                    ):
                         filtered["confidence"] = "LOW"
                     return response_type.model_validate(filtered)
             except Exception:
@@ -254,7 +277,9 @@ class OllamaInferenceProvider:
             self._completion_tokens += _non_negative_int(document.get("eval_count"))
             if "usage" in document and isinstance(document["usage"], dict):
                 self._prompt_tokens += _non_negative_int(document["usage"].get("prompt_tokens"))
-                self._completion_tokens += _non_negative_int(document["usage"].get("completion_tokens"))
+                self._completion_tokens += _non_negative_int(
+                    document["usage"].get("completion_tokens")
+                )
 
     def _retry(self, attempt: int) -> None:
         self._retries += 1

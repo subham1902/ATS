@@ -22,7 +22,12 @@ from ats.market.feeds.upstox_v3.config import (
 )
 from ats.market.feeds.upstox_v3.proto import FeedResponse
 from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
-from ats.trading_runtime.a2_runner import A2PaperSessionConfig, A2PaperSessionController
+from ats.trading_runtime.a2_runner import (
+    A2PaperSessionConfig,
+    A2PaperSessionController,
+    create_a2_paper_app,
+)
+from fastapi.testclient import TestClient
 
 
 def _config():
@@ -104,3 +109,10 @@ def test_c1_feed_attached_to_a2_runtime():
     snap = controller._live_pipeline_bridge.snapshot_dict()
     assert snap["nifty_last"] == "25012.5"
     assert snap["banknifty_last"] == "57103.25"
+
+    with TestClient(create_a2_paper_app(controller)) as client:
+        telemetry = client.get("/v1/pipeline/counters").json()
+    assert telemetry["subscription_count"] == 22
+    assert telemetry["connection_state"] == "LIVE"
+    assert telemetry["upstox_raw_messages"] == 1
+    assert telemetry["normalized_messages"] == 3
