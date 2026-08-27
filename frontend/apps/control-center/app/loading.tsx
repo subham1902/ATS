@@ -1,0 +1,2 @@
+import { LoadingState } from "../components/system/SurfaceStates";
+export default function Loading() { return <div className="ats-page" aria-label="Loading page"><div className="ats-page-heading"><div className="ats-skeleton" style={{ width: 180, height: 28 }} /></div><div className="ats-panel"><div className="ats-panel-body"><LoadingState rows={6} label="Loading operator surface" /></div></div></div>; }

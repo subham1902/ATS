@@ -1,7 +1,8 @@
 import { createApiClient } from "@ats/api-client";
 
+let client: ReturnType<typeof createApiClient> | null = null;
+
 export function getApiClient() {
-  return createApiClient({
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
-  });
+  client ??= createApiClient({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "" });
+  return client;
 }

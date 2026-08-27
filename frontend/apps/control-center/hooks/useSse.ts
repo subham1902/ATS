@@ -35,6 +35,7 @@ export function useSse() {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
+        const batch: StreamEvent[] = [];
         // Frames delimited by blank line
         let idx: number;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
@@ -42,9 +43,10 @@ export function useSse() {
           buffer = buffer.slice(idx + 2);
           const parsed = parseSseFrame(frame);
           if (parsed) {
-            setEvents((prev) => [...prev.slice(-199), parsed.data]);
+            batch.push(parsed.data);
           }
         }
+        if (batch.length) setEvents((prev) => [...prev, ...batch].slice(-200));
       }
       if (!controller.signal.aborted) {
         setStatus("disconnected");
