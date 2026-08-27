@@ -85,7 +85,7 @@ export function OperatorIntelligenceView({
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1200 }}>
+    <div className="operator-intelligence-view" style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 1440 }}>
       {/* Top Header & Provenance Controller Bar */}
       <div
         style={{
