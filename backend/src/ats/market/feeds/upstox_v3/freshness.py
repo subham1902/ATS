@@ -65,10 +65,12 @@ class KeyFreshnessLatch:
             return LatchDecision(applied=False, duplicate=True, regression=False)
         regression = False
         if previous is not None:
+            previous_ordering = previous.provider_timestamp or previous.exchange_timestamp
+            update_ordering = update.provider_timestamp or update.exchange_timestamp
             if (
-                previous.exchange_timestamp is not None
-                and update.exchange_timestamp is not None
-                and update.exchange_timestamp <= previous.exchange_timestamp
+                previous_ordering is not None
+                and update_ordering is not None
+                and update_ordering <= previous_ordering
             ):
                 regression = True
             if update.received_at < previous.received_at:
@@ -118,13 +120,13 @@ class KeyFreshnessLatch:
         assert self._last_update is not None
         if now < self._last_update.received_at:
             return True
-        exchange = self._last_update.exchange_timestamp
-        if exchange is None:
-            return True
-        if now < exchange:
-            return True
-        if (now - exchange).total_seconds() * 1000 > self._stale_after_ms:
-            return True
+        for source_timestamp in self._last_update.decision_critical_timestamps():
+            if source_timestamp is None:
+                return True
+            if now < source_timestamp:
+                return True
+            if (now - source_timestamp).total_seconds() * 1000 > self._stale_after_ms:
+                return True
         if (now - self._last_update.received_at).total_seconds() * 1000 > self._stale_after_ms:
             return True
         return False

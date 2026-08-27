@@ -156,6 +156,15 @@ class JsonFeedPayloadDecoder(BaseModel):
             kind=UpdateKind.INDEX if key.startswith("NSE_INDEX|") else UpdateKind.OPTION,
             received_at=received_at,
             exchange_timestamp=exchange_ts,
+            provider_timestamp=default_ts,
+            price_source_timestamp=exchange_ts if ltp is not None else None,
+            depth_source_timestamp=default_ts if bid is not None or ask is not None else None,
+            volume_source_timestamp=default_ts if volume is not None else None,
+            oi_source_timestamp=default_ts if open_interest is not None else None,
+            iv_source_timestamp=(
+                default_ts if evidence.get("implied_volatility") is not None else None
+            ),
+            greeks_source_timestamp=default_ts if carried_greeks else None,
             last_traded_price=ltp,
             close_price=close,
             bid_price=bid,

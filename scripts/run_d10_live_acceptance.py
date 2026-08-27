@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import math
 import os
 import statistics
 import sys
@@ -30,7 +31,6 @@ from ats.market.derivatives.acquisition import (
 )
 from ats.market.derivatives.active_window import (
     ActiveWindowPolicy,
-    MarketStateFreshness,
     build_active_option_window,
 )
 from ats.market.derivatives.contract_master import DerivativeUnderlying
@@ -65,14 +65,50 @@ _ALIASES = {
 
 @dataclass(slots=True)
 class _Metrics:
-    receive_decode_normalize_ms: list[float]
-    provider_age_ms: list[float]
+    transport_receive_wait_ms: list[float]
+    network_receive_delay_ms: list[float]
+    decode_normalize_ms: list[float]
+    source_age_ms_by_field: dict[str, list[float]]
 
     def report(self) -> dict[str, dict[str, float | int | None]]:
         return {
-            "receive_decode_normalize": _percentiles(self.receive_decode_normalize_ms),
-            "provider_age": _percentiles(self.provider_age_ms),
+            "transport_receive_wait": _percentiles(self.transport_receive_wait_ms),
+            "network_receive_delay": _percentiles(self.network_receive_delay_ms),
+            "decode_normalize": _percentiles(self.decode_normalize_ms),
+            "source_age_by_field": {
+                field: _percentiles(values)
+                for field, values in sorted(self.source_age_ms_by_field.items())
+            },
         }
+
+    def record_update(self, update, received: datetime) -> None:
+        fields = {
+            "underlying_price" if update.kind.value == "INDEX" else "option_price": (
+                update.price_source_timestamp,
+                update.last_traded_price is not None,
+            ),
+            "depth": (
+                update.depth_source_timestamp,
+                update.bid_price is not None
+                or update.ask_price is not None
+                or update.market_depth is not None,
+            ),
+            "volume": (update.volume_source_timestamp, update.volume is not None),
+            "oi": (update.oi_source_timestamp, update.open_interest is not None),
+            "iv": (update.iv_source_timestamp, update.implied_volatility is not None),
+            "greeks": (
+                update.greeks_source_timestamp,
+                any(
+                    value is not None
+                    for value in (update.delta, update.gamma, update.theta, update.vega, update.rho)
+                ),
+            ),
+        }
+        for field, (timestamp, present) in fields.items():
+            if present and timestamp is not None:
+                self.source_age_ms_by_field.setdefault(field, []).append(
+                    max(0.0, (received - timestamp).total_seconds() * 1000)
+                )
 
 
 class _LatestSnapshot:
@@ -195,6 +231,7 @@ def _build_windows(contracts, quote_client: UpstoxReadOnlyClient, now: datetime)
 def _receive_until_complete(
     transport: UpstoxV3Transport,
     adapter: UpstoxV3FeedAdapter,
+    decoder: UpstoxV3ProtobufDecoder,
     keys: tuple[str, ...],
     metrics: _Metrics,
     *,
@@ -202,23 +239,39 @@ def _receive_until_complete(
 ) -> None:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        started = time.perf_counter_ns()
+        receive_started = time.perf_counter_ns()
         payload = transport.receive()
+        receive_finished = time.perf_counter_ns()
         received = datetime.now(UTC)
-        adapter.handle_frame(payload, received_at=received)
-        metrics.receive_decode_normalize_ms.append((time.perf_counter_ns() - started) / 1_000_000)
-        for key in keys:
-            update = adapter.latest(key)
-            if update is not None and update.exchange_timestamp is not None:
-                metrics.provider_age_ms.append(
-                    max(0.0, (received - update.exchange_timestamp).total_seconds() * 1000)
+        outcome = adapter.handle_frame(payload, received_at=received)
+        decode_finished = time.perf_counter_ns()
+        metrics.transport_receive_wait_ms.append(
+            (receive_finished - receive_started) / 1_000_000
+        )
+        metrics.decode_normalize_ms.append((decode_finished - receive_finished) / 1_000_000)
+        if decoder.last_current_timestamp is not None:
+            metrics.network_receive_delay_ms.append(
+                max(
+                    0.0,
+                    (received - decoder.last_current_timestamp).total_seconds() * 1000,
                 )
+            )
+        for key in outcome.applied_updates:
+            update = adapter.latest(key)
+            if update is not None:
+                metrics.record_update(update, received)
         if all(adapter.latest(key) is not None for key in keys):
             return
     raise TimeoutError("BOUNDED_FEED_EVIDENCE_TIMEOUT")
 
 
-def _window_evidence(window, authority: InstrumentReferenceAuthority, now: datetime, adapter):
+def _window_evidence(
+    window,
+    authority: InstrumentReferenceAuthority,
+    now: datetime,
+    adapter,
+    freshness: Mapping[str, SourceFreshness],
+):
     keys = tuple(
         key
         for pair in window.pairs
@@ -237,11 +290,10 @@ def _window_evidence(window, authority: InstrumentReferenceAuthority, now: datet
                 "instrument_key": spec.instrument_key,
                 "lot_size": spec.lot_size,
                 "tick_size": str(spec.tick_size),
-                "freshness": (
-                    MarketStateFreshness.FRESH.value
-                    if update is not None and update.exchange_timestamp is not None
-                    else MarketStateFreshness.UNKNOWN.value
-                ),
+                "freshness": freshness.get(
+                    spec.instrument_key,
+                    SourceFreshness.UNKNOWN,
+                ).value,
                 "ltp": str(update.last_traded_price)
                 if update and update.last_traded_price
                 else None,
@@ -318,11 +370,18 @@ def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
         decoder=decoder,
         clock=SystemClock(),
     )
-    metrics = _Metrics([], [])
+    metrics = _Metrics([], [], [], {})
     try:
         connection = transport.connect()
         adapter.connect(connection)
-        _receive_until_complete(transport, adapter, keys, metrics, timeout_seconds=timeout_seconds)
+        _receive_until_complete(
+            transport,
+            adapter,
+            decoder,
+            keys,
+            metrics,
+            timeout_seconds=timeout_seconds,
+        )
         evidence_time = datetime.now(UTC)
         initial_freshness = board.evaluate(evidence_time)
         session_outcome = _classify_session_evidence(
@@ -331,13 +390,21 @@ def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
         if session_outcome is not None:
             evidence, code = session_outcome
             evidence["token_presence"] = "PRESENT"
+            evidence["latency_ms"] = metrics.report()
             return evidence, code
         adapter.disconnect()
         resync_state = adapter.state.value
         transport.close()
         connection = transport.connect()
         adapter.reconnect(connection)
-        _receive_until_complete(transport, adapter, keys, metrics, timeout_seconds=timeout_seconds)
+        _receive_until_complete(
+            transport,
+            adapter,
+            decoder,
+            keys,
+            metrics,
+            timeout_seconds=timeout_seconds,
+        )
         adapter.complete_resync(_LatestSnapshot(adapter), now=datetime.now(UTC))
         final_time = datetime.now(UTC)
         final_freshness = board.evaluate(final_time)
@@ -356,10 +423,18 @@ def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
             ),
             "subscriptions": len(keys),
             "nifty": _window_evidence(
-                windows[DerivativeUnderlying.NIFTY], authority, final_time, adapter
+                windows[DerivativeUnderlying.NIFTY],
+                authority,
+                final_time,
+                adapter,
+                final_freshness,
             ),
             "banknifty": _window_evidence(
-                windows[DerivativeUnderlying.BANKNIFTY], authority, final_time, adapter
+                windows[DerivativeUnderlying.BANKNIFTY],
+                authority,
+                final_time,
+                adapter,
+                final_freshness,
             ),
             "disconnect_state": resync_state,
             "reconnect_freshness": {key: value.value for key, value in final_freshness.items()},
@@ -383,7 +458,7 @@ def _percentiles(values: list[float]) -> dict[str, float | int | None]:
     ordered = sorted(values)
 
     def pick(fraction: float) -> float:
-        return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))]
+        return ordered[min(len(ordered) - 1, max(0, math.ceil(len(ordered) * fraction) - 1))]
 
     return {
         "count": len(ordered),

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -29,6 +29,8 @@ def test_ltpc_binary_frame_normalizes_exact_prices_and_timestamps() -> None:
     assert update.last_traded_price == Decimal("24207.75")
     assert update.close_price == Decimal("24100.5")
     assert update.exchange_timestamp is not None
+    assert update.provider_timestamp == NOW
+    assert update.price_source_timestamp == NOW - timedelta(milliseconds=20)
 
 
 def test_full_option_frame_carries_depth_oi_iv_and_all_provider_greeks() -> None:
@@ -60,6 +62,11 @@ def test_full_option_frame_carries_depth_oi_iv_and_all_provider_greeks() -> None
     assert update.rho == pytest.approx(2.0)
     assert update.greeks_method == "SOURCE_PROVIDED"
     assert update.market_depth is not None
+    assert update.depth_source_timestamp == NOW
+    assert update.volume_source_timestamp == NOW
+    assert update.oi_source_timestamp == NOW
+    assert update.iv_source_timestamp == NOW
+    assert update.greeks_source_timestamp == NOW
 
 
 def test_market_status_is_retained_without_inventing_instrument_update() -> None:

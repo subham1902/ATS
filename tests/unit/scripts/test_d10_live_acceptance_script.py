@@ -7,6 +7,7 @@ from ats.market.derivatives.providers.models import SourceFreshness
 from scripts.run_d10_live_acceptance import (
     _classify_session_evidence,
     _failure_evidence,
+    _percentiles,
 )
 
 SCRIPT = Path("scripts/run_d10_live_acceptance.py")
@@ -67,3 +68,14 @@ def test_active_valid_session_fixture_proceeds_to_fresh_acceptance_checks() -> N
         {"NSE_EQ": "NORMAL_OPEN", "NSE_FO": "NORMAL_OPEN"},
     )
     assert result is None
+
+
+def test_latency_percentiles_use_nearest_rank_for_small_samples() -> None:
+    result = _percentiles([644.0, 1644.0])
+    assert result == {
+        "count": 2,
+        "p50": 1144.0,
+        "p95": 1644.0,
+        "p99": 1644.0,
+        "max": 1644.0,
+    }

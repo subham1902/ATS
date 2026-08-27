@@ -72,6 +72,41 @@ class TestStates:
         )
         assert subject.evaluate(T0) is SourceFreshness.STALE
 
+    def test_fresh_frame_does_not_hide_stale_decision_price(self) -> None:
+        subject = latch()
+        subject.record(
+            NormalizedFeedUpdate(
+                instrument_key=KEY,
+                kind=UpdateKind.OPTION,
+                received_at=T0,
+                exchange_timestamp=T0 - timedelta(seconds=2),
+                provider_timestamp=T0,
+                price_source_timestamp=T0 - timedelta(seconds=2),
+                depth_source_timestamp=T0,
+                last_traded_price=Decimal("100"),
+                bid_price=Decimal("99"),
+                ask_price=Decimal("101"),
+            )
+        )
+        assert subject.evaluate(T0) is SourceFreshness.STALE
+
+    def test_missing_depth_source_time_is_unsafe_when_quotes_exist(self) -> None:
+        subject = latch()
+        subject.record(
+            NormalizedFeedUpdate(
+                instrument_key=KEY,
+                kind=UpdateKind.OPTION,
+                received_at=T0,
+                exchange_timestamp=T0,
+                provider_timestamp=T0,
+                price_source_timestamp=T0,
+                last_traded_price=Decimal("100"),
+                bid_price=Decimal("99"),
+                ask_price=Decimal("101"),
+            )
+        )
+        assert subject.evaluate(T0) is SourceFreshness.STALE
+
     def test_resync_required_overrides_everything(self) -> None:
         subject = latch()
         subject.record(update(exchange=T0, received_at=T0))
@@ -108,6 +143,24 @@ class TestDuplicatesAndRegressions:
             update(exchange=T0 + timedelta(seconds=1), received_at=T0, ltp=999)
         )
         assert decision.regression is True
+
+    def test_new_frame_timestamp_allows_quote_change_without_new_trade(self) -> None:
+        subject = latch()
+        first = update(exchange=T0, received_at=T0).model_copy(
+            update={"provider_timestamp": T0, "price_source_timestamp": T0}
+        )
+        second = first.model_copy(
+            update={
+                "provider_timestamp": T0 + timedelta(milliseconds=10),
+                "received_at": T0 + timedelta(milliseconds=10),
+                "bid_price": Decimal("12549"),
+                "depth_source_timestamp": T0 + timedelta(milliseconds=10),
+            }
+        )
+        subject.record(first)
+        decision = subject.record(second)
+        assert decision.regression is False
+        assert decision.applied is True
 
     def test_complete_resync_requires_recorded_evidence(self) -> None:
         subject = latch()

@@ -47,6 +47,13 @@ class NormalizedFeedUpdate(ATSBaseModel):
     kind: UpdateKind
     received_at: UTCDateTime
     exchange_timestamp: UTCDateTime | None
+    provider_timestamp: UTCDateTime | None = None
+    price_source_timestamp: UTCDateTime | None = None
+    depth_source_timestamp: UTCDateTime | None = None
+    volume_source_timestamp: UTCDateTime | None = None
+    oi_source_timestamp: UTCDateTime | None = None
+    iv_source_timestamp: UTCDateTime | None = None
+    greeks_source_timestamp: UTCDateTime | None = None
     last_traded_price: PositiveDecimal | None = None
     close_price: PositiveDecimal | None = None
     bid_price: PositiveDecimal | None = None
@@ -77,6 +84,21 @@ class NormalizedFeedUpdate(ATSBaseModel):
         elif self.greeks_method == "SOURCE_PROVIDED":
             raise ValueError("SOURCE_PROVIDED requires at least one Greek value")
         return self
+
+    def decision_critical_timestamps(self) -> tuple[UTCDateTime | None, ...]:
+        """Source times that must independently satisfy the trading freshness policy."""
+        timestamps: list[UTCDateTime | None] = []
+        if self.last_traded_price is not None:
+            timestamps.append(self.price_source_timestamp or self.exchange_timestamp)
+        if (
+            self.bid_price is not None
+            or self.ask_price is not None
+            or self.market_depth is not None
+        ):
+            timestamps.append(self.depth_source_timestamp)
+        if not timestamps:
+            timestamps.append(self.exchange_timestamp)
+        return tuple(timestamps)
 
 
 def provider_greeks_version() -> str:

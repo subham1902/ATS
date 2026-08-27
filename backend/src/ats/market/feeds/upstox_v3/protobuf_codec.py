@@ -96,6 +96,7 @@ class UpstoxV3ProtobufDecoder:
                 "instrument_key": key,
                 "kind": _kind(key),
                 "received_at": received_at,
+                "provider_timestamp": default_timestamp,
                 **values,
             }
         )
@@ -109,6 +110,7 @@ def _ltpc_values(message: Message, fallback: datetime | None) -> dict[str, objec
     timestamp = _milliseconds(message.ltt, "ltt") if message.ltt else fallback
     return {
         "exchange_timestamp": timestamp,
+        "price_source_timestamp": timestamp,
         "last_traded_price": _positive_decimal(message.ltp, "ltp"),
         "close_price": _positive_decimal(message.cp, "cp"),
     }
@@ -124,6 +126,13 @@ def _market_values(message: Message, fallback: datetime | None) -> dict[str, obj
         open_interest=_integral_float(message.oi, "oi"),
         implied_volatility=_non_negative_float(message.iv, "iv"),
     )
+    values.update(
+        depth_source_timestamp=fallback,
+        volume_source_timestamp=fallback,
+        oi_source_timestamp=fallback,
+        iv_source_timestamp=fallback,
+        greeks_source_timestamp=fallback,
+    )
     return values
 
 
@@ -135,6 +144,13 @@ def _first_level_values(message: Message, fallback: datetime | None) -> dict[str
         volume=_non_negative_int(message.vtt, "vtt"),
         open_interest=_integral_float(message.oi, "oi"),
         implied_volatility=_non_negative_float(message.iv, "iv"),
+    )
+    values.update(
+        depth_source_timestamp=fallback,
+        volume_source_timestamp=fallback,
+        oi_source_timestamp=fallback,
+        iv_source_timestamp=fallback,
+        greeks_source_timestamp=fallback,
     )
     return values
 
