@@ -257,7 +257,7 @@ def test_process_tick_updates_marks_and_runtime() -> None:
     assert controller.status().events_processed == 1
 
 
-def test_active_nse_session_fsm_and_can_enter() -> None:
+def test_active_nse_session_fsm_and_can_enter(monkeypatch) -> None:
     from datetime import date, datetime, time, timezone
 
     from ats.market.calendar.models import SessionCalendar
@@ -266,6 +266,14 @@ def test_active_nse_session_fsm_and_can_enter() -> None:
     ist = timezone(timedelta(hours=5, minutes=30))
     test_date = date(2026, 8, 27)
     active_now = datetime(2026, 8, 27, 11, 0, 0, tzinfo=ist)
+
+    # Freeze the wall clock so the session FSM is evaluated at the fixed
+    # active time regardless of when the test is executed (after-hours safe).
+    class _FixedClock:
+        def now(self):
+            return active_now
+
+    monkeypatch.setattr("ats.contracts.common.SystemClock", _FixedClock)
 
     cal = SessionCalendar(
         calendar_id="NSE_TEST",

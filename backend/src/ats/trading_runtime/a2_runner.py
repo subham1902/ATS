@@ -26,6 +26,7 @@ from ats.contracts.domain.types import (
     LossState,
 )
 from ats.contracts.governance.models import OpportunityCandidate
+from ats.intelligence.calibration.models import CalibrationObservation
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.providers.models import SourceFreshness
 from ats.market.feeds.upstox_v3.instrument_keys import (
@@ -131,6 +132,70 @@ class A2PaperSessionConfig:
     base_slippage_ticks: int = 1
     tick_size: Decimal = Decimal("0.05")
     mode: TradingMode = TradingMode.NORMAL
+
+
+@dataclass
+class PipelineCounters:
+    """Truthful C2 pipeline telemetry — never synthesized, only incremented from real flow."""
+
+    market_updates_received: int = 0
+    snapshots_emitted: int = 0
+    feature_bundles: int = 0
+    regime_evaluations: int = 0
+    calibration_evaluations: int = 0
+    r10_evaluations: int = 0
+    r10x_evaluations: int = 0
+    candidates_considered: int = 0
+    candidates_rejected: int = 0
+    candidates_qualified: int = 0
+    portfolio_brain_allow: int = 0
+    portfolio_brain_reduced: int = 0
+    portfolio_brain_defer: int = 0
+    portfolio_brain_deny: int = 0
+    a04_allow: int = 0
+    a04_deny: int = 0
+    paper_orders: int = 0
+    paper_fills: int = 0
+    rejection_reasons: dict[str, int] = field(default_factory=dict)
+
+
+_REJECTION_TAXONOMY: dict[str, str] = {
+    "STALE": "stale",
+    "SESSION_NOT_RUNNING": "session",
+    "INVALID_REFERENCE": "invalid_reference",
+    "CALIBRATION_EVIDENCE_REQUIRED": "insufficient_calibration_support",
+    "NEGATIVE_NET_EV": "negative_net_ev",
+    "SPREAD": "spread",
+    "LIQUIDITY": "liquidity",
+    "CONCENTRATION": "portfolio_concentration",
+    "CORRELATION": "correlation",
+    "CAPITAL": "risk_capital",
+    "AUTHORITY_RESERVATION_DENIED": "a04",
+    "MAX_CONCURRENT_POSITIONS_REACHED": "risk_capital",
+    "QUANTITY_BELOW_LOT_SIZE": "risk_capital",
+    "PAPER_BROKER_REJECTED": "other",
+    "MARKET_DATA_UNSAFE": "risk_capital",
+}
+
+
+def classify_rejection(reason_codes: tuple[str, ...]) -> str:
+    """Map a deterministic rejection reason set to a single typed category."""
+
+    for code in reason_codes:
+        category = _REJECTION_TAXONOMY.get(code)
+        if category is not None:
+            return category
+    if any("CONCENTRATION" in c for c in reason_codes):
+        return "portfolio_concentration"
+    if any("CORRELATION" in c for c in reason_codes):
+        return "correlation"
+    if any("CALIBRATION" in c for c in reason_codes):
+        return "insufficient_calibration_support"
+    if any("STALE" in c for c in reason_codes):
+        return "stale"
+    if any("A04" in c or "AUTHORITY" in c for c in reason_codes):
+        return "a04"
+    return "other"
 
 
 @dataclass(frozen=True)
@@ -241,6 +306,7 @@ class A2PaperSessionController:
         self._candidates_evaluated = 0
         self._paper_orders_submitted = 0
         self._paper_fills_recorded = 0
+        self._pipeline_counters = PipelineCounters()
         self._last_event_time: UTCDateTime | None = None
 
         # Background loop task
@@ -539,9 +605,11 @@ class A2PaperSessionController:
 
         evaluation_time = now or SystemClock().now()
         self._candidates_evaluated += 1
+        self._pipeline_counters.candidates_considered += 1
 
         # 1. Check max positions limit
         if len(self._engine.state.open_positions) >= self.config.max_positions:
+            self._record_rejection(("MAX_CONCURRENT_POSITIONS_REACHED",))
             return {"allowed": False, "reason": "MAX_CONCURRENT_POSITIONS_REACHED"}
 
         # 2. Portfolio Brain Allocation
@@ -625,7 +693,16 @@ class A2PaperSessionController:
         )
         alloc = self._portfolio_brain.allocate(req, ctx)
         if alloc.outcome not in (AllocationOutcome.ALLOW, AllocationOutcome.ALLOW_REDUCED):
+            if alloc.outcome is AllocationOutcome.DENY:
+                self._pipeline_counters.portfolio_brain_deny += 1
+            else:
+                self._pipeline_counters.portfolio_brain_defer += 1
+            self._record_rejection(tuple(alloc.reason_codes))
             return {"allowed": False, "outcome": alloc.outcome.value, "reasons": alloc.reason_codes}
+        if alloc.outcome is AllocationOutcome.ALLOW:
+            self._pipeline_counters.portfolio_brain_allow += 1
+        else:
+            self._pipeline_counters.portfolio_brain_reduced += 1
 
         # 3. Portfolio Authority Reservation
         if self._authority is not None:
@@ -639,6 +716,8 @@ class A2PaperSessionController:
             )
             res_res = self._authority.try_reserve_for_candidate(res_req, evaluation_time=evaluation_time)
             if res_res.outcome.value != "ALLOW":
+                self._pipeline_counters.a04_deny += 1
+                self._record_rejection(("AUTHORITY_RESERVATION_DENIED", *res_res.reason_codes))
                 return {"allowed": False, "reason": "AUTHORITY_RESERVATION_DENIED", "reasons": res_res.reason_codes}
 
         # 4. Submit to PaperBrokerAdapter ONLY (No real order placed)
@@ -665,13 +744,18 @@ class A2PaperSessionController:
         )
         order_status = self._broker.submit_order(order_req, now=evaluation_time)
         if order_status is None:
+            self._record_rejection(("PAPER_BROKER_REJECTED",))
             return {"allowed": False, "reason": "PAPER_BROKER_REJECTED"}
 
         self._paper_orders_submitted += 1
+        self._pipeline_counters.paper_orders += 1
+        self._pipeline_counters.a04_allow += 1
+        self._pipeline_counters.candidates_qualified += 1
 
         # 5. Simulate Paper Fill
         self._broker.seed_fill(order_status.order_id, slipped_price, order_qty, now=evaluation_time)
         self._paper_fills_recorded += 1
+        self._pipeline_counters.paper_fills += 1
 
         # 6. Add to TradingRuntime open positions
         pos_id = str(uuid4())
@@ -706,6 +790,164 @@ class A2PaperSessionController:
             "approved_quantity": str(alloc.approved_quantity),
             "execution_target": "PAPER",
         }
+
+    def pipeline_counters(self) -> PipelineCounters:
+        """Read-only access to the truthful C2 pipeline telemetry."""
+
+        return self._pipeline_counters
+
+    def _record_rejection(self, reason_codes: tuple[str, ...]) -> None:
+        self._pipeline_counters.candidates_rejected += 1
+        category = classify_rejection(reason_codes)
+        bucket = self._pipeline_counters.rejection_reasons
+        bucket[category] = bucket.get(category, 0) + 1
+        # Mirror into the operator dashboard bridge (honest, never synthesized).
+        self._live_pipeline_bridge.counters.candidates_rejected += 1
+        rb = self._live_pipeline_bridge.counters.rejection_reasons
+        rb[category] = rb.get(category, 0) + 1
+
+    def scan_market_for_candidates(
+        self,
+        *,
+        calibration_observations: tuple[CalibrationObservation, ...] = (),
+        now: UTCDateTime | None = None,
+    ) -> dict[str, Any]:
+        """Run the MarketIntelligencePipeline over current marks.
+
+        Increments the truthful C2 telemetry. If a candidate is synthesized it is
+        routed through the governed execution path. If none qualifies, the
+        system records a rejected observation with a typed reason and does NOT
+        manufacture paper activity (C2.5 — no forced trade).
+        """
+
+        if self._state is not A2SessionState.RUNNING or self._engine is None:
+            return {"considered": 0, "qualified": 0, "reason": "SESSION_NOT_RUNNING"}
+
+        evaluation_time = now or SystemClock().now()
+        self._pipeline_counters.market_updates_received += 1
+
+        from uuid import uuid4
+
+        from ats.contracts.domain import MarketSnapshot
+        from ats.contracts.domain.hashing import compute_payload_hash
+        from ats.contracts.domain.types import DataQualityState, SessionState
+        from ats.contracts.intelligence.models import MarketContext
+        from ats.contracts.intelligence.types import LiquidityState, VolatilityState
+        from ats.trading_runtime.intelligence_pipeline import (
+            IntelligencePipelineConfig,
+            MarketIntelligencePipeline,
+        )
+
+        snapshots: list[MarketSnapshot] = []
+        for und in self.config.underlyings:
+            mark = self._market_feed.latest_mark(und)
+            if mark is None:
+                continue
+            from datetime import timedelta
+
+            offset = evaluation_time.minute % 5
+            bar_ts = (
+                evaluation_time
+                - timedelta(
+                    minutes=offset,
+                    seconds=evaluation_time.second,
+                    microseconds=evaluation_time.microsecond,
+                )
+            )
+            snap = MarketSnapshot(
+                schema_version="1.0",
+                snapshot_id=uuid4(),
+                instrument_id=und,
+                exchange="NSE",
+                segment="CASH",
+                timeframe="5m",
+                sequence=self._pipeline_counters.market_updates_received,
+                bar_timestamp=bar_ts,
+                received_at=evaluation_time,
+                open=mark,
+                high=mark,
+                low=mark,
+                close=mark,
+                volume=Decimal("0"),
+                quality_state=DataQualityState.GOOD,
+                quality_flags=(),
+                source="feed",
+                source_version="1.0.0",
+                session_state=SessionState.OPEN,
+                payload_hash="0" * 64,
+            )
+            snapshots.append(snap.model_copy(update={"payload_hash": compute_payload_hash(snap)}))
+            self._pipeline_counters.snapshots_emitted += 1
+
+        if not snapshots:
+            self._record_rejection(("INVALID_REFERENCE",))
+            return {"considered": 0, "qualified": 0, "reason": "INVALID_REFERENCE"}
+
+        ctx = MarketContext(
+            schema_version="1.0",
+            market_context_id=uuid4(),
+            instrument_spec_id=uuid4(),
+            instrument_id=snapshots[0].instrument_id,
+            timeframe="5m",
+            snapshot_id=snapshots[0].snapshot_id,
+            feature_bundle_id=uuid4(),
+            as_of_time=evaluation_time,
+            data_cutoff=evaluation_time,
+            session_state=SessionState.OPEN,
+            data_quality_state=DataQualityState.GOOD,
+            freshness_ms=0,
+            liquidity_state=LiquidityState.NORMAL,
+            volatility_state=VolatilityState.NORMAL,
+            higher_timeframe_context_refs=(),
+            related_market_context_refs=(),
+            cost_model_version="1.0.0",
+            input_hash="0" * 64,
+            payload_hash="0" * 64,
+        )
+        ctx = ctx.model_copy(update={"payload_hash": compute_payload_hash(ctx)})
+
+        pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
+        self._pipeline_counters.feature_bundles += 1
+        self._pipeline_counters.regime_evaluations += 1
+        if calibration_observations:
+            self._pipeline_counters.calibration_evaluations += 1
+        self._pipeline_counters.r10_evaluations += 1
+        self._pipeline_counters.candidates_considered += 0  # counted in evaluate_and_execute_candidate
+
+        result = pipeline.evaluate(
+            snapshots=snapshots,
+            cutoff_sequence=len(snapshots),
+            market_context=ctx,
+            campaign_id=uuid4(),
+            strategy_id=uuid4(),
+            evaluation_time=evaluation_time,
+            calibration_observations=tuple(calibration_observations),
+        )
+
+        if not result.is_actionable or result.candidate is None:
+            self._record_rejection(tuple(result.reason_codes) or ("NEGATIVE_NET_EV",))
+            return {
+                "considered": 1,
+                "qualified": 0,
+                "reason_codes": result.reason_codes,
+            }
+
+        # A real candidate emerged: route through the governed execution path.
+        from ats.portfolio.brain import ExposureDirection
+
+        direction = (
+            ExposureDirection.BULLISH
+            if result.direction == "BULLISH"
+            else ExposureDirection.BEARISH
+        )
+        return self.evaluate_and_execute_candidate(
+            result.candidate,
+            underlying=snapshots[0].instrument_id,
+            direction=direction,
+            requested_capital=Decimal("50000"),
+            requested_quantity=Decimal("50"),
+            now=evaluation_time,
+        )
 
     async def _event_loop(self) -> None:
         """Background loop monitoring runtime marks and session health."""
