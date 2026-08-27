@@ -17,6 +17,7 @@ Run after `scripts/start_ats_a2_live_paper.ps1`.
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -114,6 +115,45 @@ def run_checks() -> list[Check]:
             "pipeline counters responded" if pipeline else "no response",
         )
     )
+    if runtime is not None and runtime.get("session", {}).get("phase") == "ENTRY_ALLOWED":
+        deadline = time.monotonic() + 90
+        while time.monotonic() < deadline:
+            pipeline = _get("/v1/pipeline/counters")
+            if (
+                pipeline is not None
+                and pipeline.get("connection_state") == "LIVE"
+                and pipeline.get("subscription_count") == 22
+                and pipeline.get("nifty_last") is not None
+                and pipeline.get("banknifty_last") is not None
+                and len(pipeline.get("freshness", {})) == 22
+                and all(value == "FRESH" for value in pipeline.get("freshness", {}).values())
+            ):
+                break
+            time.sleep(2)
+        first_raw = int((pipeline or {}).get("upstox_raw_messages", 0))
+        time.sleep(2)
+        later = _get("/v1/pipeline/counters") or {}
+        freshness = later.get("freshness", {})
+        checks.extend(
+            [
+                Check(
+                    "active_dynamic_subscriptions",
+                    later.get("subscription_count") == 22,
+                    str(later.get("subscription_count")),
+                ),
+                Check(
+                    "active_nifty_banknifty_atm2_fresh",
+                    len(freshness) == 22
+                    and all(value == "FRESH" for value in freshness.values()),
+                    f"fresh={sum(value == 'FRESH' for value in freshness.values())}/22",
+                ),
+                Check(
+                    "active_feed_counters_increasing",
+                    int(later.get("upstox_raw_messages", 0)) > first_raw,
+                    f"{first_raw}->{later.get('upstox_raw_messages', 0)}",
+                ),
+            ]
+        )
 
     health = _get("/health/live")
     checks.append(

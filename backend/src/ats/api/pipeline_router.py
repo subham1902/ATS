@@ -37,10 +37,19 @@ def get_pipeline_counters(request: Request) -> dict[str, object]:
                 "fresh_messages": telemetry["fresh_updates"],
                 "subscription_count": telemetry["subscription_count"],
                 "connection_state": telemetry["connection_state"],
+                "freshness": telemetry["freshness"],
+                "by_underlying": telemetry["by_underlying"],
             }
         )
     else:
-        snap.update({"subscription_count": 0, "connection_state": "DISCONNECTED"})
+        snap.update(
+            {
+                "subscription_count": 0,
+                "connection_state": "DISCONNECTED",
+                "freshness": {},
+                "by_underlying": {},
+            }
+        )
     snap["attached"] = True
     return snap
 

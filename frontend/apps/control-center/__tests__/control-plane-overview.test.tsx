@@ -19,6 +19,8 @@ describe("Control Plane 2.0", () => {
     expect(screen.getAllByText("SAFE").length).toBeGreaterThan(0);
     expect(screen.getByText("HWM_DRAWDOWN")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/ENABLE LIVE|PLACE REAL ORDER/);
+    expect(screen.queryByRole("button", { name: "FLATTEN" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "HALT" })).not.toBeInTheDocument();
   });
 
   it("states that chat changes are governed proposals", () => {

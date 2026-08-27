@@ -86,6 +86,7 @@ class UpstoxV3RuntimeFeed:
         )
         self._transport: UpstoxV3Transport | None = None
         self._counters = UpstoxV3RuntimeCounters()
+        self._underlying_by_key: dict[str, str] = {}
         self._on_normalized = on_normalized
         self._stale_after_ms = configuration.limits.stale_after_ms
 
@@ -129,6 +130,7 @@ class UpstoxV3RuntimeFeed:
                 instrument_key=sub.instrument_key, stale_after_ms=self._stale_after_ms
             )
             self._counters.by_key.setdefault(sub.instrument_key, {})
+            self._underlying_by_key[sub.instrument_key] = str(sub.underlying)
             bucket = self._counters.by_underlying.setdefault(sub.underlying, {})
             bucket["subscriptions"] = bucket.get("subscriptions", 0) + 1
 
@@ -182,13 +184,19 @@ class UpstoxV3RuntimeFeed:
             self._counters.normalized_updates += 1
             applied += 1
             self._bump(self._counters.by_key.setdefault(key, {}), "normalized")
+            underlying_bucket = self._counters.by_underlying.setdefault(
+                self._underlying_by_key.get(key, "UNKNOWN"), {}
+            )
+            self._bump(underlying_bucket, "normalized")
             freshness = self._board.latch(key).evaluate(now)
             if freshness is SourceFreshness.FRESH:
                 self._counters.fresh_updates += 1
                 self._bump(self._counters.by_key[key], "fresh")
+                self._bump(underlying_bucket, "fresh")
             else:
                 self._counters.stale_updates += 1
                 self._bump(self._counters.by_key[key], "stale")
+                self._bump(underlying_bucket, "stale")
             if self._on_normalized is not None:
                 update = self._adapter.latest(key)
                 if update is not None:
@@ -212,6 +220,7 @@ class UpstoxV3RuntimeFeed:
             "malformed_frames": self._counters.malformed_frames,
             "subscription_count": len(self._registry),
             "connection_state": self._adapter.state.value,
+            "freshness": self.freshness_summary(),
             "by_key": {k: dict(v) for k, v in self._counters.by_key.items()},
             "by_underlying": {k: dict(v) for k, v in self._counters.by_underlying.items()},
         }

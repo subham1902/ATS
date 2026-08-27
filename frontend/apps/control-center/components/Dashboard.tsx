@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import { getApiClient } from "../lib/api";
 import { isApiError } from "@ats/api-client";
-import type { SystemReadModel, PolicyReadModel, CampaignReadModel, HealthReadModel, ActivityReadModel, ErrorEnvelope, RuntimeStatusReadModel, ChatIntent } from "@ats/api-client";
+import type { PolicyReadModel, CampaignReadModel, HealthReadModel, ActivityReadModel, ErrorEnvelope, ChatIntent } from "@ats/api-client";
 import { SystemPanel, PolicyPanel, CampaignPanel, ActivityPanel } from "./panels";
 import { Card, EmptyState } from "@ats/ui";
-import { useSse } from "../hooks/useSse";
 import { ConnectionIndicator } from "@ats/ui";
 import { ControlPlaneOverview, UNKNOWN_CONTROL_PLANE } from "./ControlPlaneOverview";
 import { formatTimeIST } from "../lib/formatTime";
+import { useOperatorState } from "./system/OperatorStateProvider";
 
 function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -33,34 +33,8 @@ function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   return { data, error, status };
 }
 
-interface PipelineCounters {
-  nifty_last: string | null;
-  banknifty_last: string | null;
-  candidates_considered: number;
-  candidates_qualified: number;
-  attached: boolean;
-  [key: string]: unknown;
-}
-
-interface HarnessAgentView {
-  agent_type: string;
-  status: string;
-  [key: string]: unknown;
-}
-
-interface HarnessStatus {
-  harness: { state: string; active_sessions: number; [key: string]: unknown };
-  llm: { health: string; [key: string]: unknown } | null;
-  agents: HarnessAgentView[];
-  [key: string]: unknown;
-}
-
-function _as<T>(value: unknown): Promise<T> {
-  return value as Promise<T>;
-}
-
 export function Dashboard() {
-  const systemQ = useFetch<SystemReadModel>(() => getApiClient().getSystem());
+  const { system, runtime, pipeline, harness, activity, sseStatus, events, error: operatorError } = useOperatorState();
   const healthLiveQ = useFetch<HealthReadModel>(() => getApiClient().getHealthLive());
   const healthReadyQ = useFetch<HealthReadModel>(() => getApiClient().getHealthReady().catch((e) => {
     if (isApiError(e) && e.status === 503) return e.envelope ? { status: "NOT_READY" as const, ready: false, reason_codes: ["CONTROL_PLANE_NOT_READY"] } : { status: "NOT_READY" as const, ready: false, reason_codes: [] };
@@ -74,75 +48,67 @@ export function Dashboard() {
       throw e;
     }
   });
-  const activityQ = useFetch<ActivityReadModel[]>(async () => (await getApiClient().getActivity()).items);
-  const runtimeQ = useFetch<RuntimeStatusReadModel>(() => getApiClient().getRuntimeStatus());
-  const pipelineQ = useFetch<PipelineCounters>(() => _as<PipelineCounters>(getApiClient().getPipelineCounters()));
-  const harnessQ = useFetch<HarnessStatus>(() => _as<HarnessStatus>(getApiClient().getHarnessStatus()));
   const campaignQ = useFetch<CampaignReadModel | null>(async () => {
-    const sys = await getApiClient().getSystem().catch(() => null);
-    if (!sys?.active_campaign_id) return null;
-    try { return await getApiClient().getCampaign(sys.active_campaign_id); } catch (e) { if (isApiError(e) && e.status === 404) return null; throw e; }
-  });
-
-  const { status: sseStatus, events, error: sseError } = useSse();
+    if (!system?.active_campaign_id) return null;
+    try { return await getApiClient().getCampaign(system.active_campaign_id); } catch (e) { if (isApiError(e) && e.status === 404) return null; throw e; }
+  }, [system?.active_campaign_id]);
 
   // Merge SSE events into activity surface (append, no replay guarantee)
   const sseActivityHint = events.length > 0 ? `+${events.length} live stream events (not replayed on reconnect)` : null;
 
   // Live, honest bindings: prices/opportunities from the real feed pipeline
   // counters; harness + active agents from the real Harness status endpoint.
-  const pipeline = pipelineQ.data;
-  const harnessState = harnessQ.data?.harness.state;
+  const harnessState = harness?.harness.state;
   const harnessView: "READY" | "DEGRADED" | "OFFLINE" | "UNKNOWN" =
     harnessState === "HEALTHY" ? "READY" : harnessState === "DEGRADED" ? "DEGRADED" : harnessState === "STOPPED" ? "OFFLINE" : "UNKNOWN";
-  const llmHealth = harnessQ.data?.llm?.health;
+  const llmHealth = harness?.llm?.health;
   const openrouterView: "READY" | "OFFLINE" = llmHealth === "HEALTHY" ? "READY" : "OFFLINE";
-  const activeAgents = (harnessQ.data?.agents ?? []).map((a) => a.agent_type);
+  const activeAgents = (harness?.agents ?? []).map((a) => a.agent_type);
 
-  const overview: typeof UNKNOWN_CONTROL_PLANE = runtimeQ.data ? {
+  const overview: typeof UNKNOWN_CONTROL_PLANE = runtime ? {
     ...UNKNOWN_CONTROL_PLANE,
-    system: (runtimeQ.data.halted ? "DEGRADED" : "READY") as "READY" | "DEGRADED",
-    session: runtimeQ.data.session.phase,
-    feed: (runtimeQ.data.feed_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
-    broker: (runtimeQ.data.broker_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
-    user_mode: runtimeQ.data.trading_mode.user_selected as "SAFE" | "NORMAL" | "AGGRESSIVE",
-    effective_mode: runtimeQ.data.trading_mode.effective as "SAFE" | "NORMAL" | "AGGRESSIVE",
-    mode_reason: runtimeQ.data.trading_mode.deescalation_reason,
+    system: (runtime.halted ? "DEGRADED" : "READY") as "READY" | "DEGRADED",
+    session: runtime.session.phase,
+    feed: (runtime.feed_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
+    broker: (runtime.broker_healthy ? "READY" : "DEGRADED") as "READY" | "DEGRADED",
+    user_mode: runtime.trading_mode.user_selected as "SAFE" | "NORMAL" | "AGGRESSIVE",
+    effective_mode: runtime.trading_mode.effective as "SAFE" | "NORMAL" | "AGGRESSIVE",
+    mode_reason: runtime.trading_mode.deescalation_reason,
     underlyings: [
       {
         symbol: "NIFTY" as const,
         price: pipeline?.nifty_last ?? null,
-        freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
+        freshness: runtime.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
       },
       {
         symbol: "BANKNIFTY" as const,
         price: pipeline?.banknifty_last ?? null,
-        freshness: runtimeQ.data.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
+        freshness: runtime.feed_healthy ? ("READY" as const) : ("DEGRADED" as const),
       },
     ],
     capital: {
-      total: String(runtimeQ.data.capital.total),
-      deployable: String(runtimeQ.data.capital.available),
-      available: String(runtimeQ.data.capital.available),
-      reserved: String(runtimeQ.data.capital.reserved),
-      inflight: String(runtimeQ.data.capital.inflight),
-      committed: String(runtimeQ.data.capital.used),
+      total: String(runtime.capital.total),
+      deployable: String(runtime.capital.available),
+      available: String(runtime.capital.available),
+      reserved: String(runtime.capital.reserved),
+      inflight: String(runtime.capital.inflight),
+      committed: String(runtime.capital.used),
     },
     pnl: {
-      realized: String(runtimeQ.data.pnl.realized),
-      unrealized: String(runtimeQ.data.pnl.unrealized),
-      hwm: String(runtimeQ.data.pnl.session_peak),
-      drawdown: String(runtimeQ.data.pnl.drawdown_fraction),
+      realized: String(runtime.pnl.realized),
+      unrealized: String(runtime.pnl.unrealized),
+      hwm: String(runtime.pnl.session_peak),
+      drawdown: String(runtime.pnl.drawdown_fraction),
     },
-    positions: runtimeQ.data.open_positions.length,
+    positions: runtime.open_positions.length,
     opportunities: pipeline?.candidates_qualified ?? 0,
-    a04_decisions: runtimeQ.data.recent_decisions.length,
-    portfolio_decisions: runtimeQ.data.recent_decisions.length,
+    a04_decisions: runtime.recent_decisions.length,
+    portfolio_decisions: runtime.recent_decisions.length,
     harness: harnessView,
     openrouter: openrouterView,
     active_agents: activeAgents,
-    activity: activityQ.data && activityQ.data.length > 0
-      ? activityQ.data.map((a: ActivityReadModel) => `${a.activity_id.slice(0, 8)} · ${a.summary}`)
+    activity: activity.length > 0
+      ? activity.map((a: ActivityReadModel) => `${a.activity_id.slice(0, 8)} · ${a.summary}`)
       : [],
   } : UNKNOWN_CONTROL_PLANE;
   const chat = async (question: string) => {
@@ -161,11 +127,11 @@ export function Dashboard() {
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Control Center</h1>
         <span style={{ fontSize: 12, color: "#6b7280", border: "1px solid #e5e7eb", padding: "2px 8px", borderRadius: 999 }}>A2_PAPER only · no live authority</span>
         <ConnectionIndicator status={sseStatus} />
-        {sseError ? <span role="alert" style={{ fontSize: 12, color: "#b91c1c" }}>{sseError}</span> : null}
+        {operatorError ? <span role="alert" style={{ fontSize: 12, color: "#b91c1c" }}>{operatorError}</span> : null}
         {sseActivityHint ? <span style={{ fontSize: 12, color: "#374151" }}>{sseActivityHint}</span> : null}
       </div>
 
-      <SystemPanel system={systemQ.data} healthLive={healthLiveQ.data} healthReady={healthReadyQ.data} error={systemQ.error} />
+      <SystemPanel system={system} healthLive={healthLiveQ.data} healthReady={healthReadyQ.data} error={null} />
       <ControlPlaneOverview state={overview} onChat={chat} onCommand={(command) => getApiClient().runtimeCommand(command)} />
       <PolicyPanel policy={policyQ.data} error={policyQ.error} />
       <CampaignPanel campaign={campaignQ.data} error={(campaignQ.error as ErrorEnvelope | null) ?? null} />
@@ -184,7 +150,7 @@ export function Dashboard() {
         )}
       </Card>
 
-      <ActivityPanel items={activityQ.data ?? []} error={activityQ.error} />
+      <ActivityPanel items={activity} error={null} />
     </div>
   );
 }

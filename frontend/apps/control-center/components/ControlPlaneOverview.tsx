@@ -78,8 +78,6 @@ export function ControlPlaneOverview({
           {(["SAFE", "NORMAL", "AGGRESSIVE"] as const).map((mode) => <button key={mode} type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "SET_MODE", mode })}>{mode}</button>)}
           <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "PAUSE_NEW_ENTRIES" })}>PAUSE NEW ENTRIES</button>
           <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "RESUME_NEW_ENTRIES" })}>RESUME</button>
-          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "FLATTEN_PORTFOLIO" })}>FLATTEN</button>
-          <button type="button" disabled={!onCommand} onClick={() => void onCommand?.({ command: "HALT_SYSTEM" })}>HALT</button>
         </div>
       </Card>
     </section>
