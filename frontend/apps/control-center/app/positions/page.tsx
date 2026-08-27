@@ -1,0 +1,14 @@
+"use client";
+
+import { useState } from "react";
+import { useOperatorState } from "../../components/system/OperatorStateProvider";
+import { EmptyState, LoadingState, Panel } from "../../components/system/SurfaceStates";
+import { StatusBadge } from "../../components/system/SystemHealthIndicator";
+
+const signed = (value: string) => { const number = Number(value); return `${number >= 0 ? "+" : "−"}₹${Math.abs(number).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`; };
+export default function PositionsPage() {
+  const { runtime, loading, command, commandStatus } = useOperatorState(); const [confirmId, setConfirmId] = useState<string | null>(null);
+  return <div className="ats-page"><div className="ats-page-heading"><div><span className="eyebrow">PAPER EXPOSURE</span><h1>Positions</h1><p>Calm monitoring for routine positions; material losses and risk states are emphasized.</p></div><StatusBadge state={runtime?.broker_healthy ? "HEALTHY" : runtime ? "DEGRADED" : "UNKNOWN"}>PAPER BROKER</StatusBadge></div>
+    <Panel title="Active positions" eyebrow={`${runtime?.open_positions.length ?? 0} OPEN`}>{loading && !runtime ? <LoadingState rows={5} /> : runtime?.open_positions.length ? <div className="compact-table-wrap"><table className="ats-table positions-table"><thead><tr><th>Instrument</th><th>Entry</th><th>Mark</th><th>Qty</th><th>P&L</th><th>HWM</th><th>Risk</th><th>Thesis</th><th>IV</th><th>Theta</th><th>Age</th><th>Action</th></tr></thead><tbody>{runtime.open_positions.map((position) => { const material = Number(position.unrealized_pnl) < 0; return <tr key={position.position_id} className={material ? "position-risk" : undefined}><th scope="row">{position.instrument_id}<small>{position.position_id.slice(0, 8)}</small></th><td>{position.entry_price}</td><td>{position.mark_price ?? "UNKNOWN"}</td><td>{position.quantity}</td><td className={material ? "ats-negative" : "ats-positive"}>{signed(position.unrealized_pnl)}</td><td>UNKNOWN</td><td><StatusBadge state={material ? "DEGRADED" : "READY"}>{material ? "WATCH" : "ROUTINE"}</StatusBadge></td><td>Evidence linked</td><td>UNKNOWN</td><td>UNKNOWN</td><td>UNKNOWN</td><td>{confirmId === position.position_id ? <span className="inline-confirm"><button className="ats-btn" type="button" onClick={() => setConfirmId(null)}>Cancel</button><button className="ats-btn ats-btn-danger" disabled={commandStatus.state === "submitting"} type="button" onClick={() => void command({ command: "EXIT_POSITION", position_id: position.position_id }).then(() => setConfirmId(null))}>Confirm exit</button></span> : <button className="ats-btn" type="button" onClick={() => setConfirmId(position.position_id)}>Exit</button>}</td></tr>; })}</tbody></table></div> : <EmptyState title="No open paper positions" detail="There is no active exposure to monitor. ATS will only enter when all canonical authorities allow it." />}</Panel>
+  </div>;
+}
