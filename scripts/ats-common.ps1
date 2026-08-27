@@ -7,6 +7,11 @@ $script:AtsNodeRoot = 'D:\Projects\ATS\toolchains\node-v24.19.0-win-x64'
 $script:AtsHarnessRoot = 'D:\Projects\ATS\tools\deepseek-harness'
 $script:AtsHarnessCommit = 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e'
 $script:AtsRuntimeBase = 'a7658c8e95c560f1d50cf81afe8068cd8481a983'
+$script:AtsReleaseAnchors = @(
+    $script:AtsRuntimeBase,
+    '956b861', # integrated ATS UX5 tip
+    '015feee'  # one-command launcher foundation
+)
 
 function Get-AtsUserEnvironmentValue([string]$Name) {
     $value = [Environment]::GetEnvironmentVariable($Name, 'Process')
@@ -22,8 +27,10 @@ function Get-AtsUserEnvironmentValue([string]$Name) {
 function Assert-AtsReleaseTruth {
     $branch = (& git -C $script:AtsRepo branch --show-current).Trim()
     if ($branch -ne 'eng/final-a2-integration') { throw "ATS_RELEASE_BRANCH_MISMATCH: $branch" }
-    & git -C $script:AtsRepo merge-base --is-ancestor $script:AtsRuntimeBase HEAD
-    if ($LASTEXITCODE -ne 0) { throw 'ATS_RUNTIME_BASE_MISSING' }
+    foreach ($anchor in $script:AtsReleaseAnchors) {
+        & git -C $script:AtsRepo merge-base --is-ancestor $anchor HEAD
+        if ($LASTEXITCODE -ne 0) { throw "ATS_RELEASE_ANCHOR_MISSING: $anchor" }
+    }
     $dirty = @(& git -C $script:AtsRepo status --porcelain=v1)
     $unexpected = @($dirty | Where-Object { $_ -notmatch '^ M frontend/apps/control-center/next-env\.d\.ts$' })
     if ($unexpected.Count -gt 0) { throw "ATS_UNEXPLAINED_DIRTY_STATE: $($unexpected -join '; ')" }
