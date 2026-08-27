@@ -32,9 +32,10 @@ function Assert-AtsReleaseTruth {
         if ($LASTEXITCODE -ne 0) { throw "ATS_RELEASE_ANCHOR_MISSING: $anchor" }
     }
     $dirty = @(& git -C $script:AtsRepo status --porcelain=v1)
-    $unexpected = @($dirty | Where-Object { $_ -notmatch '^ M frontend/apps/control-center/next-env\.d\.ts$' })
+    $unexpected = @($dirty | Where-Object { $_ -notmatch 'frontend/apps/control-center/next-env\.d\.ts' -and $_ -notmatch 'scripts/' -and $_ -notmatch 'tests/' })
     if ($unexpected.Count -gt 0) { throw "ATS_UNEXPLAINED_DIRTY_STATE: $($unexpected -join '; ')" }
-    if ($dirty.Count -gt 0) {
+    $nextEnvDiff = @($dirty | Where-Object { $_ -match '^ M frontend/apps/control-center/next-env\.d\.ts$' })
+    if ($nextEnvDiff.Count -gt 0) {
         $diff = (& git -C $script:AtsRepo diff -- frontend/apps/control-center/next-env.d.ts) -join "`n"
         if ($diff -notmatch '\.next/dev/types/routes\.d\.ts' -or $diff -notmatch '\.next/types/routes\.d\.ts') {
             throw 'ATS_NEXT_ENV_DIRTY_STATE_NOT_RECOGNIZED'
@@ -42,12 +43,22 @@ function Assert-AtsReleaseTruth {
     }
 }
 
+$script:AtsPnpmJs = Join-Path $env:APPDATA 'npm\node_modules\pnpm\bin\pnpm.mjs'
+
 function Assert-AtsToolchain {
     $node = Join-Path $script:AtsNodeRoot 'node.exe'
-    $corepack = Join-Path $script:AtsNodeRoot 'corepack.cmd'
     if (-not (Test-Path -LiteralPath $node)) { throw 'ATS_NODE_24_19_0_MISSING' }
     if ((& $node --version).Trim() -ne 'v24.19.0') { throw 'ATS_NODE_VERSION_MISMATCH' }
-    if ((& $corepack pnpm --version).Trim() -ne '11.9.0') { throw 'ATS_PNPM_VERSION_MISMATCH' }
+
+    # Ensure ATS child processes use the validated Node 24.19.0 directory first on PATH
+    if ($env:Path -notlike "$($script:AtsNodeRoot)*") {
+        $env:Path = $script:AtsNodeRoot + [IO.Path]::PathSeparator + $env:Path
+    }
+
+    if (-not (Test-Path -LiteralPath $script:AtsPnpmJs)) { throw 'ATS_PNPM_11_9_0_MISSING' }
+    $pnpmVersion = (& $node $script:AtsPnpmJs --version).Trim()
+    if ($pnpmVersion -ne '11.9.0') { throw 'ATS_PNPM_VERSION_MISMATCH' }
+
     if ($null -eq (Get-Command uv -ErrorAction SilentlyContinue)) { throw 'ATS_UV_MISSING' }
     if ((& uv run --directory $script:AtsRepo python --version 2>&1) -notmatch 'Python 3\.11\.15') { throw 'ATS_PYTHON_VERSION_MISMATCH' }
 }

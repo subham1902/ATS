@@ -24,7 +24,9 @@ Write-Host "----------------------------------------------------------------" -F
 
 if (-not (Test-Path -LiteralPath $node)) { throw 'NODE_BINARY_MISSING' }
 if ((& $node --version).Trim() -ne 'v24.19.0') { throw 'NODE_VERSION_MISMATCH' }
-if ((& $corepack pnpm --version).Trim() -ne '11.9.0') { throw 'PNPM_VERSION_MISMATCH' }
+$pnpmJs = Join-Path $env:APPDATA 'npm\node_modules\pnpm\bin\pnpm.mjs'
+if (-not (Test-Path -LiteralPath $pnpmJs)) { throw 'PNPM_BINARY_MISSING' }
+if ((& $node $pnpmJs --version).Trim() -ne '11.9.0') { throw 'PNPM_VERSION_MISMATCH' }
 if (-not (Test-Path -LiteralPath $harnessBin)) { throw 'HARNESS_BINARY_MISSING' }
 if ((& git -C $HarnessRoot rev-parse HEAD).Trim() -ne 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e') { throw 'HARNESS_COMMIT_MISMATCH' }
 $hasToken = -not [string]::IsNullOrWhiteSpace($env:ATS_UPSTOX_ACCESS_TOKEN)
@@ -48,8 +50,9 @@ $backend = Start-Process -FilePath 'uv' -ArgumentList $backendArguments -Working
   -RedirectStandardError (Join-Path $stateRoot 'backend.err.log')
 
 # 2. Launch Next.js Control Center frontend
-$frontend = Start-Process -FilePath $corepack -ArgumentList @(
-    'pnpm', '--filter', '@ats/control-center', 'exec', 'next', 'start', '-p', '3000', '-H', '127.0.0.1'
+$pnpmJs = Join-Path $env:APPDATA 'npm\node_modules\pnpm\bin\pnpm.mjs'
+$frontend = Start-Process -FilePath $node -ArgumentList @(
+    $pnpmJs, '--filter', '@ats/control-center', 'exec', 'next', 'start', '-p', '3000', '-H', '127.0.0.1'
 ) -WorkingDirectory $repo -WindowStyle Hidden -PassThru `
   -RedirectStandardOutput (Join-Path $stateRoot 'frontend.out.log') `
   -RedirectStandardError (Join-Path $stateRoot 'frontend.err.log')

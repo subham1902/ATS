@@ -16,8 +16,8 @@ Write-Host '  Ollama models      qwen3:14b + qwen2.5:14b READY' -ForegroundColor
 
 if (-not (Test-Path -LiteralPath (Join-Path $script:AtsRepo 'frontend\apps\control-center\.next\BUILD_ID'))) {
     Write-Host '  Control Center     building production assets' -ForegroundColor Yellow
-    $env:Path = $script:AtsNodeRoot + [IO.Path]::PathSeparator + $env:Path
-    & (Join-Path $script:AtsNodeRoot 'corepack.cmd') pnpm --dir $script:AtsRepo --filter '@ats/control-center' build
+    $node = Join-Path $script:AtsNodeRoot 'node.exe'
+    & $node $script:AtsPnpmJs --dir $script:AtsRepo --filter '@ats/control-center' build
     if ($LASTEXITCODE -ne 0) { throw 'ATS_CONTROL_CENTER_BUILD_FAILED' }
 }
 
