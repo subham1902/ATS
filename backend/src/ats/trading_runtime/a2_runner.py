@@ -317,6 +317,9 @@ class A2PaperSessionController:
         self._upstox_feed: UpstoxV3RuntimeFeed | None = None
         self._live_pipeline_bridge = LivePipelineBridge()
 
+        # Advisory-only DeepSeek Harness integration (ADVISORY_ONLY; governor-gated)
+        self._harness_integration: Any = None
+
     @property
     def state(self) -> A2SessionState:
         return self._state
@@ -340,6 +343,26 @@ class A2PaperSessionController:
     @property
     def operator_provider(self) -> OperatorIntelligenceProvider:
         return self._operator_provider
+
+    @property
+    def harness_integration(self) -> Any:
+        return self._harness_integration
+
+    def attach_harness_integration(self, integration: Any) -> None:
+        """Attach the advisory-only Harness integration (ADVISORY_ONLY)."""
+        self._harness_integration = integration
+
+    @property
+    def harness_bridge(self) -> Any:
+        """Observability facade over the Harness adapter for the /v1/harness surface."""
+        if self._harness_integration is None or self._harness_integration.adapter is None:
+            return None
+        from ats.api.harness_bridge import HarnessBridge
+
+        return HarnessBridge(
+            harness_adapter=self._harness_integration.adapter,
+            agent_registry=None,
+        )
 
     def start(self, *, require_token: bool = True) -> bool:
         """Start the A2 paper session synchronously."""
@@ -1081,6 +1104,9 @@ def create_a2_paper_app(
         trading_runtime_engine=session_controller.engine or session_controller,
     )
     app.state.a2_session_controller = session_controller
+    harness_bridge = session_controller.harness_bridge
+    if harness_bridge is not None:
+        app.state.harness_bridge = harness_bridge
 
     @app.on_event("startup")
     async def _startup() -> None:
