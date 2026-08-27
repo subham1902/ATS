@@ -11,6 +11,7 @@ from scripts.run_ats_shadow_replay import (
     load_genuine_calibration_store,
     run_shadow_session_replay,
 )
+from scripts.run_walk_forward_simulation import run_walk_forward_simulation
 
 HISTORICAL_DIR = Path(r"D:\Projects\ATS\ats\data\historical")
 NIFTY_DS_PATH = HISTORICAL_DIR / "nifty_options_a2_replay_v1"
@@ -53,7 +54,6 @@ def test_shadow_replay_execution_invariants_and_determinism() -> None:
 
     assert run1["events_processed"] == 8450
     assert run2["events_processed"] == 8450
-    assert run2["events_processed"] == 8450
 
     assert run1["scanner_observations"] == 364
     assert run2["scanner_observations"] == 364
@@ -65,3 +65,14 @@ def test_shadow_replay_execution_invariants_and_determinism() -> None:
     assert run2["realized_pnl"] == "0"
 
     assert run1 == run2, "Replay must be 100% deterministic across multiple runs"
+
+
+def test_walk_forward_multi_session_determinism() -> None:
+    res1 = run_walk_forward_simulation(initial_capital=Decimal("100000"))
+    res2 = run_walk_forward_simulation(initial_capital=Decimal("100000"))
+
+    assert res1["ending_equity"] == "100000"
+    assert res2["ending_equity"] == "100000"
+    assert res1["total_sessions"] == 16
+    assert res2["total_sessions"] == 16
+    assert res1 == res2, "Walk-forward simulation must be 100% deterministic"
