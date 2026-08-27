@@ -87,11 +87,14 @@ def test_current_provider_bod_values_become_authoritative_specs() -> None:
         b"""[{"segment":"NSE_FO","exchange":"NSE","instrument_type":"CE",
         "instrument_key":"NSE_FO|live-key","exchange_token":"987",
         "underlying_symbol":"NIFTY","trading_symbol":"NIFTY ACTUAL CE",
-        "expiry":"2026-09-03","strike_price":2500000,"lot_size":73,
+        "expiry":"2026-09-03","strike_price":25000,"lot_size":73,
         "tick_size":5,"freeze_quantity":1460}]""",
         source_as_of=NOW,
         policy=UpstoxInstrumentShapePolicy(
-            schema_version="1.0", price_scale=Decimal("0.01"), tradable_default=True
+            schema_version="1.0",
+            strike_price_scale=Decimal("1"),
+            tick_size_scale=Decimal("0.01"),
+            tradable_default=True,
         ),
     )
     contracts = provider_records_to_reference_contracts(

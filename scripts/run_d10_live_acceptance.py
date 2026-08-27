@@ -15,6 +15,7 @@ import sys
 import time
 import urllib.request
 import winreg
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -106,7 +107,10 @@ def _fetch_reference(now: datetime):
         raw,
         source_as_of=now,
         policy=UpstoxInstrumentShapePolicy(
-            schema_version="1.0", price_scale=Decimal("0.01"), tradable_default=True
+            schema_version="1.0",
+            strike_price_scale=Decimal("1"),
+            tick_size_scale=Decimal("0.01"),
+            tradable_default=True,
         ),
     )
     contracts = provider_records_to_reference_contracts(records, underlying_aliases=_ALIASES)
@@ -127,6 +131,32 @@ def _extract_ltp(document: dict[str, Any], instrument_key: str) -> Decimal:
             if price > 0:
                 return price
     raise ValueError("MARKET_QUOTE_LTP_MISSING")
+
+
+def _classify_session_evidence(
+    freshness: Mapping[str, SourceFreshness], market_status: Mapping[str, str]
+) -> tuple[dict[str, object], int] | None:
+    """Return a deferral for non-active evidence, otherwise allow FRESH checks to continue."""
+    provider_active = bool(freshness) and all(
+        value is SourceFreshness.FRESH for value in freshness.values()
+    )
+    market_open = not market_status or any("OPEN" in status for status in market_status.values())
+    if provider_active and market_open:
+        return None
+    return {
+        "status": "ACTIVE_MARKET_SESSION_REQUIRED_FOR_D10_ACCEPTANCE",
+        "market_status": dict(market_status),
+        "freshness": {key: value.value for key, value in freshness.items()},
+        "real_orders_placed": 0,
+    }, 3
+
+
+def _failure_evidence(error: Exception) -> tuple[dict[str, object], int]:
+    return {
+        "status": "D10_LIVE_ACCEPTANCE_FAILED",
+        "error_type": type(error).__name__,
+        "real_orders_placed": 0,
+    }, 2
 
 
 def _build_windows(contracts, quote_client: UpstoxReadOnlyClient, now: datetime):
@@ -245,7 +275,11 @@ def _window_evidence(window, authority: InstrumentReferenceAuthority, now: datet
 def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
     token = _load_token()
     if token is None:
-        return {"status": "TOKEN_NOT_CONFIGURED", "token_presence": "ABSENT"}, 2
+        return {
+            "status": "TOKEN_NOT_CONFIGURED",
+            "token_presence": "ABSENT",
+            "real_orders_placed": 0,
+        }, 2
     now = datetime.now(UTC)
     contracts = _fetch_reference(now)
     quote_client = UpstoxReadOnlyClient(token=token.get_secret_value())
@@ -291,19 +325,13 @@ def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
         _receive_until_complete(transport, adapter, keys, metrics, timeout_seconds=timeout_seconds)
         evidence_time = datetime.now(UTC)
         initial_freshness = board.evaluate(evidence_time)
-        provider_active = all(
-            value is SourceFreshness.FRESH for value in initial_freshness.values()
+        session_outcome = _classify_session_evidence(
+            initial_freshness, decoder.last_market_status
         )
-        market_open = not decoder.last_market_status or any(
-            "OPEN" in status for status in decoder.last_market_status.values()
-        )
-        if not provider_active or not market_open:
-            return {
-                "status": "ACTIVE_MARKET_SESSION_REQUIRED_FOR_D10_ACCEPTANCE",
-                "token_presence": "PRESENT",
-                "market_status": decoder.last_market_status,
-                "freshness": {key: value.value for key, value in initial_freshness.items()},
-            }, 3
+        if session_outcome is not None:
+            evidence, code = session_outcome
+            evidence["token_presence"] = "PRESENT"
+            return evidence, code
         adapter.disconnect()
         resync_state = adapter.state.value
         transport.close()
@@ -377,12 +405,7 @@ def main() -> int:
     try:
         evidence, code = run_live(args.timeout_seconds)
     except Exception as error:
-        evidence = {
-            "status": "D10_LIVE_ACCEPTANCE_FAILED",
-            "error_type": type(error).__name__,
-            "real_orders_placed": 0,
-        }
-        code = 2
+        evidence, code = _failure_evidence(error)
     print(json.dumps(evidence, sort_keys=True, separators=(",", ":")))
     return code
 

@@ -2,6 +2,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ats.market.derivatives.providers.models import SourceFreshness
+
+from scripts.run_d10_live_acceptance import (
+    _classify_session_evidence,
+    _failure_evidence,
+)
+
 SCRIPT = Path("scripts/run_d10_live_acceptance.py")
 
 
@@ -26,3 +33,37 @@ def test_live_runner_has_no_order_or_account_api_surface() -> None:
         "/trades",
     ):
         assert forbidden not in source
+
+
+def test_closed_or_inactive_session_is_deferred_without_fake_freshness() -> None:
+    result = _classify_session_evidence(
+        {"NSE_INDEX|Nifty 50": SourceFreshness.STALE},
+        {"NSE_EQ": "CLOSED"},
+    )
+    assert result is not None
+    evidence, code = result
+    assert code == 3
+    assert evidence["status"] == "ACTIVE_MARKET_SESSION_REQUIRED_FOR_D10_ACCEPTANCE"
+    assert evidence["freshness"] == {"NSE_INDEX|Nifty 50": "STALE"}
+    assert evidence["real_orders_placed"] == 0
+
+
+def test_malformed_provider_failure_is_not_relabelled_as_session_deferral() -> None:
+    evidence, code = _failure_evidence(ValueError("MALFORMED_PROVIDER_RESPONSE"))
+    assert code == 2
+    assert evidence == {
+        "status": "D10_LIVE_ACCEPTANCE_FAILED",
+        "error_type": "ValueError",
+        "real_orders_placed": 0,
+    }
+
+
+def test_active_valid_session_fixture_proceeds_to_fresh_acceptance_checks() -> None:
+    result = _classify_session_evidence(
+        {
+            "NSE_INDEX|Nifty 50": SourceFreshness.FRESH,
+            "NSE_INDEX|Nifty Bank": SourceFreshness.FRESH,
+        },
+        {"NSE_EQ": "NORMAL_OPEN", "NSE_FO": "NORMAL_OPEN"},
+    )
+    assert result is None

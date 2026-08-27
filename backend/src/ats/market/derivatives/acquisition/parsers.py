@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -19,13 +19,16 @@ from ats.market.derivatives.replay_data.models import OneMinuteDerivativeBar
 
 class UpstoxInstrumentShapePolicy(ATSBaseModel):
     schema_version: Literal["1.0"]
-    price_scale: PositiveDecimal
+    strike_price_scale: PositiveDecimal
+    tick_size_scale: PositiveDecimal
     tradable_default: bool
 
     @model_validator(mode="after")
-    def require_explicit_scale(self) -> UpstoxInstrumentShapePolicy:
-        if self.price_scale > Decimal("1"):
-            raise ValueError("price_scale cannot increase provider price units")
+    def require_explicit_scales(self) -> UpstoxInstrumentShapePolicy:
+        if self.strike_price_scale > Decimal("1"):
+            raise ValueError("strike_price_scale cannot increase provider price units")
+        if self.tick_size_scale > Decimal("1"):
+            raise ValueError("tick_size_scale cannot increase provider price units")
         return self
 
 
@@ -85,13 +88,13 @@ def parse_upstox_bod_records(
                 instrument_type=instrument_type,
                 expiry=_expiry(item.get("expiry")),
                 strike=(
-                    _decimal(strike_value) * policy.price_scale
+                    _decimal(strike_value) * policy.strike_price_scale
                     if instrument_type is DerivativeInstrumentType.OPTIDX
                     else None
                 ),
                 option_type=OptionType(option_type) if option_type is not None else None,
                 lot_size=_positive_integer(item.get("lot_size"), "lot_size"),
-                tick_size=_decimal(item.get("tick_size")) * policy.price_scale,
+                tick_size=_decimal(item.get("tick_size")) * policy.tick_size_scale,
                 freeze_quantity=_optional_positive_integer(
                     item.get("freeze_quantity"), "freeze_quantity"
                 ),
@@ -153,7 +156,8 @@ def _expiry(value: object) -> str:
         return value
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError("expiry must be an ISO date or epoch milliseconds")
-    return datetime.fromtimestamp(value / 1000, tz=UTC).date().isoformat()
+    exchange_timezone = timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
+    return datetime.fromtimestamp(value / 1000, tz=exchange_timezone).date().isoformat()
 
 
 def _required_text_any(item: dict[str, Any], names: tuple[str, ...]) -> str:

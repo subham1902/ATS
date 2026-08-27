@@ -41,7 +41,9 @@ def change_mode_frame(
             UpstoxFeedErrorCode.EMPTY_SUBSCRIPTION,
             "mode change requires at least one instrument key",
         )
-    return _control_frame(guid=guid, method="mode", mode=mode, instrument_keys=instrument_keys)
+    return _control_frame(
+        guid=guid, method="change_mode", mode=mode, instrument_keys=instrument_keys
+    )
 
 
 def _control_frame(

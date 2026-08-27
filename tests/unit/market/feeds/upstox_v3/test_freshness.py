@@ -59,6 +59,19 @@ class TestStates:
         subject.record(update(exchange=T0 + timedelta(minutes=5), received_at=T0))
         assert subject.evaluate(T0) is SourceFreshness.STALE
 
+    def test_missing_exchange_timestamp_is_unsafe(self) -> None:
+        subject = latch()
+        subject.record(
+            NormalizedFeedUpdate(
+                instrument_key=KEY,
+                kind=UpdateKind.OPTION,
+                received_at=T0,
+                exchange_timestamp=None,
+                last_traded_price=Decimal("1"),
+            )
+        )
+        assert subject.evaluate(T0) is SourceFreshness.STALE
+
     def test_resync_required_overrides_everything(self) -> None:
         subject = latch()
         subject.record(update(exchange=T0, received_at=T0))
