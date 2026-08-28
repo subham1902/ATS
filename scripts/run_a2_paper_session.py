@@ -11,15 +11,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
 import uvicorn
 from ats.contracts.common import SystemClock
+from ats.intelligence.calibration.models import CalibrationObservation
 from ats.intelligence.harness.harness_integration import attach_and_start_a2_harness
 from ats.intelligence.inference.advisory_llm_bridge import AdvisoryLlmBridge
 from ats.intelligence.inference.ollama import (
@@ -54,6 +57,31 @@ from ats.trading_runtime.session import (
 )
 from pydantic import SecretStr
 from run_d10_live_acceptance import _extract_ltp, _fetch_reference
+
+
+DEFAULT_CHAMPION_CALIBRATION_STORE = Path(
+    r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
+)
+
+
+def load_champion_calibration_observations(
+    path: Path, *, as_of: datetime
+) -> tuple[CalibrationObservation, ...]:
+    """Load only frozen champion evidence already visible at ``as_of``.
+
+    Missing evidence remains an empty, fail-closed calibration input. Invalid
+    evidence is not silently ignored because that would conceal store damage.
+    """
+
+    if not path.is_file():
+        return ()
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    observations = tuple(
+        CalibrationObservation.model_validate_json(json.dumps(item)) for item in raw
+    )
+    return tuple(
+        item for item in observations if item.available_to_strategy_time <= as_of
+    )
 
 
 class ReadOnlyUpstoxSupervisor:
@@ -250,6 +278,26 @@ def main() -> None:
         config = A2PaperSessionConfig(execution_target="PAPER", live_money="DISABLED")
         feed = UpstoxMarketFeedAdapter()
         controller = A2PaperSessionController(config=config, market_feed=feed)
+        calibration_path = Path(
+            os.environ.get(
+                "ATS_CHAMPION_CALIBRATION_STORE",
+                str(DEFAULT_CHAMPION_CALIBRATION_STORE),
+            )
+        )
+        champion_calibration = load_champion_calibration_observations(
+            calibration_path, as_of=SystemClock().now()
+        )
+        controller.set_calibration_observations_provider(
+            lambda: tuple(
+                item
+                for item in champion_calibration
+                if item.available_to_strategy_time <= SystemClock().now()
+            )
+        )
+        print(
+            "Champion calibration: "
+            f"{len(champion_calibration)} frozen as-of-visible observations"
+        )
         # Attach & start the pinned DeepSeek Harness (ADVISORY_ONLY, governor-gated)
         try:
             attach_and_start_a2_harness(controller)

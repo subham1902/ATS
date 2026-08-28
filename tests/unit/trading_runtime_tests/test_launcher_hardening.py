@@ -66,3 +66,13 @@ def test_missing_ats_node_fails_closed() -> None:
     res = _run_powershell(ps_code, cwd="C:\\Windows\\System32")
     assert res.returncode == 0, res.stderr
     assert "RAISED:ATS_NODE_24_19_0_MISSING" in res.stdout
+
+
+def test_ollama_preflight_has_bounded_local_recovery() -> None:
+    source = COMMON_PS1.read_text(encoding="utf-8")
+    assert "function Assert-AtsOllama([int]$StartupTimeoutSec = 30)" in source
+    assert "Start-Process -FilePath $ollama.Source" in source
+    assert "Get-Process -Name 'ollama'" in source
+    assert ".AddSeconds($StartupTimeoutSec)" in source
+    assert "throw 'ATS_OLLAMA_OFFLINE'" in source
+    assert "@('qwen3:14b', 'qwen2.5:14b')" in source

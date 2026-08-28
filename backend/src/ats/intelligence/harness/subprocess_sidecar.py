@@ -85,17 +85,20 @@ class AcpSubprocessSidecar:
             raise HarnessRuntimeError("PROCESS_START_FAILED") from error
         self._reader = threading.Thread(target=self._read_frames, daemon=True)
         self._reader.start()
-        result = self._request(
-            "initialize",
-            {
-                "protocolVersion": self._configuration.acp_protocol_version,
-                "clientCapabilities": {},
-            },
-            self._configuration.startup_timeout_ms,
-        )
-        if result.get("protocolVersion") != self._configuration.acp_protocol_version:
+        try:
+            result = self._request(
+                "initialize",
+                {
+                    "protocolVersion": self._configuration.acp_protocol_version,
+                    "clientCapabilities": {},
+                },
+                self._configuration.startup_timeout_ms,
+            )
+            if result.get("protocolVersion") != self._configuration.acp_protocol_version:
+                raise HarnessRuntimeError("ACP_VERSION_MISMATCH")
+        except Exception:
             self.stop()
-            raise HarnessRuntimeError("ACP_VERSION_MISMATCH")
+            raise
 
     def stop(self) -> None:
         process = self._process

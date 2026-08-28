@@ -70,10 +70,29 @@ function Assert-AtsHarness {
     if (-not (Test-Path -LiteralPath $binary)) { throw 'ATS_HARNESS_BINARY_MISSING' }
 }
 
-function Assert-AtsOllama {
+function Assert-AtsOllama([int]$StartupTimeoutSec = 30) {
     $ollama = Get-Command ollama.exe -ErrorAction SilentlyContinue
     if ($null -eq $ollama) { throw 'ATS_OLLAMA_MISSING' }
-    try { $tags = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 4 } catch { throw 'ATS_OLLAMA_OFFLINE' }
+
+    $tags = $null
+    try { $tags = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2 -ErrorAction Stop } catch {}
+    if ($null -eq $tags) {
+        # Do not create a second Ollama owner. An existing unhealthy process gets
+        # the same bounded recovery window and then fails closed for the operator.
+        $owners = @(Get-Process -Name 'ollama' -ErrorAction SilentlyContinue)
+        if ($owners.Count -eq 0) {
+            Write-Host '  Ollama service     starting local server' -ForegroundColor Yellow
+            Start-Process -FilePath $ollama.Source -ArgumentList @('serve') -WindowStyle Hidden | Out-Null
+        }
+
+        $deadline = (Get-Date).AddSeconds($StartupTimeoutSec)
+        do {
+            Start-Sleep -Milliseconds 500
+            try { $tags = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2 -ErrorAction Stop } catch { $tags = $null }
+        } while ($null -eq $tags -and (Get-Date) -lt $deadline)
+    }
+    if ($null -eq $tags) { throw 'ATS_OLLAMA_OFFLINE' }
+
     $models = @($tags.models | ForEach-Object { $_.name })
     foreach ($required in @('qwen3:14b', 'qwen2.5:14b')) {
         if ($required -notin $models) { throw "ATS_OLLAMA_MODEL_MISSING: $required" }
