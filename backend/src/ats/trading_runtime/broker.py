@@ -125,6 +125,11 @@ class PaperBrokerAdapter:
     def is_healthy(self) -> bool:
         return self._healthy
 
+    def register_instrument_spec(self, instrument_key: str, lot_size: int) -> None:
+        if self._lot_size_registry is None:
+            raise LotSizeError("paper broker lot-size authority is not configured")
+        self._lot_size_registry.register(instrument_key, lot_size)
+
     def apply_slippage(self, price: Decimal, side: str) -> Decimal:
         """Apply realistic slippage (in ticks) to a requested limit/market price."""
         if self._base_slippage_ticks <= 0:

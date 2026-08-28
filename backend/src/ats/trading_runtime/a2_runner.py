@@ -76,8 +76,15 @@ from ats.trading_runtime.intelligence_pipeline import (
 )
 from ats.trading_runtime.lot_size import LotSizeRegistry
 from ats.trading_runtime.modes import TradingMode
+from ats.trading_runtime.operator_orders import (
+    A04OperatorDecision,
+    OperatorOrderIntent,
+    OperatorOrderService,
+)
 from ats.trading_runtime.position_monitor import (
+    ManagedExitMode,
     MonitoredPosition,
+    PositionOrigin,
     evaluate_position,
     update_mark,
 )
@@ -325,6 +332,7 @@ class A2PaperSessionController:
         )
         self._operator_provider = operator_provider or OperatorIntelligenceProvider()
         self._authority = authority
+        self._operator_order_service: OperatorOrderService | None = None
         self._calendar = calendar or default_a2_session_calendar()
 
         # Engine & Pipeline
@@ -385,6 +393,51 @@ class A2PaperSessionController:
     @property
     def operator_provider(self) -> OperatorIntelligenceProvider:
         return self._operator_provider
+
+    @property
+    def operator_order_service(self) -> OperatorOrderService | None:
+        return self._operator_order_service
+
+    def attach_operator_reference_authority(self, references: object) -> None:
+        """Attach provider-derived option references to the governed manual-entry seam."""
+        if self._engine is None:
+            raise RuntimeError("A2 runtime must be started before operator authority attachment")
+        from ats.market.derivatives.reference_authority import InstrumentReferenceAuthority
+
+        if not isinstance(references, InstrumentReferenceAuthority):
+            raise TypeError("provider InstrumentReferenceAuthority required")
+
+        def deterministic_a04(intent: OperatorOrderIntent, capital: Decimal) -> A04OperatorDecision:
+            state = self._runtime_provider.get_state()
+            reasons: list[str] = []
+            if self.config.execution_target != "PAPER" or self.config.live_money != "DISABLED":
+                reasons.append("A04_PAPER_SCOPE_REQUIRED")
+            if capital <= 0 or capital > state.available:
+                reasons.append("A04_CAPITAL_DENY")
+            if state.loss_state is LossState.HALTED or state.is_halted:
+                reasons.append("A04_LOSS_OR_SYSTEM_HALT")
+            if not state.can_enter or state.paused:
+                reasons.append("A04_SESSION_DENY")
+            return A04OperatorDecision(
+                allowed=not reasons,
+                decision_id=uuid4(),
+                token_id=uuid4() if not reasons else None,
+                reason_codes=tuple(reasons or ("A04_OPERATOR_PAPER_ALLOW",)),
+            )
+
+        for contract in references.contracts:
+            self._broker.register_instrument_spec(
+                contract.provider_instrument_key, contract.lot_size
+            )
+        self._operator_order_service = OperatorOrderService(
+            references=references,
+            market_feed=self._market_feed,
+            broker=self._broker,
+            runtime=self._engine,
+            runtime_state=self._runtime_provider.get_state,
+            a04=deterministic_a04,
+            max_quote_age_ms=self._engine.config.max_quote_age_ms,
+        )
 
     @property
     def harness_integration(self) -> Any:
@@ -474,9 +527,7 @@ class A2PaperSessionController:
                     cal_obs = self._calibration_observations_provider() or ()
                 except Exception:
                     cal_obs = ()
-            return self.scan_market_for_candidates(
-                calibration_observations=cal_obs, now=eval_now
-            )
+            return self.scan_market_for_candidates(calibration_observations=cal_obs, now=eval_now)
         except Exception:
             # Scanner exceptions are isolated and must never crash P0 safety or event loop
             return None
@@ -531,9 +582,7 @@ class A2PaperSessionController:
             + self._pipeline_counters.portfolio_brain_defer
             + self._pipeline_counters.portfolio_brain_deny
         )
-        c.a04_decisions = (
-            self._pipeline_counters.a04_allow + self._pipeline_counters.a04_deny
-        )
+        c.a04_decisions = self._pipeline_counters.a04_allow + self._pipeline_counters.a04_deny
         c.paper_orders = self._pipeline_counters.paper_orders
         c.paper_fills = self._pipeline_counters.paper_fills
         c.rejection_reasons = dict(self._pipeline_counters.rejection_reasons)
@@ -619,7 +668,9 @@ class A2PaperSessionController:
         # Flatten open paper positions safely
         if self._engine is not None and self._engine.state.open_positions:
             now = SystemClock().now()
-            self._engine.request_flatten(now, reason_code="A2_SESSION_STOP_FLATTEN", source="CONTROLLER")
+            self._engine.request_flatten(
+                now, reason_code="A2_SESSION_STOP_FLATTEN", source="CONTROLLER"
+            )
             for pid in list(self._engine.state.open_positions.keys()):
                 self._engine.handle_exit_fill(pid, now)
 
@@ -645,7 +696,9 @@ class A2PaperSessionController:
         is_healthy = feed_ok and broker_ok and runtime_ok and self._state is A2SessionState.RUNNING
 
         return {
-            "status": "HEALTHY" if is_healthy else ("DEGRADED" if self._state is A2SessionState.RUNNING else "OFFLINE"),
+            "status": "HEALTHY"
+            if is_healthy
+            else ("DEGRADED" if self._state is A2SessionState.RUNNING else "OFFLINE"),
             "session_state": self._state.value,
             "feed_healthy": feed_ok,
             "broker_healthy": broker_ok,
@@ -712,7 +765,9 @@ class A2PaperSessionController:
         if runtime_outcome.get("exits"):
             for exit_info in runtime_outcome["exits"]:
                 pid = exit_info["position_id"]
-                self._engine.request_exit(pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR")
+                self._engine.request_exit(
+                    pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR"
+                )
                 self._engine.handle_exit_fill(pid, now)
                 self.notify_material_event(
                     "POSITION_DETERIORATION",
@@ -726,7 +781,11 @@ class A2PaperSessionController:
         # 5. Trigger autonomous scanner if new decision-ready state exists
         self._maybe_scan_decision_ready_state(now)
 
-        return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
+        return {
+            "accepted": True,
+            "events_processed": self._events_processed,
+            "runtime": runtime_outcome,
+        }
 
     def attach_upstox_runtime_feed(self, feed: UpstoxV3RuntimeFeed) -> None:
         """Attach the read-only Upstox V3 runtime feed to this A2 session.
@@ -747,9 +806,7 @@ class A2PaperSessionController:
         price = update.last_traded_price
         if price is None:
             return
-        self.ingest_market_update(
-            update.instrument_key, price, update.received_at, freshness
-        )
+        self.ingest_market_update(update.instrument_key, price, update.received_at, freshness)
 
     def ingest_market_update(
         self,
@@ -808,7 +865,9 @@ class A2PaperSessionController:
         if runtime_outcome.get("exits"):
             for exit_info in runtime_outcome["exits"]:
                 pid = exit_info["position_id"]
-                self._engine.request_exit(pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR")
+                self._engine.request_exit(
+                    pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR"
+                )
                 self._engine.handle_exit_fill(pid, now)
                 self.notify_material_event(
                     "POSITION_DETERIORATION",
@@ -821,7 +880,11 @@ class A2PaperSessionController:
         # 4. Trigger autonomous scanner if new decision-ready state exists
         self._maybe_scan_decision_ready_state(now)
 
-        return {"accepted": True, "events_processed": self._events_processed, "runtime": runtime_outcome}
+        return {
+            "accepted": True,
+            "events_processed": self._events_processed,
+            "runtime": runtime_outcome,
+        }
 
     def evaluate_and_execute_candidate(
         self,
@@ -837,7 +900,11 @@ class A2PaperSessionController:
         now: UTCDateTime | None = None,
     ) -> dict[str, Any]:
         """Execute candidate through canonical pipeline: Pipeline -> PortfolioBrain -> A04 -> Authority -> PaperBroker."""
-        if self._state is not A2SessionState.RUNNING or self._engine is None or self._portfolio_brain is None:
+        if (
+            self._state is not A2SessionState.RUNNING
+            or self._engine is None
+            or self._portfolio_brain is None
+        ):
             return {"allowed": False, "reason": "SESSION_NOT_RUNNING"}
 
         evaluation_time = now or SystemClock().now()
@@ -887,7 +954,9 @@ class A2PaperSessionController:
                 PositionExposure(
                     position_id=p_uuid,
                     underlying=pos.instrument_id.split("_")[0],
-                    direction=ExposureDirection.BULLISH if pos.direction == "BULLISH" else ExposureDirection.BEARISH,
+                    direction=ExposureDirection.BULLISH
+                    if pos.direction == "BULLISH"
+                    else ExposureDirection.BEARISH,
                     strategy_id=uuid4(),
                     capital_at_risk=pos.capital_at_risk,
                 )
@@ -914,7 +983,9 @@ class A2PaperSessionController:
             as_of=evaluation_time,
             input_hash="0" * 64,
         )
-        ctx = ctx.model_copy(update={"input_hash": compute_payload_hash(ctx, hash_field="input_hash")})
+        ctx = ctx.model_copy(
+            update={"input_hash": compute_payload_hash(ctx, hash_field="input_hash")}
+        )
 
         if instrument_evidence is not None:
             requested_capital = instrument_evidence.premium_required
@@ -922,8 +993,7 @@ class A2PaperSessionController:
             maximum_loss = instrument_evidence.premium_required
             expected_net_value = instrument_evidence.expected_net_pnl
             spread_fraction = (
-                instrument_evidence.estimated_spread_cost
-                / instrument_evidence.premium_required
+                instrument_evidence.estimated_spread_cost / instrument_evidence.premium_required
             )
             liquidity_score = (
                 Decimal("1")
@@ -969,18 +1039,23 @@ class A2PaperSessionController:
                 portfolio_id=uuid4(),
                 campaign_id=candidate.campaign_id,
             )
-            res_res = self._authority.try_reserve_for_candidate(res_req, evaluation_time=evaluation_time)
+            res_res = self._authority.try_reserve_for_candidate(
+                res_req, evaluation_time=evaluation_time
+            )
             if res_res.outcome.value != "ALLOW":
                 self._pipeline_counters.a04_deny += 1
                 self._record_rejection(("AUTHORITY_RESERVATION_DENIED", *res_res.reason_codes))
-                return {"allowed": False, "reason": "AUTHORITY_RESERVATION_DENIED", "reasons": res_res.reason_codes}
+                return {
+                    "allowed": False,
+                    "reason": "AUTHORITY_RESERVATION_DENIED",
+                    "reasons": res_res.reason_codes,
+                }
 
         # 4. Submit to PaperBrokerAdapter ONLY (No real order placed)
         slipped_price = self._broker.apply_slippage(Decimal("100.00"), "BUY")
         if instrument_evidence is not None:
             slipped_price = instrument_evidence.entry_ask + (
-                instrument_evidence.estimated_slippage
-                / Decimal(instrument_evidence.quantity)
+                instrument_evidence.estimated_slippage / Decimal(instrument_evidence.quantity)
             )
             if self._broker._lot_size_registry is not None:
                 self._broker._lot_size_registry.register(
@@ -1043,6 +1118,8 @@ class A2PaperSessionController:
             capital_committed=alloc.approved_capital,
             entry_at=evaluation_time,
             direction="BULLISH" if direction == ExposureDirection.BULLISH else "BEARISH",
+            origin=PositionOrigin.ATS_AUTONOMOUS,
+            managed_exit_mode=ManagedExitMode.ATS_MANAGED_EXIT,
         )
 
         self._runtime_provider.update_from_engine(self._engine)
@@ -1122,13 +1199,10 @@ class A2PaperSessionController:
         offset = evaluation_time.minute % 5
         from datetime import timedelta
 
-        bar_ts = (
-            evaluation_time
-            - timedelta(
-                minutes=offset,
-                seconds=evaluation_time.second,
-                microseconds=evaluation_time.microsecond,
-            )
+        bar_ts = evaluation_time - timedelta(
+            minutes=offset,
+            seconds=evaluation_time.second,
+            microseconds=evaluation_time.microsecond,
         )
 
         pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
@@ -1179,9 +1253,7 @@ class A2PaperSessionController:
                     history.pop(0)
                     renumbered_history: list[MarketSnapshot] = []
                     for idx, historical_snapshot in enumerate(history, start=1):
-                        renumbered = historical_snapshot.model_copy(
-                            update={"sequence": idx}
-                        )
+                        renumbered = historical_snapshot.model_copy(update={"sequence": idx})
                         renumbered_history.append(
                             renumbered.model_copy(
                                 update={"payload_hash": compute_payload_hash(renumbered)}
@@ -1282,9 +1354,7 @@ class A2PaperSessionController:
                     else None
                 ),
                 option_chain=(
-                    live_option_evidence.option_chain
-                    if live_option_evidence is not None
-                    else None
+                    live_option_evidence.option_chain if live_option_evidence is not None else None
                 ),
             )
 
@@ -1305,12 +1375,14 @@ class A2PaperSessionController:
             )
             regime_str = (
                 str(getattr(result.regime.structure, "value", result.regime.structure))
-                if result.regime is not None and getattr(result.regime, "structure", None) is not None
+                if result.regime is not None
+                and getattr(result.regime, "structure", None) is not None
                 else ("INSUFFICIENT_HISTORY" if len(history) < 2 else "NOT_COMPUTED")
             )
             vol_str = (
                 str(getattr(result.regime.volatility, "value", result.regime.volatility))
-                if result.regime is not None and getattr(result.regime, "volatility", None) is not None
+                if result.regime is not None
+                and getattr(result.regime, "volatility", None) is not None
                 else "NOT_COMPUTED"
             )
             self._live_pipeline_bridge.record_market_evidence(
@@ -1322,6 +1394,7 @@ class A2PaperSessionController:
 
             # --- Continuous Prediction Telemetry (Observability-Only) ---
             import math
+
             closes = [float(getattr(s, "close", getattr(s, "price", mark))) for s in history]
             roc_3 = (closes[-1] - closes[-4]) / closes[-4] if len(closes) >= 4 else 0.0
             roc_1 = (closes[-1] - closes[-2]) / closes[-2] if len(closes) >= 2 else 0.0
@@ -1335,11 +1408,17 @@ class A2PaperSessionController:
             p_c2 = 0.50 + 0.50 * math.tanh(max(-5.0, min(5.0, (roc_3 / vol_scale) * 0.02)))
             r10x_convexity = abs(roc_1 - roc_3) * 100.0
 
-            pred_dir = "BULLISH" if p_champ > 0.5005 else ("BEARISH" if p_champ < 0.4995 else "NEUTRAL")
+            pred_dir = (
+                "BULLISH" if p_champ > 0.5005 else ("BEARISH" if p_champ < 0.4995 else "NEUTRAL")
+            )
             threshold = 0.55
-            distance = round(p_champ - threshold if p_champ >= 0.50 else (1.0 - p_champ) - threshold, 4)
+            distance = round(
+                p_champ - threshold if p_champ >= 0.50 else (1.0 - p_champ) - threshold, 4
+            )
 
-            pref_expr = "LONG_CE" if p_champ >= 0.55 else ("LONG_PE" if (1.0 - p_champ) >= 0.55 else "HOLD")
+            pref_expr = (
+                "LONG_CE" if p_champ >= 0.55 else ("LONG_PE" if (1.0 - p_champ) >= 0.55 else "HOLD")
+            )
             decision_label = "HOLD"
             reason_label = "NEUTRAL_THESIS"
             if result.is_actionable and result.candidate is not None:
@@ -1371,20 +1450,88 @@ class A2PaperSessionController:
                         if opt_bid is not None and opt_ask is not None:
                             opt_spread = round(opt_ask - opt_bid, 2)
                         if q.greeks is not None:
-                            opt_iv = float(q.greeks.implied_volatility) if q.greeks.implied_volatility else None
+                            opt_iv = (
+                                float(q.greeks.implied_volatility)
+                                if q.greeks.implied_volatility
+                                else None
+                            )
                             opt_delta = float(q.greeks.delta) if q.greeks.delta else None
                             opt_theta = float(q.greeks.theta) if q.greeks.theta else None
                         break
 
             shadows = [
-                {"model_id": "C0", "name": "Champion (Linear 5.0)", "direction": "BULLISH" if p_champ > 0.5 else "BEARISH", "probability": round(p_champ, 4), "distance": round(abs(p_champ - 0.5) - 0.05, 4), "would_activate": p_champ >= 0.55 or p_champ <= 0.45, "status": "CHAMPION_ACTIVE"},
-                {"model_id": "A1", "name": "Challenger A1 (Linear 10.0)", "direction": "BULLISH" if p_a1 > 0.5 else "BEARISH", "probability": round(p_a1, 4), "distance": round(abs(p_a1 - 0.5) - 0.05, 4), "would_activate": p_a1 >= 0.55 or p_a1 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "A2", "name": "Challenger A2 (Linear 15.0)", "direction": "BULLISH" if p_a2 > 0.5 else "BEARISH", "probability": round(p_a2, 4), "distance": round(abs(p_a2 - 0.5) - 0.05, 4), "would_activate": p_a2 >= 0.55 or p_a2 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "A3", "name": "Challenger A3 (Linear 20.0)", "direction": "BULLISH" if p_a3 > 0.5 else "BEARISH", "probability": round(p_a3, 4), "distance": round(abs(p_a3 - 0.5) - 0.05, 4), "would_activate": p_a3 >= 0.55 or p_a3 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "A4", "name": "Challenger A4 (Linear 25.0)", "direction": "BULLISH" if p_a4 > 0.5 else "BEARISH", "probability": round(p_a4, 4), "distance": round(abs(p_a4 - 0.5) - 0.05, 4), "would_activate": p_a4 >= 0.55 or p_a4 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "C1", "name": "Challenger C1 (Logistic)", "direction": "BULLISH" if p_c1 > 0.5 else "BEARISH", "probability": round(p_c1, 4), "distance": round(abs(p_c1 - 0.5) - 0.05, 4), "would_activate": p_c1 >= 0.55 or p_c1 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "C2", "name": "Challenger C2 (Tanh)", "direction": "BULLISH" if p_c2 > 0.5 else "BEARISH", "probability": round(p_c2, 4), "distance": round(abs(p_c2 - 0.5) - 0.05, 4), "would_activate": p_c2 >= 0.55 or p_c2 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
-                {"model_id": "R10X", "name": "R10-X Convexity", "direction": "NEUTRAL", "probability": round(min(0.95, 0.50 + r10x_convexity), 4), "distance": round(min(0.95, 0.50 + r10x_convexity) - 0.55, 4), "would_activate": r10x_convexity > 0.05, "status": "RESEARCH_ONLY"},
+                {
+                    "model_id": "C0",
+                    "name": "Champion (Linear 5.0)",
+                    "direction": "BULLISH" if p_champ > 0.5 else "BEARISH",
+                    "probability": round(p_champ, 4),
+                    "distance": round(abs(p_champ - 0.5) - 0.05, 4),
+                    "would_activate": p_champ >= 0.55 or p_champ <= 0.45,
+                    "status": "CHAMPION_ACTIVE",
+                },
+                {
+                    "model_id": "A1",
+                    "name": "Challenger A1 (Linear 10.0)",
+                    "direction": "BULLISH" if p_a1 > 0.5 else "BEARISH",
+                    "probability": round(p_a1, 4),
+                    "distance": round(abs(p_a1 - 0.5) - 0.05, 4),
+                    "would_activate": p_a1 >= 0.55 or p_a1 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "A2",
+                    "name": "Challenger A2 (Linear 15.0)",
+                    "direction": "BULLISH" if p_a2 > 0.5 else "BEARISH",
+                    "probability": round(p_a2, 4),
+                    "distance": round(abs(p_a2 - 0.5) - 0.05, 4),
+                    "would_activate": p_a2 >= 0.55 or p_a2 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "A3",
+                    "name": "Challenger A3 (Linear 20.0)",
+                    "direction": "BULLISH" if p_a3 > 0.5 else "BEARISH",
+                    "probability": round(p_a3, 4),
+                    "distance": round(abs(p_a3 - 0.5) - 0.05, 4),
+                    "would_activate": p_a3 >= 0.55 or p_a3 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "A4",
+                    "name": "Challenger A4 (Linear 25.0)",
+                    "direction": "BULLISH" if p_a4 > 0.5 else "BEARISH",
+                    "probability": round(p_a4, 4),
+                    "distance": round(abs(p_a4 - 0.5) - 0.05, 4),
+                    "would_activate": p_a4 >= 0.55 or p_a4 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "C1",
+                    "name": "Challenger C1 (Logistic)",
+                    "direction": "BULLISH" if p_c1 > 0.5 else "BEARISH",
+                    "probability": round(p_c1, 4),
+                    "distance": round(abs(p_c1 - 0.5) - 0.05, 4),
+                    "would_activate": p_c1 >= 0.55 or p_c1 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "C2",
+                    "name": "Challenger C2 (Tanh)",
+                    "direction": "BULLISH" if p_c2 > 0.5 else "BEARISH",
+                    "probability": round(p_c2, 4),
+                    "distance": round(abs(p_c2 - 0.5) - 0.05, 4),
+                    "would_activate": p_c2 >= 0.55 or p_c2 <= 0.45,
+                    "status": "HOLD_AS_CHALLENGER",
+                },
+                {
+                    "model_id": "R10X",
+                    "name": "R10-X Convexity",
+                    "direction": "NEUTRAL",
+                    "probability": round(min(0.95, 0.50 + r10x_convexity), 4),
+                    "distance": round(min(0.95, 0.50 + r10x_convexity) - 0.55, 4),
+                    "would_activate": r10x_convexity > 0.05,
+                    "status": "RESEARCH_ONLY",
+                },
             ]
 
             prediction_dict = {
@@ -1480,7 +1627,9 @@ class A2PaperSessionController:
                     for und in self.config.underlyings:
                         mark = self._market_feed.latest_mark(und)
                         if mark is None and self._upstox_feed is not None:
-                            key = NIFTY_INDEX_FEED_KEY if und == "NIFTY" else BANKNIFTY_INDEX_FEED_KEY
+                            key = (
+                                NIFTY_INDEX_FEED_KEY if und == "NIFTY" else BANKNIFTY_INDEX_FEED_KEY
+                            )
                             upd = self._upstox_feed.latest(key)
                             if upd is not None and upd.last_traded_price is not None:
                                 mark = upd.last_traded_price
@@ -1491,15 +1640,22 @@ class A2PaperSessionController:
                     for pid, pos in list(self._engine.state.open_positions.items()):
                         mark = self._market_feed.latest_mark(pos.instrument_id)
                         if mark is not None:
-                            self._engine.state.open_positions[pid] = update_mark(pos, mark=mark, at=now)
+                            self._engine.state.open_positions[pid] = update_mark(
+                                pos, mark=mark, at=now
+                            )
                             dec = evaluate_position(
                                 config=self._engine.config.position_monitor,
                                 position=self._engine.state.open_positions[pid],
                                 hwm=self._engine.state.hwm_state,
                                 evaluation_time=now,
                             )
-                            if dec.should_exit_now:
-                                self._engine.request_exit(pid, now, reason_codes=dec.reason_codes, source="MONITOR")
+                            if (
+                                dec.should_exit_now
+                                and pos.managed_exit_mode is ManagedExitMode.ATS_MANAGED_EXIT
+                            ):
+                                self._engine.request_exit(
+                                    pid, now, reason_codes=dec.reason_codes, source="MONITOR"
+                                )
                                 self._engine.handle_exit_fill(pid, now)
                                 self.notify_material_event(
                                     "POSITION_DETERIORATION",
@@ -1615,6 +1771,7 @@ def create_a2_paper_app(
         trading_runtime_provider=session_controller.runtime_provider,
         operator_intelligence_provider=session_controller.operator_provider,
         trading_runtime_engine=session_controller.engine or session_controller,
+        operator_order_service=session_controller.operator_order_service,
     )
     app.state.a2_session_controller = session_controller
     harness_bridge = session_controller.harness_bridge

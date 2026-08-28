@@ -191,6 +191,15 @@ class ReadOnlyUpstoxSupervisor:
     def _build_feed(self) -> UpstoxV3RuntimeFeed:
         now = datetime.now(UTC)
         contracts = _fetch_reference(now)
+        from ats.market.derivatives.reference_authority import InstrumentReferenceAuthority
+
+        self._controller.attach_operator_reference_authority(
+            InstrumentReferenceAuthority(
+                contracts=contracts,
+                retrieved_at=now,
+                maximum_age=timedelta(hours=24),
+            )
+        )
         quote_client = UpstoxReadOnlyClient(token=self._token)
         spots = {
             DerivativeUnderlying.NIFTY.value: _extract_ltp(

@@ -92,6 +92,7 @@ def create_app(
     trading_runtime_provider: object | None = None,
     operator_intelligence_provider: OperatorIntelligenceProvider | None = None,
     trading_runtime_engine: object | None = None,
+    operator_order_service: object | None = None,
 ) -> FastAPI:
     """Create an A05 app over an injected read provider; no runtime is fabricated."""
     app = FastAPI(
@@ -106,6 +107,7 @@ def create_app(
         operator_intelligence_provider or OperatorIntelligenceProvider()
     )
     app.state.trading_runtime_engine = trading_runtime_engine
+    app.state.operator_order_service = operator_order_service
     app.add_middleware(
         CORSMiddleware,
         allow_origins=("http://127.0.0.1:3000", "http://localhost:3000"),

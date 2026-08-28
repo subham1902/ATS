@@ -20,6 +20,17 @@ class PositionAction(StrEnum):
     NO_DATA = "NO_DATA"
 
 
+class PositionOrigin(StrEnum):
+    ATS_AUTONOMOUS = "ATS_AUTONOMOUS"
+    OPERATOR_MANUAL = "OPERATOR_MANUAL"
+    EXTERNAL_RECONCILED = "EXTERNAL_RECONCILED"
+
+
+class ManagedExitMode(StrEnum):
+    MONITOR_ONLY = "MONITOR_ONLY"
+    ATS_MANAGED_EXIT = "ATS_MANAGED_EXIT"
+
+
 @dataclass(frozen=True)
 class PositionMonitorConfig:
     hard_loss_fraction: Decimal = Decimal("0.015")
@@ -61,6 +72,9 @@ class MonitoredPosition:
     lot_size: int = 1
     expected_edge_r: float = 0.0
     direction: str = "BULLISH"
+    origin: PositionOrigin = PositionOrigin.ATS_AUTONOMOUS
+    managed_exit_mode: ManagedExitMode = ManagedExitMode.ATS_MANAGED_EXIT
+    operator_action_id: str | None = None
 
 
 def update_mark(
@@ -111,6 +125,9 @@ def update_mark(
         lot_size=position.lot_size,
         expected_edge_r=position.expected_edge_r,
         direction=position.direction,
+        origin=position.origin,
+        managed_exit_mode=position.managed_exit_mode,
+        operator_action_id=position.operator_action_id,
     )
 
 
@@ -267,7 +284,9 @@ def evaluate_position(
 
 __all__ = [
     "MonitoredPosition",
+    "ManagedExitMode",
     "PositionAction",
+    "PositionOrigin",
     "PositionMonitorConfig",
     "PositionMonitorDecision",
     "evaluate_position",

@@ -40,6 +40,16 @@ class RuntimePositionView(ATSBaseModel):
     entry_price: Decimal
     mark_price: Decimal | None
     unrealized_pnl: Decimal
+    origin: Literal["ATS_AUTONOMOUS", "OPERATOR_MANUAL", "EXTERNAL_RECONCILED"] = "ATS_AUTONOMOUS"
+    managed_exit_mode: Literal["MONITOR_ONLY", "ATS_MANAGED_EXIT"] = "ATS_MANAGED_EXIT"
+    realized_pnl: Decimal = Decimal("0")
+    capital_committed: Decimal = Decimal("0")
+    current_stop: Decimal | None = None
+    target_price: Decimal | None = None
+    trailing_stop: Decimal | None = None
+    time_held_minutes: int = 0
+    last_recommendation: str = "KEEP"
+    recommendation_reasons: tuple[str, ...] = ()
 
 
 class RuntimeSessionView(ATSBaseModel):
@@ -73,6 +83,8 @@ class RuntimeCommandRequest(ATSBaseModel):
         "EXIT_POSITION",
         "FLATTEN_PORTFOLIO",
         "HALT_SYSTEM",
+        "SET_MANAGED_EXIT",
+        "SET_MONITOR_ONLY",
         "START_A2_PAPER_SESSION",
         "STOP_A2_PAPER_SESSION",
     ]

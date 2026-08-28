@@ -73,6 +73,11 @@ class InstrumentReferenceAuthority:
         if len(self._by_key) != len(contracts):
             raise InstrumentReferenceError("DUPLICATE_INSTRUMENT_KEY")
 
+    @property
+    def contracts(self) -> tuple[NormalizedDerivativeContract, ...]:
+        """Return the immutable provider-normalized reference set."""
+        return self._contracts
+
     def resolve(self, instrument_key: str, *, as_of: UTCDateTime) -> DerivativeInstrumentSpec:
         try:
             contract = self._by_key[instrument_key]

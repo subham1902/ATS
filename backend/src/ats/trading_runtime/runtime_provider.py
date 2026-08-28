@@ -94,6 +94,21 @@ class TradingRuntimeProvider:
                         pid = UUID(str(raw_pid))
                     except (ValueError, TypeError):
                         pid = uuid5(NAMESPACE_DNS, str(raw_pid))
+                    recommendation = "KEEP"
+                    recommendation_reasons: tuple[str, ...] = ()
+                    try:
+                        from ats.trading_runtime.position_monitor import evaluate_position
+
+                        decision = evaluate_position(
+                            config=engine.config.position_monitor,
+                            position=pos,
+                            hwm=getattr(st, "hwm_state", None),
+                            evaluation_time=SystemClock().now(),
+                        )
+                        recommendation = decision.action.value
+                        recommendation_reasons = decision.reason_codes
+                    except (AttributeError, TypeError, ValueError):
+                        recommendation_reasons = ("POSITION_EVIDENCE_UNAVAILABLE",)
                     pos_list.append(
                         {
                             "position_id": pid,
@@ -102,6 +117,20 @@ class TradingRuntimeProvider:
                             "entry_price": getattr(pos, "entry_price", Decimal("0")),
                             "mark_price": getattr(pos, "current_mark", None),
                             "unrealized_pnl": getattr(pos, "unrealized_pnl", Decimal("0")),
+                            "realized_pnl": getattr(pos, "realized_pnl", Decimal("0")),
+                            "origin": getattr(
+                                getattr(pos, "origin", None), "value", "ATS_AUTONOMOUS"
+                            ),
+                            "managed_exit_mode": getattr(
+                                getattr(pos, "managed_exit_mode", None), "value", "ATS_MANAGED_EXIT"
+                            ),
+                            "capital_committed": getattr(pos, "capital_committed", Decimal("0")),
+                            "current_stop": getattr(pos, "current_stop", None),
+                            "target_price": None,
+                            "trailing_stop": getattr(pos, "trailing_stop", None),
+                            "time_held_minutes": getattr(pos, "time_held_minutes", 0),
+                            "last_recommendation": recommendation,
+                            "recommendation_reasons": recommendation_reasons,
                         }
                     )
                 self._state.open_positions = pos_list
@@ -142,7 +171,10 @@ class TradingRuntimeProvider:
                 self._state.is_halted = sess_status.is_halted or self._state.is_halted
 
             if hasattr(cfg, "mode"):
-                if hasattr(engine, "state") and getattr(engine.state, "mode_state", None) is not None:
+                if (
+                    hasattr(engine, "state")
+                    and getattr(engine.state, "mode_state", None) is not None
+                ):
                     ms = engine.state.mode_state
                     self._state.user_mode = ms.user_selected
                     self._state.effective_mode = ms.effective
