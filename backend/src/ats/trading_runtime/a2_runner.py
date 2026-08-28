@@ -336,6 +336,7 @@ class A2PaperSessionController:
 
         # Autonomous scanner scheduling & state
         self._last_scanned_state_id: str | None = None
+        self._last_live_scan_time: UTCDateTime | None = None
         self._scan_in_flight: bool = False
         self._calibration_observations_provider: Any = None
         self._last_detected_regime: str | None = None
@@ -449,9 +450,15 @@ class A2PaperSessionController:
         state_id = self._compute_decision_state_id(eval_now)
         if state_id is None or state_id == self._last_scanned_state_id:
             return None
+        if self._upstox_feed is not None and self._last_live_scan_time is not None:
+            elapsed_seconds = (eval_now - self._last_live_scan_time).total_seconds()
+            if elapsed_seconds < self.config.loop_interval_sec:
+                return None
 
         self._scan_in_flight = True
         self._last_scanned_state_id = state_id
+        if self._upstox_feed is not None:
+            self._last_live_scan_time = eval_now
         try:
             cal_obs = ()
             if callable(self._calibration_observations_provider):
@@ -531,6 +538,7 @@ class A2PaperSessionController:
         self._state = A2SessionState.STARTING
         self._reason_codes = []
         self._last_scanned_state_id = None
+        self._last_live_scan_time = None
         self._scan_in_flight = False
         self._consecutive_rejections = 0
 
