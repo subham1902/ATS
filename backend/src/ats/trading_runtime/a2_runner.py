@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -88,6 +89,7 @@ from ats.trading_runtime.position_monitor import (
     evaluate_position,
     update_mark,
 )
+from ats.trading_runtime.runtime_checkpoint import JsonRuntimeCheckpointStore
 from ats.trading_runtime.runtime_provider import (
     RuntimeProviderState,
     TradingRuntimeProvider,
@@ -135,6 +137,7 @@ class A2PaperSessionConfig:
     tick_size: Decimal = Decimal("0.05")
     mode: TradingMode = TradingMode.NORMAL
     require_live_instrument_evidence: bool = False
+    runtime_checkpoint_path: str | None = None
 
 
 @dataclass
@@ -620,6 +623,11 @@ class A2PaperSessionController:
             market_feed=self._market_feed,
             broker=self._broker,
             authority=self._authority,
+            runtime_checkpoint=(
+                JsonRuntimeCheckpointStore(Path(self.config.runtime_checkpoint_path))
+                if self.config.runtime_checkpoint_path
+                else None
+            ),
         )
         self._pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
         self._portfolio_brain = PortfolioManagerBrain()
@@ -1744,6 +1752,7 @@ def create_a2_paper_app(
         config=A2PaperSessionConfig(
             execution_target="PAPER",
             live_money="DISABLED",
+            runtime_checkpoint_path=os.getenv("ATS_A2_RUNTIME_CHECKPOINT_PATH"),
         )
     )
 

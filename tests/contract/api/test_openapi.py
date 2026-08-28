@@ -28,6 +28,8 @@ EXPECTED_OPERATIONS = {
     ("get", "/v1/harness/agents"),
     ("post", "/v1/harness/advisory"),
     ("get", "/v1/pipeline/counters"),
+    ("get", "/v1/pipeline/predictions"),
+    ("post", "/v1/runtime/operator-orders"),
 }
 
 
