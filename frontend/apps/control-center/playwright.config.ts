@@ -42,7 +42,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm exec next start -p 3000',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 30000,
     env: {
       NEXT_PUBLIC_ATS_OPERATOR_COCKPIT_V2: '1',

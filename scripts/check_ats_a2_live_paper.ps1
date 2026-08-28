@@ -28,7 +28,7 @@ $failures = @()
 if ($null -eq $runtime) { $failures += 'RUNTIME_STATUS_UNREACHABLE' }
 else {
     $realOrders = try { [int]$runtime.pnl.realized } catch { 0 }
-    if ($runtime.session.phase -eq 'CLOSED') { Write-Host "MARKET CLOSED (acceptable pre-open) — phase=$($runtime.session.phase)" -ForegroundColor Yellow }
+    if ($runtime.session.phase -eq 'CLOSED') { Write-Host "MARKET CLOSED (acceptable pre-open) - phase=$($runtime.session.phase)" -ForegroundColor Yellow }
     if ($runtime.session.can_enter -and $runtime.session.phase -ne 'CLOSED') { Write-Host "SESSION OPEN can_enter=$($runtime.session.can_enter)" -ForegroundColor Green }
 }
 
@@ -53,6 +53,7 @@ if ($failures.Count -eq 0) {
     Write-Host "ALL INVARIANTS HOLD: PAPER + LIVE_MONEY_DISABLED + REAL_ORDERS_0 + HARNESS_ADVISORY_ONLY" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "INVARIANT FAILURES: $($failures -join ', ')" -ForegroundColor Red
+    $failStr = $failures -join ", "
+    Write-Host "INVARIANT FAILURES: $failStr" -ForegroundColor Red
     exit 1
 }
