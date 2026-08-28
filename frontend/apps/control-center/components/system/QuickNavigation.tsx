@@ -4,11 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const NAV_GROUPS = [
-  { label: "LIVE", items: [["/", "Overview", "⌂"], ["/markets", "Markets", "⌁"], ["/candidates", "Opportunities", "◇"], ["/positions", "Positions", "▤"]] },
-  { label: "CONTROL", items: [["/portfolio", "Portfolio", "◫"], ["/risk", "Risk", "△"], ["/governance", "Governance", "◎"]] },
-  { label: "INTELLIGENCE", items: [["/operator-intelligence", "Operator Intelligence", "✦"], ["/harness", "Harness", "⌘"], ["/research", "R&D", "⚗"]] },
-  { label: "HISTORY", items: [["/activity", "Activity", "↺"], ["/trades", "Trades", "⇄"], ["/research?view=history", "Research", "▦"]] },
-  { label: "SYSTEM", items: [["/policies", "Policies", "◉"], ["/settings", "Settings", "⚙"]] },
+  { label: "DESK", items: [["/", "Overview", "⌂"], ["/markets", "Markets", "⌁"], ["/trades", "Trade Desk", "⇄"], ["/positions", "Positions", "▤"], ["/candidates", "Opportunities", "◇"]] },
+  { label: "INTELLIGENCE", items: [["/harness", "Agents", "✦"], ["/research", "Research", "⚗"], ["/activity", "Session Review", "↺"]] },
+  { label: "SYSTEM", items: [["/settings", "System", "⚙"]] },
 ] as const;
 
 export function QuickNavigation({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
