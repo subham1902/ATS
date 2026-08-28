@@ -30,16 +30,18 @@ def test_api_source_contains_no_authority_or_execution_runtime() -> None:
     assert not {marker for marker in forbidden if marker in source}
 
 
-def test_api_has_no_state_mutation_or_token_authority_routes() -> None:
+def test_api_exposes_only_narrow_governed_state_mutation_routes() -> None:
     from tests.unit.api.fixtures import make_api_fixture
 
     schema = make_api_fixture()["app"].openapi()
     paths = set(schema["paths"])
-    assert not any("order" in path or "execute" in path or "consume" in path for path in paths)
+    assert not any("execute" in path or "consume" in path for path in paths)
+    assert {path for path in paths if "order" in path} == {"/v1/runtime/operator-orders"}
     post_paths = {path for path, operations in schema["paths"].items() if "post" in operations}
     assert post_paths == {
         "/v1/agent-chat",
         "/v1/harness/advisory",
         "/v1/policies/validate",
         "/v1/runtime/command",
+        "/v1/runtime/operator-orders",
     }

@@ -47,6 +47,11 @@ from ats.trading_runtime.reduction_authority import (
     BeginReductionRequest,
     ReductionAuthorityService,
 )
+from ats.trading_runtime.runtime_checkpoint import (
+    RuntimeCheckpointStore,
+    deserialize_position,
+    serialize_position,
+)
 from ats.trading_runtime.safety import SafetyFacts, evaluate_p0_safety
 from ats.trading_runtime.session import SessionRuntimeConfig, resolve_session_status
 from ats.trading_runtime.strategy import BarFeatures, StrategyConfig, StrategySignal, evaluate_bar
@@ -174,6 +179,7 @@ class TradingRuntime:
         reduction_authority: ReductionAuthorityService | None = None,
         reduction_request_factory: ReductionRequestFactory | None = None,
         durable_positions: PositionAuthorityStore | None = None,
+        runtime_checkpoint: RuntimeCheckpointStore | None = None,
     ) -> None:
         self.config = config
         self.market_feed = market_feed
@@ -182,6 +188,7 @@ class TradingRuntime:
         self.reduction_authority = reduction_authority
         self.reduction_request_factory = reduction_request_factory
         self.durable_positions = durable_positions
+        self.runtime_checkpoint = runtime_checkpoint
         self.state = state or RuntimeState()
         self.metrics = EngineMetrics()
         self._event_log: list[RuntimeEvent] = []
@@ -487,6 +494,7 @@ class TradingRuntime:
             managed_exit_mode=managed_exit_mode,
             operator_action_id=operator_action_id,
         )
+        self._persist_runtime_checkpoint()
 
     def set_managed_exit_mode(self, position_id: str, mode: ManagedExitMode) -> bool:
         """Persist the operator-selected mode in canonical position state."""
@@ -496,6 +504,7 @@ class TradingRuntime:
         from dataclasses import replace
 
         self.state.open_positions[position_id] = replace(position, managed_exit_mode=mode)
+        self._persist_runtime_checkpoint()
         return True
 
     def request_exit(
@@ -550,6 +559,7 @@ class TradingRuntime:
             reduction_id=reduction_id,
             execution_state=execution_state,
         )
+        self._persist_runtime_checkpoint()
         return {
             "accepted": True,
             "idempotent": False,
@@ -600,6 +610,7 @@ class TradingRuntime:
                     "exited_at": at,
                 }
             )
+        self._persist_runtime_checkpoint()
 
     def handle_exit(self, position_id: str, at: UTCDateTime) -> None:
         """Backward-compatible terminal fill hook. Prefer ``handle_exit_fill``."""
@@ -626,6 +637,22 @@ class TradingRuntime:
         return {"reconciled": True, "execution_state": execution.state.value}
 
     def _recover_durable_runtime_state(self) -> None:
+        if self.runtime_checkpoint is not None:
+            checkpoint = self.runtime_checkpoint.load()
+            if checkpoint is not None:
+                self.state.open_positions = {
+                    item["position_id"]: deserialize_position(item)
+                    for item in checkpoint.get("open_positions", [])
+                }
+                self.state.current_equity = Decimal(
+                    str(checkpoint.get("current_equity", self.state.current_equity))
+                )
+                self.state.peak_equity = Decimal(
+                    str(checkpoint.get("peak_equity", self.state.peak_equity))
+                )
+                self.state.cumulative_realized_pnl = Decimal(
+                    str(checkpoint.get("cumulative_realized_pnl", self.state.cumulative_realized_pnl))
+                )
         if self.durable_positions is not None:
             for record in self.durable_positions.recover_open():
                 position = record.position
@@ -658,6 +685,21 @@ class TradingRuntime:
                     reduction_id=str(recovered.reduction_id),
                     execution_state=recovered.execution.state.value,
                 )
+
+    def _persist_runtime_checkpoint(self) -> None:
+        if self.runtime_checkpoint is None:
+            return
+        self.runtime_checkpoint.save(
+            {
+                "schema_version": 1,
+                "open_positions": [
+                    serialize_position(position) for position in self.state.open_positions.values()
+                ],
+                "current_equity": str(self.state.current_equity),
+                "peak_equity": str(self.state.peak_equity),
+                "cumulative_realized_pnl": str(self.state.cumulative_realized_pnl),
+            }
+        )
 
     def update_equity(self, current_equity: Decimal) -> None:
         self.state.current_equity = current_equity

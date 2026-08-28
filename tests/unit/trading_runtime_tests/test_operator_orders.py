@@ -19,6 +19,7 @@ from ats.trading_runtime.operator_orders import (
     OperatorOrderService,
 )
 from ats.trading_runtime.position_monitor import ManagedExitMode, PositionOrigin
+from ats.trading_runtime.runtime_checkpoint import MemoryRuntimeCheckpointStore
 from ats.trading_runtime.runtime_provider import RuntimeProviderState
 from ats.trading_runtime.session import RuntimeSessionPhase
 
@@ -54,7 +55,11 @@ def _contract(source_as_of: datetime = NOW) -> NormalizedDerivativeContract:
     )
 
 
-def _runtime(feed: InMemoryMarketFeed, broker: PaperBrokerAdapter) -> TradingRuntime:
+def _runtime(
+    feed: InMemoryMarketFeed,
+    broker: PaperBrokerAdapter,
+    checkpoint: MemoryRuntimeCheckpointStore | None = None,
+) -> TradingRuntime:
     calendar = SessionCalendar(
         calendar_id="TEST",
         calendar_version="1",
@@ -65,7 +70,12 @@ def _runtime(feed: InMemoryMarketFeed, broker: PaperBrokerAdapter) -> TradingRun
         market_close=time(15, 30),
         overrides=(),
     )
-    return TradingRuntime(config=RuntimeConfig(calendar=calendar), market_feed=feed, broker=broker)
+    return TradingRuntime(
+        config=RuntimeConfig(calendar=calendar),
+        market_feed=feed,
+        broker=broker,
+        runtime_checkpoint=checkpoint,
+    )
 
 
 def _service(*, a04_allow: bool = True, source_as_of: datetime = NOW):
@@ -166,3 +176,34 @@ def test_monitor_only_blocks_policy_exit_but_not_mandatory_session_flatten() -> 
         RuntimeEvent(kind=RuntimeEventKind.TICK, instrument_id=KEY, payload={}, at=NOW)
     )
     assert outcome["exits"][0]["position_id"] == str(result.position_id)
+
+
+def test_manual_position_origin_and_managed_exit_survive_runtime_restart() -> None:
+    checkpoint = MemoryRuntimeCheckpointStore()
+    feed = InMemoryMarketFeed()
+    feed.set_mark(KEY, Decimal("100"), NOW)
+    lots = LotSizeRegistry()
+    lots.register(KEY, 50)
+    broker = PaperBrokerAdapter(lot_size_registry=lots)
+    runtime = _runtime(feed, broker, checkpoint)
+    position_id = "manual-position-1"
+    runtime.handle_fill(
+        position_id,
+        Decimal("100"),
+        Decimal("50"),
+        NOW,
+        instrument_id=KEY,
+        lot_size=50,
+        origin=PositionOrigin.OPERATOR_MANUAL,
+        managed_exit_mode=ManagedExitMode.ATS_MANAGED_EXIT,
+        operator_action_id="operator-action-1",
+    )
+
+    recovered = _runtime(feed, broker, checkpoint)
+    assert tuple(recovered.state.open_positions) == (position_id,)
+    position = recovered.state.open_positions[position_id]
+    assert position.origin is PositionOrigin.OPERATOR_MANUAL
+    assert position.managed_exit_mode is ManagedExitMode.ATS_MANAGED_EXIT
+    assert position.quantity == Decimal("50")
+    assert position.capital_committed == Decimal("5000")
+    assert position.operator_action_id == "operator-action-1"

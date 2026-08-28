@@ -195,11 +195,11 @@ def test_stale_and_unhealthy_feed_prevents_new_risk() -> None:
     feed.set_healthy(True)
 
     # Set marks with old timestamp
-    old_time = now - timedelta(seconds=10)
+    old_time = now - timedelta(milliseconds=controller.config.max_quote_age_ms + 1)
     feed.set_mark("NIFTY", Decimal("24500.00"), at=old_time)
     feed.set_mark("BANKNIFTY", Decimal("52800.00"), at=old_time)
 
-    # Evaluated at current time 'now' (data is > 2000ms old) -> rejected as stale
+    # Evaluated just beyond the configured inclusive freshness boundary.
     outcome = controller._maybe_scan_decision_ready_state(now)
     assert outcome is None
     assert controller.pipeline_counters().scanner_observations == 0
