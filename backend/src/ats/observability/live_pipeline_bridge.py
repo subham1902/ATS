@@ -47,6 +47,9 @@ class LivePipelineCounters:
     calibration_evaluations: int = 0
     r10_evaluations: int = 0
     r10x_evaluations: int = 0
+    live_option_chains: int = 0
+    live_option_quotes: int = 0
+    option_evidence_failures: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
     candidates_qualified: int = 0
@@ -150,6 +153,9 @@ class LivePipelineBridge:
             "calibration_evaluations": self.counters.calibration_evaluations,
             "r10_evaluations": self.counters.r10_evaluations,
             "r10x_evaluations": self.counters.r10x_evaluations,
+            "live_option_chains": self.counters.live_option_chains,
+            "live_option_quotes": self.counters.live_option_quotes,
+            "option_evidence_failures": self.counters.option_evidence_failures,
             "candidates_considered": self.counters.candidates_considered,
             "candidates_rejected": self.counters.candidates_rejected,
             "candidates_qualified": self.counters.candidates_qualified,

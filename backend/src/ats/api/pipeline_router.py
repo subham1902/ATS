@@ -39,6 +39,7 @@ def get_pipeline_counters(request: Request) -> dict[str, object]:
                 "connection_state": telemetry["connection_state"],
                 "freshness": telemetry["freshness"],
                 "by_underlying": telemetry["by_underlying"],
+                "option_evidence": telemetry["option_evidence"],
             }
         )
     else:
@@ -48,6 +49,7 @@ def get_pipeline_counters(request: Request) -> dict[str, object]:
                 "connection_state": "DISCONNECTED",
                 "freshness": {},
                 "by_underlying": {},
+                "option_evidence": [],
             }
         )
     snap["attached"] = True

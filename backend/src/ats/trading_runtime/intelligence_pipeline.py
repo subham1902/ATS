@@ -110,7 +110,10 @@ class IntelligencePipelineConfig:
         default_factory=lambda: InstrumentSelectionConfiguration(
             selector_id="selector.v1",
             selector_version="1.0.0",
-            maximum_master_age_ms=60000,
+            # Provider contract-reference evidence is governed by the same
+            # one-day age policy as the dynamic live option universe. Quote,
+            # depth and chain evidence remain independently bounded to 2/10s.
+            maximum_master_age_ms=86_400_000,
             maximum_chain_age_ms=10000,
             maximum_quote_age_ms=2000,
             maximum_spread_fraction=Decimal("0.05"),
@@ -339,6 +342,23 @@ class MarketIntelligencePipeline:
             )
             if sel_res.status == InstrumentSelectionStatus.CANDIDATES_AVAILABLE:
                 instrument_cand = sel_res.candidates[0]
+            else:
+                rejection_codes = tuple(
+                    code
+                    for rejection in sel_res.rejections
+                    for code in rejection.reason_codes
+                )
+                return PipelineResult(
+                    is_actionable=False,
+                    direction=thesis.stance.value,
+                    expected_edge_r=0.0,
+                    candidate=None,
+                    instrument_candidate=None,
+                    thesis=thesis,
+                    regime=regime,
+                    distribution=distribution,
+                    reason_codes=tuple(sel_res.reason_codes) + rejection_codes,
+                )
 
         # 6. Candidate Synthesis
         target_instrument = (

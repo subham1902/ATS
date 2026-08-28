@@ -87,6 +87,8 @@ class UpstoxV3RuntimeFeed:
         self._transport: UpstoxV3Transport | None = None
         self._counters = UpstoxV3RuntimeCounters()
         self._underlying_by_key: dict[str, str] = {}
+        self._subscriptions_by_key: dict[str, Any] = {}
+        self._reference_contracts_by_key: dict[str, Any] = {}
         self._on_normalized = on_normalized
         self._stale_after_ms = configuration.limits.stale_after_ms
 
@@ -114,6 +116,7 @@ class UpstoxV3RuntimeFeed:
         from ats.market.derivatives.option_universe import OptionUniverseSubscription
 
         for sub in subscriptions:
+            self._subscriptions_by_key[sub.instrument_key] = sub
             if isinstance(sub, OptionUniverseSubscription):
                 self._registry.register(
                     instrument_key=sub.instrument_key,
@@ -133,6 +136,26 @@ class UpstoxV3RuntimeFeed:
             self._underlying_by_key[sub.instrument_key] = str(sub.underlying)
             bucket = self._counters.by_underlying.setdefault(sub.underlying, {})
             bucket["subscriptions"] = bucket.get("subscriptions", 0) + 1
+
+    def register_reference_contracts(self, contracts: tuple[Any, ...]) -> None:
+        """Retain provider-normalized reference evidence for subscribed options."""
+
+        self._reference_contracts_by_key = {
+            item.provider_instrument_key: item
+            for item in contracts
+            if item.provider_instrument_key in self._subscriptions_by_key
+        }
+
+    @property
+    def subscription_specs(self) -> tuple[Any, ...]:
+        return tuple(self._subscriptions_by_key.values())
+
+    @property
+    def reference_contracts(self) -> tuple[Any, ...]:
+        return tuple(self._reference_contracts_by_key.values())
+
+    def latest(self, instrument_key: str) -> NormalizedFeedUpdate | None:
+        return self._adapter.latest(instrument_key)
 
     def attach_transport(self, transport: UpstoxV3Transport) -> None:
         self._transport = transport
@@ -210,6 +233,7 @@ class UpstoxV3RuntimeFeed:
         return {key: state.value for key, state in self._board.evaluate(stamp).items()}
 
     def telemetry(self) -> dict[str, Any]:
+        now = self._clock.now()
         return {
             "upstox_raw_messages": self._counters.upstox_raw_messages,
             "protobuf_frames_decoded": self._counters.protobuf_frames_decoded,
@@ -223,7 +247,70 @@ class UpstoxV3RuntimeFeed:
             "freshness": self.freshness_summary(),
             "by_key": {k: dict(v) for k, v in self._counters.by_key.items()},
             "by_underlying": {k: dict(v) for k, v in self._counters.by_underlying.items()},
+            "option_evidence": self._option_evidence_telemetry(now),
         }
+
+    def _option_evidence_telemetry(self, now: UTCDateTime) -> list[dict[str, Any]]:
+        freshness = self._board.evaluate(now)
+        result: list[dict[str, Any]] = []
+        for key, spec in self._subscriptions_by_key.items():
+            if getattr(spec, "instrument_kind", None) != "OPTION":
+                continue
+            update = self._adapter.latest(key)
+            provider_time = update.provider_timestamp if update is not None else None
+            freshness_state = freshness.get(key)
+            result.append(
+                {
+                    "instrument_key": key,
+                    "underlying": spec.underlying,
+                    "expiry": spec.expiry,
+                    "strike": str(spec.strike),
+                    "option_type": spec.option_type,
+                    "lot_size": spec.lot_size,
+                    "tick_size": str(spec.tick_size),
+                    "freshness": (
+                        freshness_state.value
+                        if freshness_state is not None
+                        else "UNKNOWN"
+                    ),
+                    "provider_timestamp": (
+                        provider_time.isoformat() if provider_time is not None else None
+                    ),
+                    "ingest_timestamp": (
+                        update.received_at.isoformat() if update is not None else None
+                    ),
+                    "provider_age_ms": (
+                        int((now - provider_time).total_seconds() * 1000)
+                        if provider_time is not None
+                        else None
+                    ),
+                    "bid": str(update.bid_price) if update and update.bid_price else None,
+                    "ask": str(update.ask_price) if update and update.ask_price else None,
+                    "bid_quantity": update.bid_quantity if update else None,
+                    "ask_quantity": update.ask_quantity if update else None,
+                    "depth_buy_levels": (
+                        len(update.market_depth.buy_levels)
+                        if update and update.market_depth
+                        else 0
+                    ),
+                    "depth_sell_levels": (
+                        len(update.market_depth.sell_levels)
+                        if update and update.market_depth
+                        else 0
+                    ),
+                    "volume": update.volume if update else None,
+                    "open_interest": update.open_interest if update else None,
+                    "implied_volatility": (
+                        update.implied_volatility if update else None
+                    ),
+                    "delta": update.delta if update else None,
+                    "gamma": update.gamma if update else None,
+                    "theta": update.theta if update else None,
+                    "vega": update.vega if update else None,
+                    "greeks_method": update.greeks_method if update else "UNAVAILABLE",
+                }
+            )
+        return result
 
     @staticmethod
     def _bump(counter: dict[str, int], field: str) -> None:

@@ -29,6 +29,7 @@ from ats.contracts.domain.types import (
 from ats.contracts.governance.models import OpportunityCandidate
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.intelligence.harness.models import MaterialAgentEvent
+from ats.intelligence.instrument_selector.models import InstrumentCandidate
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.providers.models import SourceFreshness
 from ats.market.feeds.upstox_v3.instrument_keys import (
@@ -148,6 +149,9 @@ class PipelineCounters:
     calibration_evaluations: int = 0
     r10_evaluations: int = 0
     r10x_evaluations: int = 0
+    live_option_chains: int = 0
+    live_option_quotes: int = 0
+    option_evidence_failures: int = 0
     scanner_observations: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
@@ -186,6 +190,16 @@ _REJECTION_TAXONOMY: dict[str, str] = {
     "PAPER_BROKER_REJECTED": "other",
     "MARKET_DATA_UNSAFE": "risk_capital",
     "OPTION_CHAIN_EVIDENCE_REQUIRED": "invalid_reference",
+    "EVIDENCE_QUALITY_UNACCEPTABLE": "evidence_quality",
+    "EXPECTED_NET_PNL_NON_POSITIVE": "negative_net_ev",
+    "QUOTE_STALE": "stale",
+    "SPREAD_TOO_WIDE": "spread",
+    "SPREAD_UNAVAILABLE": "spread",
+    "INSUFFICIENT_ASK_DEPTH": "liquidity",
+    "INSUFFICIENT_VOLUME": "liquidity",
+    "INSUFFICIENT_OPEN_INTEREST": "liquidity",
+    "IMPLIED_VOLATILITY_UNAVAILABLE": "invalid_reference",
+    "REQUIRED_GREEKS_UNAVAILABLE": "invalid_reference",
 }
 
 
@@ -327,6 +341,8 @@ class A2PaperSessionController:
         self._last_detected_regime: str | None = None
         self._consecutive_rejections: int = 0
         self._snapshot_history: dict[str, list[MarketSnapshot]] = {}
+        self._provider_key_by_instrument_id: dict[str, str] = {}
+        self._tick_size_by_instrument_id: dict[str, Decimal] = {}
 
         # Background loop task
         self._stop_event = asyncio.Event()
@@ -488,6 +504,9 @@ class A2PaperSessionController:
         c.calibration_evaluations = self._pipeline_counters.calibration_evaluations
         c.r10_evaluations = self._pipeline_counters.r10_evaluations
         c.r10x_evaluations = self._pipeline_counters.r10x_evaluations
+        c.live_option_chains = self._pipeline_counters.live_option_chains
+        c.live_option_quotes = self._pipeline_counters.live_option_quotes
+        c.option_evidence_failures = self._pipeline_counters.option_evidence_failures
         c.candidates_considered = self._pipeline_counters.candidates_considered
         c.candidates_rejected = self._pipeline_counters.candidates_rejected
         c.candidates_qualified = self._pipeline_counters.candidates_qualified
@@ -740,6 +759,16 @@ class A2PaperSessionController:
             self._market_feed.set_mark(instrument_key, price, now)
             if bridge_key != instrument_key:
                 self._market_feed.set_mark(bridge_key, price, now)
+            canonical_id = next(
+                (
+                    instrument_id
+                    for instrument_id, provider_key in self._provider_key_by_instrument_id.items()
+                    if provider_key == instrument_key
+                ),
+                None,
+            )
+            if canonical_id is not None:
+                self._market_feed.set_mark(canonical_id, price, now)
 
         # 2. Truthful pipeline telemetry (no synthetic counts).
         self._live_pipeline_bridge.record_tick(bridge_key, price, received_at=now)
@@ -786,6 +815,7 @@ class A2PaperSessionController:
         requested_quantity: Decimal = Decimal("50"),
         maximum_loss: Decimal = Decimal("5000"),
         expected_net_value: Decimal = Decimal("50"),
+        instrument_evidence: InstrumentCandidate | None = None,
         now: UTCDateTime | None = None,
     ) -> dict[str, Any]:
         """Execute candidate through canonical pipeline: Pipeline -> PortfolioBrain -> A04 -> Authority -> PaperBroker."""
@@ -868,6 +898,24 @@ class A2PaperSessionController:
         )
         ctx = ctx.model_copy(update={"input_hash": compute_payload_hash(ctx, hash_field="input_hash")})
 
+        if instrument_evidence is not None:
+            requested_capital = instrument_evidence.premium_required
+            requested_quantity = Decimal(instrument_evidence.quantity)
+            maximum_loss = instrument_evidence.premium_required
+            expected_net_value = instrument_evidence.expected_net_pnl
+            spread_fraction = (
+                instrument_evidence.estimated_spread_cost
+                / instrument_evidence.premium_required
+            )
+            liquidity_score = (
+                Decimal("1")
+                if instrument_evidence.estimated_liquidity_penalty == 0
+                else Decimal("0.5")
+            )
+        else:
+            spread_fraction = Decimal("0.01")
+            liquidity_score = Decimal("0.90")
+
         req = CandidateAllocationRequest(
             candidate=candidate,
             underlying=underlying,
@@ -876,8 +924,8 @@ class A2PaperSessionController:
             requested_quantity=requested_quantity,
             maximum_loss=maximum_loss,
             expected_net_value=expected_net_value,
-            spread_fraction=Decimal("0.01"),
-            liquidity_score=Decimal("0.90"),
+            spread_fraction=spread_fraction,
+            liquidity_score=liquidity_score,
             quote_fresh=True,
         )
         alloc = self._portfolio_brain.allocate(req, ctx)
@@ -911,6 +959,15 @@ class A2PaperSessionController:
 
         # 4. Submit to PaperBrokerAdapter ONLY (No real order placed)
         slipped_price = self._broker.apply_slippage(Decimal("100.00"), "BUY")
+        if instrument_evidence is not None:
+            slipped_price = instrument_evidence.entry_ask + (
+                instrument_evidence.estimated_slippage
+                / Decimal(instrument_evidence.quantity)
+            )
+            if self._broker._lot_size_registry is not None:
+                self._broker._lot_size_registry.register(
+                    candidate.instrument_id, instrument_evidence.lot_size
+                )
         order_qty = alloc.approved_quantity
         if self._broker._lot_size_registry is not None:
             try:
@@ -1148,6 +1205,35 @@ class A2PaperSessionController:
             self._pipeline_counters.r10_evaluations += 1
             self._pipeline_counters.r10x_evaluations += 1
 
+            live_option_evidence = None
+            if self._upstox_feed is not None:
+                try:
+                    from ats.trading_runtime.live_option_evidence import (
+                        build_live_option_evidence,
+                    )
+
+                    live_option_evidence = build_live_option_evidence(
+                        feed=self._upstox_feed,
+                        underlying=und,
+                        underlying_price=mark,
+                        evaluation_time=evaluation_time,
+                        maximum_quote_age_ms=self.config.max_quote_age_ms,
+                    )
+                    if live_option_evidence is not None:
+                        self._pipeline_counters.live_option_chains += 1
+                        self._pipeline_counters.live_option_quotes += len(
+                            live_option_evidence.option_chain.quotes
+                        )
+                        self._provider_key_by_instrument_id.update(
+                            live_option_evidence.provider_key_by_instrument_id
+                        )
+                        self._tick_size_by_instrument_id.update(
+                            live_option_evidence.tick_size_by_instrument_id
+                        )
+                except Exception:
+                    self._pipeline_counters.option_evidence_failures += 1
+                    live_option_evidence = None
+
             result = pipeline.evaluate(
                 snapshots=tuple(history),
                 cutoff_sequence=len(history),
@@ -1156,6 +1242,16 @@ class A2PaperSessionController:
                 strategy_id=uuid4(),
                 evaluation_time=evaluation_time,
                 calibration_observations=tuple(calibration_observations),
+                contract_master=(
+                    live_option_evidence.contract_master
+                    if live_option_evidence is not None
+                    else None
+                ),
+                option_chain=(
+                    live_option_evidence.option_chain
+                    if live_option_evidence is not None
+                    else None
+                ),
             )
 
             if result.regime is not None:
@@ -1188,6 +1284,7 @@ class A2PaperSessionController:
                     direction=direction,
                     requested_capital=Decimal("50000"),
                     requested_quantity=Decimal("50"),
+                    instrument_evidence=result.instrument_candidate,
                     now=evaluation_time,
                 )
                 if outcome.get("allowed"):

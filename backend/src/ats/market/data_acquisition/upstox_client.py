@@ -66,6 +66,18 @@ class UpstoxReadOnlyClient:
         key = urllib.parse.quote(instrument_key)
         return self._get(f"/v2/historical-candle/{key}/{interval}/{to_date}/{from_date}")
 
+    def intraday_candles(
+        self, instrument_key: str, *, unit: str = "minutes", interval: int = 5
+    ) -> dict[str, Any]:
+        """Return current-session V3 candles from the read-only market-data API."""
+
+        if unit not in {"minutes", "hours", "days"} or interval <= 0:
+            raise ValueError("invalid intraday candle unit or interval")
+        key = urllib.parse.quote(instrument_key, safe="")
+        return self._get(
+            f"/v3/historical-candle/intraday/{key}/{unit}/{interval}"
+        )
+
     def option_chain(self, instrument_key: str) -> dict[str, Any]:
         return self._get("/v2/option/contract", {"instrument_key": instrument_key})
 

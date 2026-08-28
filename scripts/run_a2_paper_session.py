@@ -15,13 +15,16 @@ import json
 import os
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4, uuid5
 
 import uvicorn
 from ats.contracts.common import SystemClock
+from ats.contracts.domain import MarketSnapshot
+from ats.contracts.domain.hashing import compute_payload_hash
+from ats.contracts.domain.types import DataQualityState, SessionState
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.intelligence.harness.harness_integration import attach_and_start_a2_harness
 from ats.intelligence.inference.advisory_llm_bridge import AdvisoryLlmBridge
@@ -36,6 +39,7 @@ from ats.market.derivatives.option_universe import build_dynamic_option_universe
 from ats.market.feeds.upstox_v3 import (
     BANKNIFTY_INDEX_FEED_KEY,
     NIFTY_INDEX_FEED_KEY,
+    FeedMode,
     UpstoxFeedAuthorization,
     UpstoxFeedConfiguration,
     UpstoxFeedLimits,
@@ -61,6 +65,7 @@ from run_d10_live_acceptance import _extract_ltp, _fetch_reference
 DEFAULT_CHAMPION_CALIBRATION_STORE = Path(
     r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
 )
+_LIVE_BAR_NAMESPACE = UUID("bf0b9b07-5770-5a6a-a750-cb216e8cb094")
 
 
 def load_champion_calibration_observations(
@@ -79,6 +84,66 @@ def load_champion_calibration_observations(
         CalibrationObservation.model_validate_json(json.dumps(item)) for item in raw
     )
     return tuple(item for item in observations if item.available_to_strategy_time <= as_of)
+
+
+def load_live_intraday_history(
+    client: UpstoxReadOnlyClient, *, now: datetime
+) -> dict[str, tuple[MarketSnapshot, ...]]:
+    """Load contiguous completed five-minute bars from today's Upstox session."""
+
+    result: dict[str, tuple[MarketSnapshot, ...]] = {}
+    for underlying, instrument_key in (
+        ("NIFTY", NIFTY_INDEX_FEED_KEY),
+        ("BANKNIFTY", BANKNIFTY_INDEX_FEED_KEY),
+    ):
+        document = client.intraday_candles(instrument_key, unit="minutes", interval=5)
+        rows = document.get("data", {}).get("candles", [])
+        completed = sorted(
+            (
+                row
+                for row in rows
+                if datetime.fromisoformat(str(row[0])) + timedelta(minutes=5) <= now
+            ),
+            key=lambda row: datetime.fromisoformat(str(row[0])),
+        )
+        contiguous: list[list[object]] = []
+        for row in completed:
+            stamp = datetime.fromisoformat(str(row[0])).astimezone(UTC)
+            if contiguous:
+                prior = datetime.fromisoformat(str(contiguous[-1][0])).astimezone(UTC)
+                if stamp != prior + timedelta(minutes=5):
+                    contiguous = []
+            contiguous.append(row)
+        snapshots: list[MarketSnapshot] = []
+        for sequence, row in enumerate(contiguous[-20:], start=1):
+            stamp = datetime.fromisoformat(str(row[0])).astimezone(UTC)
+            snapshot = MarketSnapshot(
+                schema_version="1.0",
+                snapshot_id=uuid5(_LIVE_BAR_NAMESPACE, f"{instrument_key}:{stamp.isoformat()}"),
+                instrument_id=underlying,
+                exchange="NSE",
+                segment="CASH",
+                timeframe="5m",
+                sequence=sequence,
+                bar_timestamp=stamp,
+                received_at=stamp + timedelta(minutes=5),
+                open=Decimal(str(row[1])),
+                high=Decimal(str(row[2])),
+                low=Decimal(str(row[3])),
+                close=Decimal(str(row[4])),
+                volume=Decimal(str(row[5])),
+                quality_state=DataQualityState.GOOD,
+                quality_flags=(),
+                source="UPSTOX_INTRADAY_V3",
+                source_version="3.0.0",
+                session_state=SessionState.OPEN,
+                payload_hash="0" * 64,
+            )
+            snapshots.append(
+                snapshot.model_copy(update={"payload_hash": compute_payload_hash(snapshot)})
+            )
+        result[underlying] = tuple(snapshots)
+    return result
 
 
 class ReadOnlyUpstoxSupervisor:
@@ -138,6 +203,7 @@ class ReadOnlyUpstoxSupervisor:
             contracts=contracts,
             spots=spots,
             as_of=now,
+            mode=FeedMode.FULL,
         )
         if len(universe) != 22:
             raise RuntimeError("DYNAMIC_OPTION_UNIVERSE_NOT_22")
@@ -157,6 +223,7 @@ class ReadOnlyUpstoxSupervisor:
             configuration=configuration,
         )
         feed.register_universe(universe)
+        feed.register_reference_contracts(contracts)
         feed.attach_transport(
             UpstoxV3Transport(
                 configuration=configuration,
@@ -297,6 +364,16 @@ def main() -> None:
         )
         print(
             f"Champion calibration: {len(champion_calibration)} frozen as-of-visible observations"
+        )
+        live_history = load_live_intraday_history(UpstoxReadOnlyClient(), now=SystemClock().now())
+        for underlying, snapshots in live_history.items():
+            controller.seed_snapshot_history(underlying, snapshots)
+        print(
+            "Live feature warm-up: "
+            + ", ".join(
+                f"{underlying}={len(snapshots)} completed 5m bars"
+                for underlying, snapshots in sorted(live_history.items())
+            )
         )
         # Attach & start the pinned DeepSeek Harness (ADVISORY_ONLY, governor-gated)
         try:
