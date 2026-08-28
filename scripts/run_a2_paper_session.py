@@ -272,7 +272,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.serve:
-        config = A2PaperSessionConfig(execution_target="PAPER", live_money="DISABLED")
+        config = A2PaperSessionConfig(
+            execution_target="PAPER",
+            live_money="DISABLED",
+            require_live_instrument_evidence=True,
+        )
         feed = UpstoxMarketFeedAdapter()
         controller = A2PaperSessionController(config=config, market_feed=feed)
         calibration_path = Path(

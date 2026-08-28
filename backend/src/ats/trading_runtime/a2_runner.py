@@ -134,6 +134,7 @@ class A2PaperSessionConfig:
     base_slippage_ticks: int = 1
     tick_size: Decimal = Decimal("0.05")
     mode: TradingMode = TradingMode.NORMAL
+    require_live_instrument_evidence: bool = False
 
 
 @dataclass
@@ -184,6 +185,7 @@ _REJECTION_TAXONOMY: dict[str, str] = {
     "QUANTITY_BELOW_LOT_SIZE": "risk_capital",
     "PAPER_BROKER_REJECTED": "other",
     "MARKET_DATA_UNSAFE": "risk_capital",
+    "OPTION_CHAIN_EVIDENCE_REQUIRED": "invalid_reference",
 }
 
 
@@ -1167,6 +1169,12 @@ class A2PaperSessionController:
                     )
 
             if result.is_actionable and result.candidate is not None:
+                if (
+                    self.config.require_live_instrument_evidence
+                    and result.instrument_candidate is None
+                ):
+                    self._record_rejection(("OPTION_CHAIN_EVIDENCE_REQUIRED",))
+                    continue
                 from ats.portfolio.brain import ExposureDirection
 
                 direction = (
