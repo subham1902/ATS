@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path("d:/Projects/ATS/worktrees/final-a2-integration")
 COMMON_PS1 = REPO_ROOT / "scripts" / "ats-common.ps1"
 START_PS1 = REPO_ROOT / "scripts" / "ats-start.ps1"
 
 
-def _run_powershell(code: str, cwd: str = "C:\\Windows\\System32") -> subprocess.CompletedProcess[str]:
+def _run_powershell(
+    code: str, cwd: str = "C:\\Windows\\System32"
+) -> subprocess.CompletedProcess[str]:
     cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", code]
     return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
 

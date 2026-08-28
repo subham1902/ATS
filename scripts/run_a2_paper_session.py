@@ -58,7 +58,6 @@ from ats.trading_runtime.session import (
 from pydantic import SecretStr
 from run_d10_live_acceptance import _extract_ltp, _fetch_reference
 
-
 DEFAULT_CHAMPION_CALIBRATION_STORE = Path(
     r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
 )
@@ -79,9 +78,7 @@ def load_champion_calibration_observations(
     observations = tuple(
         CalibrationObservation.model_validate_json(json.dumps(item)) for item in raw
     )
-    return tuple(
-        item for item in observations if item.available_to_strategy_time <= as_of
-    )
+    return tuple(item for item in observations if item.available_to_strategy_time <= as_of)
 
 
 class ReadOnlyUpstoxSupervisor:
@@ -295,8 +292,7 @@ def main() -> None:
             )
         )
         print(
-            "Champion calibration: "
-            f"{len(champion_calibration)} frozen as-of-visible observations"
+            f"Champion calibration: {len(champion_calibration)} frozen as-of-visible observations"
         )
         # Attach & start the pinned DeepSeek Harness (ADVISORY_ONLY, governor-gated)
         try:
