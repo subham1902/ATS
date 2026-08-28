@@ -119,20 +119,11 @@ class A2PaperSessionConfig:
     execution_target: str = "PAPER"
     live_money: str = "DISABLED"
     underlyings: tuple[str, ...] = ("NIFTY", "BANKNIFTY")
-    capital_budget: Decimal = Decimal("500000")
+    capital_budget: Decimal = Decimal("100000")
     max_positions: int = 4
     max_quote_age_ms: int = 10000
     loop_interval_sec: float = 1.0
-    lot_sizes: dict[str, int] = field(
-        default_factory=lambda: {
-            "NIFTY": 25,
-            "BANKNIFTY": 15,
-            "NIFTY_CE": 25,
-            "NIFTY_PE": 25,
-            "BANKNIFTY_CE": 15,
-            "BANKNIFTY_PE": 15,
-        }
-    )
+    lot_sizes: dict[str, int] = field(default_factory=dict)
     base_slippage_ticks: int = 1
     tick_size: Decimal = Decimal("0.05")
     mode: TradingMode = TradingMode.NORMAL

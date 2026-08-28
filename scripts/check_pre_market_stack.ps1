@@ -1,39 +1,22 @@
-[CmdletBinding()]
-param([string]$StateFile = (Join-Path $env:TEMP 'ats-pre-market-stack\processes.json'))
+# ATS Pre-Market Readiness Checker (Target Date: 2026-08-31)
 
-$ErrorActionPreference = 'Stop'
-$result = [ordered]@{
-    status = 'NOT_READY'
-    backend = 'OFFLINE'
-    frontend = 'OFFLINE'
-    harness = 'OFFLINE'
-    market_feed = 'CLOSED_SESSION_EXPECTED'
-    live_money = 'DISABLED'
-    real_orders_placed = 0
+$ErrorActionPreference = "Stop"
+$repo = "D:\Projects\ATS\worktrees\final-a2-integration"
+$python = Join-Path $repo ".venv\Scripts\python.exe"
+
+Write-Host "======================================================================"
+Write-Host "  ATS PRE-MARKET READINESS CHECKER - MONDAY 2026-08-31"
+Write-Host "======================================================================"
+
+$env:PYTHONPATH = $repo
+& $python -m ats.trading_runtime.readiness_cli
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "======================================================================"
+    Write-Host "STATUS VERDICT: READY_FOR_A2_PAPER_SESSION"
+    exit 0
+} else {
+    Write-Host "======================================================================"
+    Write-Host "STATUS VERDICT: BLOCKED_READINESS_FAILED"
+    exit 1
 }
-if (Test-Path -LiteralPath $StateFile) {
-    $state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
-    foreach ($name in @('backend', 'frontend', 'harness')) {
-        if ($null -ne (Get-Process -Id ([int]$state.$name) -ErrorAction SilentlyContinue)) {
-            $result[$name] = 'PROCESS_RUNNING'
-        }
-    }
-}
-try {
-    $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/health/live' -TimeoutSec 3
-    if ($health.status -eq 'LIVE') { $result.backend = 'HEALTHY' }
-} catch {}
-try {
-    $response = Invoke-WebRequest -Uri 'http://127.0.0.1:3000' -TimeoutSec 5 -UseBasicParsing
-    if ($response.StatusCode -eq 200) { $result.frontend = 'HEALTHY' }
-} catch {}
-try {
-    $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8765/health' -TimeoutSec 3
-    if ($health.status -eq 'HEALTHY') { $result.harness = 'HEALTHY' }
-} catch {}
-if ($result.backend -eq 'HEALTHY' -and $result.frontend -eq 'HEALTHY' -and $result.harness -eq 'HEALTHY') {
-    $result.status = 'READY'
-} elseif ($result.backend -ne 'OFFLINE' -or $result.frontend -ne 'OFFLINE' -or $result.harness -ne 'OFFLINE') {
-    $result.status = 'DEGRADED'
-}
-$result | ConvertTo-Json -Compress

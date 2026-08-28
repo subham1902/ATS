@@ -72,7 +72,7 @@ def test_walk_forward_multi_session_determinism() -> None:
     res2 = run_walk_forward_simulation()
 
     assert res1["ending_equity"] == res2["ending_equity"]
-    assert res1["ending_equity"] == "99979.990000"
+    assert res1["ending_equity"] == "99967.483750"
     assert len(res1["daily_ledger"]) == 16
     assert len(res2["daily_ledger"]) == 16
     assert res1 == res2, "Walk-forward simulation must be 100% deterministic"

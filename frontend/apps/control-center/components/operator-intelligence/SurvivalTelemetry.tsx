@@ -165,7 +165,7 @@ export function SurvivalTelemetry({ telemetry }: SurvivalTelemetryProps) {
           border: "#fca5a5",
           text: "#991b1b",
           badgeTone: "danger" as const,
-          label: "EXIT_ONLY · Flattening/Closing Only · No Entries Allowed",
+          label: "SESSION EXIT_ONLY · New Entries Closed · Normal Scheduled Cutoff",
         };
       case "HALTED":
         return {
