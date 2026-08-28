@@ -4,6 +4,8 @@
 
 V2 is gated by `NEXT_PUBLIC_ATS_OPERATOR_COCKPIT_V2=1`. Without the flag the verified legacy Overview remains active. The primary navigation is reduced to Overview, Markets, Trade Desk, Positions, Opportunities, Agents, Research, Session Review, and System.
 
+For PAPER runtime restart continuity, set `ATS_A2_RUNTIME_CHECKPOINT_PATH` to a writable local data file. This checkpoint restores canonical monitoring state (including position origin and exit-management mode); it cannot authorize execution or replay an order/fill.
+
 The desktop cockpit uses a persistent safety/capital strip, watchlist at left, event-backed chart and C0 state in the center, authority rail at right, and canonical positions plus material activity below. At narrow widths it becomes a monitoring-first stacked view.
 
 ## Truth and authority boundaries
