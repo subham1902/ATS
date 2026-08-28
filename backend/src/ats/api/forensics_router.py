@@ -19,7 +19,7 @@ No mutations. No real broker orders.
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -177,7 +177,20 @@ def get_evidence_status() -> SessionStatus:
     discovered = READER.list_session_ids()
     if not discovered:
         return SessionStatus(
-            session_id="NONE", health="HEALTHY", db_persistence="LOCAL_DURABLE_ONLY", local_mirror="NOT_INITIALIZED", integrity="VALID", predictions=0, rejections=0, candidates=0, portfolio_decisions=0, a04_decisions=0, orders=0, fills=0, positions_opened=0, positions_closed=0
+            session_id="NONE",
+            health="HEALTHY",
+            db_persistence="LOCAL_DURABLE_ONLY",
+            local_mirror="NOT_INITIALIZED",
+            integrity="VALID",
+            predictions=0,
+            rejections=0,
+            candidates=0,
+            portfolio_decisions=0,
+            a04_decisions=0,
+            orders=0,
+            fills=0,
+            positions_opened=0,
+            positions_closed=0,
         )
     # Use the last session for basic metrics (simplified)
     sid = discovered[-1]
@@ -185,7 +198,6 @@ def get_evidence_status() -> SessionStatus:
     integrity = READER.get_integrity(sid)
     predictions = READER.get_predictions(sid) or []
     rejections = READER.get_rejections(sid) or {}
-    decisions = READER.get_decisions(sid) or []
     orders = READER.get_orders(sid) or []
     fills = READER.get_fills(sid) or []
     positions = READER.get_positions(sid) or []
@@ -195,7 +207,9 @@ def get_evidence_status() -> SessionStatus:
         predictions=len(predictions),
         rejections=rejections.get("total_rejections", 0) if isinstance(rejections, dict) else 0,
         candidates=summary.get("candidates", 0) if isinstance(summary, dict) else 0,
-        portfolio_decisions=summary.get("portfolio_decisions", 0) if isinstance(summary, dict) else 0,
+        portfolio_decisions=(
+            summary.get("portfolio_decisions", 0) if isinstance(summary, dict) else 0
+        ),
         a04_decisions=summary.get("a04_decisions", 0) if isinstance(summary, dict) else 0,
         orders=len(orders),
         fills=len(fills),

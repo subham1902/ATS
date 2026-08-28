@@ -36,7 +36,12 @@ def test_api_exposes_only_narrow_governed_state_mutation_routes() -> None:
     schema = make_api_fixture()["app"].openapi()
     paths = set(schema["paths"])
     assert not any("execute" in path or "consume" in path for path in paths)
-    assert {path for path in paths if "order" in path} == {"/v1/runtime/operator-orders"}
+    order_mutations = {
+        path
+        for path, operations in schema["paths"].items()
+        if "order" in path and "post" in operations
+    }
+    assert order_mutations == {"/v1/runtime/operator-orders"}
     post_paths = {path for path, operations in schema["paths"].items() if "post" in operations}
     assert post_paths == {
         "/v1/agent-chat",

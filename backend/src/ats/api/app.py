@@ -22,6 +22,7 @@ from ats.observability.operator_intelligence import OperatorIntelligenceSnapshot
 from ats.observability.operator_provider import OperatorIntelligenceProvider
 
 from .chat import AgentChatHttpRequest, build_control_plane_chat
+from .forensics_router import router as forensics_router
 from .harness_router import router as harness_router
 from .models import (
     ActivityPage,
@@ -120,6 +121,7 @@ def create_app(
     app.include_router(runtime_router)
     app.include_router(harness_router)
     app.include_router(pipeline_router)
+    app.include_router(forensics_router)
 
     @app.exception_handler(ResourceNotFound)
     async def not_found_handler(request: Request, exc: ResourceNotFound) -> JSONResponse:

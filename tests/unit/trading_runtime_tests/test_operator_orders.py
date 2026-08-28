@@ -207,3 +207,45 @@ def test_manual_position_origin_and_managed_exit_survive_runtime_restart() -> No
     assert position.quantity == Decimal("50")
     assert position.capital_committed == Decimal("5000")
     assert position.operator_action_id == "operator-action-1"
+
+
+def test_manual_and_autonomous_positions_restore_without_order_replay() -> None:
+    checkpoint = MemoryRuntimeCheckpointStore()
+    feed = InMemoryMarketFeed()
+    feed.set_mark(KEY, Decimal("100"), NOW)
+    lots = LotSizeRegistry()
+    lots.register(KEY, 50)
+    broker = PaperBrokerAdapter(lot_size_registry=lots)
+    runtime = _runtime(feed, broker, checkpoint)
+    runtime.handle_fill(
+        "manual-position",
+        Decimal("100"),
+        Decimal("50"),
+        NOW,
+        instrument_id=KEY,
+        lot_size=50,
+        origin=PositionOrigin.OPERATOR_MANUAL,
+        managed_exit_mode=ManagedExitMode.MONITOR_ONLY,
+    )
+    runtime.handle_fill(
+        "autonomous-position",
+        Decimal("100"),
+        Decimal("50"),
+        NOW,
+        instrument_id=KEY,
+        lot_size=50,
+        origin=PositionOrigin.ATS_AUTONOMOUS,
+        managed_exit_mode=ManagedExitMode.ATS_MANAGED_EXIT,
+    )
+
+    recovered = _runtime(feed, broker, checkpoint)
+    assert set(recovered.state.open_positions) == {"manual-position", "autonomous-position"}
+    manual_pos = recovered.state.open_positions["manual-position"]
+    auto_pos = recovered.state.open_positions["autonomous-position"]
+    assert manual_pos.origin is PositionOrigin.OPERATOR_MANUAL
+    assert manual_pos.managed_exit_mode is ManagedExitMode.MONITOR_ONLY
+    assert auto_pos.origin is PositionOrigin.ATS_AUTONOMOUS
+    assert sum(
+        position.capital_committed for position in recovered.state.open_positions.values()
+    ) == Decimal("10000")
+    assert broker.query_open_orders() == ()

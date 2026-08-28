@@ -30,6 +30,20 @@ EXPECTED_OPERATIONS = {
     ("get", "/v1/pipeline/counters"),
     ("get", "/v1/pipeline/predictions"),
     ("post", "/v1/runtime/operator-orders"),
+    ("get", "/v1/forensics/sessions"),
+    ("get", "/v1/forensics/sessions/{session_id}"),
+    ("get", "/v1/forensics/sessions/{session_id}/summary"),
+    ("get", "/v1/forensics/sessions/{session_id}/timeline"),
+    ("get", "/v1/forensics/sessions/{session_id}/funnel"),
+    ("get", "/v1/forensics/sessions/{session_id}/predictions"),
+    ("get", "/v1/forensics/sessions/{session_id}/rejections"),
+    ("get", "/v1/forensics/sessions/{session_id}/decisions"),
+    ("get", "/v1/forensics/sessions/{session_id}/orders"),
+    ("get", "/v1/forensics/sessions/{session_id}/fills"),
+    ("get", "/v1/forensics/sessions/{session_id}/positions"),
+    ("get", "/v1/forensics/sessions/{session_id}/gate-audit"),
+    ("get", "/v1/forensics/sessions/{session_id}/integrity"),
+    ("get", "/v1/forensics/session-evidence/status"),
 }
 
 

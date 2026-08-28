@@ -43,6 +43,8 @@ export interface SessionReviewProps {
     gateAudit?: Record<string, { state: string; reached: boolean }>;
     whyNoTrade?: {
       primary_cause: string;
+      label?: string;
+      supporting_facts?: string[];
     };
   } | null;
 }
