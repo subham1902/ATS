@@ -40,11 +40,13 @@ export interface ClientOptions {
 }
 
 function resolveBaseUrl(options?: ClientOptions): string {
-  if (options?.baseUrl) return options.baseUrl.replace(/\/$/, "");
-  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) {
+  if (options?.baseUrl && options.baseUrl.trim().length > 0) {
+    return options.baseUrl.replace(/\/$/, "");
+  }
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NEXT_PUBLIC_API_BASE_URL.trim().length > 0) {
     return (process.env.NEXT_PUBLIC_API_BASE_URL as string).replace(/\/$/, "");
   }
-  return "";
+  return "http://127.0.0.1:8000";
 }
 
 async function parseError(res: Response): Promise<ErrorEnvelope | null> {
