@@ -528,7 +528,11 @@ class A2PaperSessionController:
         )
         c.paper_orders = self._pipeline_counters.paper_orders
         c.paper_fills = self._pipeline_counters.paper_fills
+        c.rejection_reasons = dict(self._pipeline_counters.rejection_reasons)
         c.rejection_reason_codes = dict(self._pipeline_counters.rejection_reason_codes)
+
+        if self._operator_provider is not None:
+            self._operator_provider._source = self._live_pipeline_bridge.build_projection_input()
 
     def start(self, *, require_token: bool = True) -> bool:
         """Start the A2 paper session synchronously."""
@@ -1276,6 +1280,28 @@ class A2PaperSessionController:
                         f"Market regime transition detected: {regime_val}",
                         now=evaluation_time,
                     )
+
+            atm_str = (
+                str(live_option_evidence.option_chain.atm_strike)
+                if live_option_evidence is not None
+                else None
+            )
+            regime_str = (
+                str(getattr(result.regime.structure, "value", result.regime.structure))
+                if result.regime is not None and getattr(result.regime, "structure", None) is not None
+                else ("INSUFFICIENT_HISTORY" if len(history) < 2 else "NOT_COMPUTED")
+            )
+            vol_str = (
+                str(getattr(result.regime.volatility, "value", result.regime.volatility))
+                if result.regime is not None and getattr(result.regime, "volatility", None) is not None
+                else "NOT_COMPUTED"
+            )
+            self._live_pipeline_bridge.record_market_evidence(
+                und,
+                atm_strike=atm_str,
+                regime=regime_str,
+                volatility=vol_str,
+            )
 
             if result.is_actionable and result.candidate is not None:
                 if (

@@ -355,6 +355,9 @@ def create_app(
             OperatorIntelligenceProvider,
             request.app.state.operator_intelligence_provider,
         )
+        bridge = getattr(request.app.state, "live_pipeline_bridge", None)
+        if bridge is not None:
+            provider._source = bridge.build_projection_input()
         runtime_provider = request.app.state.trading_runtime_provider
         runtime_state = runtime_provider.get_state() if runtime_provider is not None else None
         return provider.snapshot(runtime_state)

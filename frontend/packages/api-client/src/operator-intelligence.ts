@@ -93,6 +93,7 @@ export interface RejectionBreakdown {
   negative_ev: number;
   portfolio_capacity: number;
   a04: number;
+  neutral_thesis?: number;
 }
 
 export interface CandidateClassCounts {

@@ -44,7 +44,8 @@ export function OpportunityScanner({
     rejections.calibration +
     rejections.negative_ev +
     rejections.portfolio_capacity +
-    rejections.a04;
+    rejections.a04 +
+    (rejections.neutral_thesis ?? 0);
   const totalCandidates =
     candidates_by_class.standard +
     candidates_by_class.high_conviction +
@@ -234,6 +235,7 @@ export function OpportunityScanner({
             }}
           >
             {[
+              { label: "Neutral Thesis", value: rejections.neutral_thesis ?? 0, desc: "P < 0.55 activation hurdle" },
               { label: "Liquidity", value: rejections.liquidity, desc: "Min volume/depth fail" },
               { label: "Spread", value: rejections.spread, desc: "Exceeds tick tolerance" },
               { label: "Calibration", value: rejections.calibration, desc: "ECE / Brier degraded" },

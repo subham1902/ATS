@@ -1,6 +1,6 @@
 import type { ActivityReadModel, RuntimeCommandRequest, RuntimeStatusReadModel, SseStatus, StreamEvent, SystemReadModel } from "@ats/api-client";
 
-export interface PipelineStatus { nifty_last: string | null; banknifty_last: string | null; candidates_considered: number; candidates_qualified: number; attached: boolean; [key: string]: unknown }
+export interface PipelineStatus { nifty_last: string | null; banknifty_last: string | null; nifty_atm?: string | null; banknifty_atm?: string | null; nifty_regime?: string | null; banknifty_regime?: string | null; nifty_volatility?: string | null; banknifty_volatility?: string | null; candidates_considered: number; candidates_qualified: number; attached: boolean; [key: string]: unknown }
 export interface HarnessStatus { harness: { state: string; authority?: string; active_sessions: number; execution_target?: string; live_money?: string; reason_codes?: string[]; [key: string]: unknown }; llm: { health: string; primary_model?: string; fallback_model?: string | null; [key: string]: unknown } | null; agents: Array<{ agent_type: string; status: string; last_trigger_at?: string | null; last_latency_ms?: number | null; model?: string | null; [key: string]: unknown }>; [key: string]: unknown }
 export type OperatorAlert = { id: string; severity: "critical" | "warning" | "info"; title: string; detail: string; href: string; dismissible: boolean; occurredAt?: string };
 export type CommandStatus = { state: "idle" | "submitting" | "success" | "error"; message: string | null };

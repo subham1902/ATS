@@ -60,6 +60,12 @@ class LivePipelineCounters:
     last_updated_at: UTCDateTime | None = None
     nifty_last: str | None = None
     banknifty_last: str | None = None
+    nifty_atm: str | None = None
+    banknifty_atm: str | None = None
+    nifty_regime: str | None = None
+    banknifty_regime: str | None = None
+    nifty_volatility: str | None = None
+    banknifty_volatility: str | None = None
     rejection_reasons: dict[str, int] = field(default_factory=dict)
     rejection_reason_codes: dict[str, int] = field(default_factory=dict)
 
@@ -93,6 +99,29 @@ class LivePipelineBridge:
 
         self.counters.fresh_messages += fresh_count
         self.counters.last_updated_at = SystemClock().now()
+
+    def record_market_evidence(
+        self,
+        underlying: str,
+        *,
+        atm_strike: str | None = None,
+        regime: str | None = None,
+        volatility: str | None = None,
+    ) -> None:
+        if underlying == "NIFTY":
+            if atm_strike is not None:
+                self.counters.nifty_atm = atm_strike
+            if regime is not None:
+                self.counters.nifty_regime = regime
+            if volatility is not None:
+                self.counters.nifty_volatility = volatility
+        elif underlying == "BANKNIFTY":
+            if atm_strike is not None:
+                self.counters.banknifty_atm = atm_strike
+            if regime is not None:
+                self.counters.banknifty_regime = regime
+            if volatility is not None:
+                self.counters.banknifty_volatility = volatility
 
     def build_projection_input(
         self, *, as_of: UTCDateTime | None = None
@@ -141,6 +170,7 @@ class LivePipelineBridge:
             candidates=candidates,
             agents=agents,
             provenance=ProvenanceType.LIVE,
+            rejection_counts=dict(self.counters.rejection_reasons),
         )
 
     def snapshot_dict(self) -> dict[str, Any]:
@@ -166,6 +196,12 @@ class LivePipelineBridge:
             "paper_fills": self.counters.paper_fills,
             "nifty_last": self.counters.nifty_last,
             "banknifty_last": self.counters.banknifty_last,
+            "nifty_atm": self.counters.nifty_atm,
+            "banknifty_atm": self.counters.banknifty_atm,
+            "nifty_regime": self.counters.nifty_regime,
+            "banknifty_regime": self.counters.banknifty_regime,
+            "nifty_volatility": self.counters.nifty_volatility,
+            "banknifty_volatility": self.counters.banknifty_volatility,
             "rejection_reasons": dict(self.counters.rejection_reasons),
             "rejection_reason_codes": dict(self.counters.rejection_reason_codes),
         }

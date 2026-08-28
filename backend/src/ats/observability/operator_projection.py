@@ -9,7 +9,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.models import Position, RiskDecision, SupervisorAdvisory
@@ -93,6 +93,7 @@ class OperatorProjectionInput(BaseModel):
     candidates: tuple[CandidateObservation, ...] = ()
     agents: tuple[AgentObservation, ...] = ()
     provenance: ProvenanceType = ProvenanceType.LIVE
+    rejection_counts: dict[str, int] = Field(default_factory=dict)
 
 
 def _value(value: object) -> str:
@@ -389,12 +390,15 @@ def build_operator_snapshot(
                 invalid_reference=invalid,
             ),
             rejections=RejectionBreakdown(
-                liquidity=sum(_has_reason(item, "LIQUIDITY") for item in source.candidates),
-                spread=sum(_has_reason(item, "SPREAD") for item in source.candidates),
+                liquidity=sum(_has_reason(item, "LIQUIDITY") for item in source.candidates)
+                + source.rejection_counts.get("liquidity", 0),
+                spread=sum(_has_reason(item, "SPREAD") for item in source.candidates)
+                + source.rejection_counts.get("spread", 0),
                 calibration=sum(
                     item.calibration is not None and _value(item.calibration.health) != "HEALTHY"
                     for item in source.candidates
-                ),
+                )
+                + source.rejection_counts.get("insufficient_calibration_support", 0),
                 negative_ev=sum(
                     _has_reason(item, "NEGATIVE_NET")
                     or (
@@ -402,9 +406,16 @@ def build_operator_snapshot(
                         and item.rare_assessment.expected_net_value <= 0
                     )
                     for item in source.candidates
+                )
+                + source.rejection_counts.get("negative_net_ev", 0),
+                portfolio_capacity=portfolio_rejected
+                + source.rejection_counts.get("portfolio_concentration", 0),
+                a04=a04_rejected + source.rejection_counts.get("a04", 0),
+                neutral_thesis=(
+                    source.rejection_counts.get("neutral_thesis", 0)
+                    if source.rejection_counts
+                    else sum(_has_reason(item, "NEUTRAL") for item in source.candidates)
                 ),
-                portfolio_capacity=portfolio_rejected,
-                a04=a04_rejected,
             ),
             candidates_by_class=CandidateClassCounts(
                 standard=classes.count(CandidateClass.STANDARD),

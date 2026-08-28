@@ -100,6 +100,7 @@ class RejectionBreakdown(BaseModel):
     negative_ev: int = 0
     portfolio_capacity: int = 0
     a04: int = 0
+    neutral_thesis: int = 0
 
 
 class CandidateClassCounts(BaseModel):
@@ -332,3 +333,28 @@ def resolve_operator_survival_state(
 
     reasons.append("STATE_UNVERIFIED")
     return OperatorSurvivalState.UNKNOWN, tuple(reasons)
+
+
+__all__ = [
+    "A04Outcome",
+    "AgentAccountabilityEntry",
+    "AgentStatus",
+    "CandidateClass",
+    "CandidateClassCounts",
+    "EdgeLedgerEntry",
+    "EdgeLedgerReadModel",
+    "EvidenceLineageNode",
+    "FunnelCounts",
+    "GovernorResult",
+    "OperatorIntelligenceSnapshot",
+    "OperatorSurvivalState",
+    "OpportunityMapPoint",
+    "OpportunityScannerReadModel",
+    "PortfolioBrainOutcome",
+    "ProvenanceType",
+    "RejectionBreakdown",
+    "SourceState",
+    "SurvivalTelemetryReadModel",
+    "TimelineEvent",
+    "resolve_operator_survival_state",
+]
