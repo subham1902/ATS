@@ -12,6 +12,7 @@ INVARIANTS:
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -118,6 +119,8 @@ class OpportunityScannerReadModel(BaseModel):
     rejections: RejectionBreakdown = Field(default_factory=RejectionBreakdown)
     candidates_by_class: CandidateClassCounts = Field(default_factory=CandidateClassCounts)
     candidate_ids: tuple[str, ...] = ()
+    predictions: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    recent_predictions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ============================================================================

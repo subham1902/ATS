@@ -369,7 +369,207 @@ export function OpportunityScanner({
           </div>
         </div>
 
-        {/* 4. Active Candidate IDs Quick Selector */}
+        {/* 4. Live Continuous Predictions & Market Theses */}
+        {scanner.predictions && Object.keys(scanner.predictions).length > 0 && (
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "#64748b",
+                marginBottom: 8,
+              }}
+            >
+              Continuous Predictions & Real-Time Directional Theses
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {Object.values(scanner.predictions).map((pred) => {
+                const isBull = pred.predicted_direction === "BULLISH";
+                const isBear = pred.predicted_direction === "BEARISH";
+                const pUp = (pred.bullish_probability * 100).toFixed(2);
+                const pDown = (pred.bearish_probability * 100).toFixed(2);
+                const distPp = (pred.distance_to_threshold * 100).toFixed(2);
+
+                return (
+                  <div
+                    key={pred.underlying}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 8,
+                      padding: 12,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong style={{ fontSize: 14, color: "#0f172a" }}>
+                          {pred.underlying}
+                        </strong>
+                        <span style={{ fontSize: 12, color: "#64748b" }}>
+                          ₹{pred.spot_price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <Badge
+                        tone={
+                          pred.decision === "QUALIFIED"
+                            ? "success"
+                            : isBull
+                            ? "success"
+                            : isBear
+                            ? "danger"
+                            : "neutral"
+                        }
+                      >
+                        {pred.predicted_direction}
+                      </Badge>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 6,
+                        background: "#f8fafc",
+                        padding: 8,
+                        borderRadius: 6,
+                        fontSize: 11,
+                      }}
+                    >
+                      <div>
+                        <span style={{ color: "#64748b" }}>P(UP): </span>
+                        <strong>{pUp}%</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#64748b" }}>P(DOWN): </span>
+                        <strong>{pDown}%</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#64748b" }}>Hurdle: </span>
+                        <strong>55.00%</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#64748b" }}>Hurdle Dist: </span>
+                        <strong style={{ color: Number(distPp) >= 0 ? "#16a34a" : "#dc2626" }}>
+                          {Number(distPp) >= 0 ? `+${distPp}` : distPp} pp
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 11,
+                        color: "#475569",
+                        borderTop: "1px solid #f1f5f9",
+                        paddingTop: 6,
+                      }}
+                    >
+                      <span>
+                        Regime: <strong>{pred.regime}</strong> ({pred.volatility})
+                      </span>
+                      <span>
+                        Expression: <strong>{pred.preferred_expression}</strong>
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 10,
+                        color: "#64748b",
+                      }}
+                    >
+                      <span>
+                        ATM: <strong>{pred.atm_strike ?? "—"}</strong>
+                      </span>
+                      <span>
+                        Decision: <strong>{pred.decision}</strong> ({pred.reason_code})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 5. Champion vs Shadow Challengers Live Benchmark */}
+        {scanner.predictions && Object.values(scanner.predictions)[0]?.shadow_models && (
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "#64748b",
+                marginBottom: 6,
+              }}
+            >
+              Champion vs. Shadow Challengers (Zero Live Authority)
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9", textAlign: "left", color: "#475569" }}>
+                    <th style={{ padding: "6px 8px" }}>Model</th>
+                    <th style={{ padding: "6px 8px" }}>Direction</th>
+                    <th style={{ padding: "6px 8px" }}>Probability</th>
+                    <th style={{ padding: "6px 8px" }}>Distance to 55%</th>
+                    <th style={{ padding: "6px 8px" }}>Would Activate</th>
+                    <th style={{ padding: "6px 8px" }}>Authority Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(scanner.predictions)[0].shadow_models?.map((sm) => (
+                    <tr key={sm.model_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "6px 8px", fontWeight: 600 }}>{sm.name}</td>
+                      <td style={{ padding: "6px 8px" }}>{sm.direction}</td>
+                      <td style={{ padding: "6px 8px" }}>{(sm.probability * 100).toFixed(2)}%</td>
+                      <td
+                        style={{
+                          padding: "6px 8px",
+                          color: sm.distance >= 0 ? "#16a34a" : "#64748b",
+                        }}
+                      >
+                        {(sm.distance * 100).toFixed(2)} pp
+                      </td>
+                      <td style={{ padding: "6px 8px" }}>
+                        <Badge tone={sm.would_activate ? "success" : "neutral"}>
+                          {sm.would_activate ? "YES" : "NO"}
+                        </Badge>
+                      </td>
+                      <td style={{ padding: "6px 8px", fontSize: 10, color: "#64748b" }}>
+                        {sm.status}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 6. Active Candidate IDs Quick Selector */}
         {candidate_ids.length > 0 ? (
           <div>
             <div
@@ -422,6 +622,58 @@ export function OpportunityScanner({
             }}
           >
             NO LIVE CANDIDATES · Zero candidates currently qualifying for risk allocation
+          </div>
+        )}
+
+        {/* 7. Rolling Continuous Predictions Log */}
+        {scanner.recent_predictions && scanner.recent_predictions.length > 0 && (
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "#64748b",
+                marginBottom: 6,
+              }}
+            >
+              Recent Continuous Prediction Stream ({scanner.recent_predictions.length} recorded)
+            </div>
+            <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 6 }}>
+              <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", textAlign: "left", color: "#64748b", position: "sticky", top: 0 }}>
+                    <th style={{ padding: "4px 6px" }}>Time (IST)</th>
+                    <th style={{ padding: "4px 6px" }}>Underlying</th>
+                    <th style={{ padding: "4px 6px" }}>Mark</th>
+                    <th style={{ padding: "4px 6px" }}>Dir</th>
+                    <th style={{ padding: "4px 6px" }}>P(UP)</th>
+                    <th style={{ padding: "4px 6px" }}>Dist</th>
+                    <th style={{ padding: "4px 6px" }}>Expression</th>
+                    <th style={{ padding: "4px 6px" }}>Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scanner.recent_predictions.slice(-20).reverse().map((rp, idx) => (
+                    <tr key={`${rp.underlying}-${rp.timestamp}-${idx}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "4px 6px", fontFamily: "monospace" }}>{formatTimeIST(rp.timestamp)}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: 600 }}>{rp.underlying}</td>
+                      <td style={{ padding: "4px 6px" }}>₹{rp.spot_price.toFixed(1)}</td>
+                      <td style={{ padding: "4px 6px" }}>{rp.predicted_direction}</td>
+                      <td style={{ padding: "4px 6px" }}>{(rp.bullish_probability * 100).toFixed(2)}%</td>
+                      <td style={{ padding: "4px 6px", color: rp.distance_to_threshold >= 0 ? "#16a34a" : "#64748b" }}>
+                        {(rp.distance_to_threshold * 100).toFixed(2)} pp
+                      </td>
+                      <td style={{ padding: "4px 6px" }}>{rp.preferred_expression}</td>
+                      <td style={{ padding: "4px 6px", color: rp.decision === "QUALIFIED" ? "#16a34a" : "#64748b" }}>
+                        {rp.decision}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

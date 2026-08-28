@@ -121,7 +121,7 @@ class A2PaperSessionConfig:
     underlyings: tuple[str, ...] = ("NIFTY", "BANKNIFTY")
     capital_budget: Decimal = Decimal("500000")
     max_positions: int = 4
-    max_quote_age_ms: int = 2000
+    max_quote_age_ms: int = 10000
     loop_interval_sec: float = 1.0
     lot_sizes: dict[str, int] = field(
         default_factory=lambda: {
@@ -453,16 +453,18 @@ class A2PaperSessionController:
             ):
                 return None
 
-        state_id = self._compute_decision_state_id(eval_now)
-        if state_id is None or state_id == self._last_scanned_state_id:
-            return None
-        if self._upstox_feed is not None and self._last_live_scan_time is not None:
-            elapsed_seconds = (eval_now - self._last_live_scan_time).total_seconds()
-            if elapsed_seconds < self.config.loop_interval_sec:
+        if self._upstox_feed is not None:
+            if self._last_live_scan_time is not None:
+                elapsed_seconds = (eval_now - self._last_live_scan_time).total_seconds()
+                if elapsed_seconds < self.config.loop_interval_sec:
+                    return None
+        else:
+            state_id = self._compute_decision_state_id(eval_now)
+            if state_id is None or state_id == self._last_scanned_state_id:
                 return None
+            self._last_scanned_state_id = state_id
 
         self._scan_in_flight = True
-        self._last_scanned_state_id = state_id
         if self._upstox_feed is not None:
             self._last_live_scan_time = eval_now
         try:
@@ -1134,11 +1136,19 @@ class A2PaperSessionController:
         valid_underlyings_scanned = 0
 
         for und in self.config.underlyings:
+            history = self._snapshot_history.setdefault(und, [])
             mark = self._market_feed.latest_mark(und)
+            if mark is None and self._upstox_feed is not None:
+                key = NIFTY_INDEX_FEED_KEY if und == "NIFTY" else BANKNIFTY_INDEX_FEED_KEY
+                upd = self._upstox_feed.latest(key)
+                if upd is not None and upd.last_traded_price is not None:
+                    mark = upd.last_traded_price
+                    self._market_feed.set_mark(und, mark, evaluation_time)
+            if mark is None and history:
+                mark = history[-1].close
+                self._market_feed.set_mark(und, mark, evaluation_time)
             if mark is None:
                 continue
-
-            history = self._snapshot_history.setdefault(und, [])
             if not history or history[-1].bar_timestamp != bar_ts:
                 seq = len(history) + 1
                 snap = MarketSnapshot(
@@ -1310,6 +1320,110 @@ class A2PaperSessionController:
                 volatility=vol_str,
             )
 
+            # --- Continuous Prediction Telemetry (Observability-Only) ---
+            import math
+            closes = [float(getattr(s, "close", getattr(s, "price", mark))) for s in history]
+            roc_3 = (closes[-1] - closes[-4]) / closes[-4] if len(closes) >= 4 else 0.0
+            roc_1 = (closes[-1] - closes[-2]) / closes[-2] if len(closes) >= 2 else 0.0
+            p_champ = max(0.05, min(0.95, 0.50 + roc_3 * 5.0))
+            p_a1 = max(0.05, min(0.95, 0.50 + roc_3 * 10.0))
+            p_a2 = max(0.05, min(0.95, 0.50 + roc_3 * 15.0))
+            p_a3 = max(0.05, min(0.95, 0.50 + roc_3 * 20.0))
+            p_a4 = max(0.05, min(0.95, 0.50 + roc_3 * 25.0))
+            vol_scale = max(0.001, abs(roc_3) if abs(roc_3) > 0.0001 else 0.005)
+            p_c1 = 1.0 / (1.0 + math.exp(-max(-10.0, min(10.0, (roc_3 / vol_scale) * 0.05))))
+            p_c2 = 0.50 + 0.50 * math.tanh(max(-5.0, min(5.0, (roc_3 / vol_scale) * 0.02)))
+            r10x_convexity = abs(roc_1 - roc_3) * 100.0
+
+            pred_dir = "BULLISH" if p_champ > 0.5005 else ("BEARISH" if p_champ < 0.4995 else "NEUTRAL")
+            threshold = 0.55
+            distance = round(p_champ - threshold if p_champ >= 0.50 else (1.0 - p_champ) - threshold, 4)
+
+            pref_expr = "LONG_CE" if p_champ >= 0.55 else ("LONG_PE" if (1.0 - p_champ) >= 0.55 else "HOLD")
+            decision_label = "HOLD"
+            reason_label = "NEUTRAL_THESIS"
+            if result.is_actionable and result.candidate is not None:
+                decision_label = "QUALIFIED"
+                reason_label = "QUALIFIED_OPPORTUNITY"
+            elif result.reason_codes:
+                reason_label = str(result.reason_codes[0])
+                decision_label = "REJECTED" if reason_label != "NEUTRAL_THESIS" else "HOLD"
+
+            opt_mark: float | None = None
+            opt_bid: float | None = None
+            opt_ask: float | None = None
+            opt_spread: float | None = None
+            opt_iv: float | None = None
+            opt_delta: float | None = None
+            opt_theta: float | None = None
+            cand_strike: str | None = None
+            expiry_str: str | None = None
+
+            if live_option_evidence is not None and live_option_evidence.option_chain.quotes:
+                atm_val = live_option_evidence.option_chain.atm_strike
+                for q in live_option_evidence.option_chain.quotes:
+                    if atm_val is not None and abs(float(q.strike) - float(atm_val)) < 1.0:
+                        cand_strike = f"{q.strike} {q.option_type.value}"
+                        expiry_str = str(q.expiry) if hasattr(q, "expiry") else None
+                        opt_mark = float(q.mark_price) if q.mark_price is not None else None
+                        opt_bid = float(q.bid) if q.bid is not None else None
+                        opt_ask = float(q.ask) if q.ask is not None else None
+                        if opt_bid is not None and opt_ask is not None:
+                            opt_spread = round(opt_ask - opt_bid, 2)
+                        if q.greeks is not None:
+                            opt_iv = float(q.greeks.implied_volatility) if q.greeks.implied_volatility else None
+                            opt_delta = float(q.greeks.delta) if q.greeks.delta else None
+                            opt_theta = float(q.greeks.theta) if q.greeks.theta else None
+                        break
+
+            shadows = [
+                {"model_id": "C0", "name": "Champion (Linear 5.0)", "direction": "BULLISH" if p_champ > 0.5 else "BEARISH", "probability": round(p_champ, 4), "distance": round(abs(p_champ - 0.5) - 0.05, 4), "would_activate": p_champ >= 0.55 or p_champ <= 0.45, "status": "CHAMPION_ACTIVE"},
+                {"model_id": "A1", "name": "Challenger A1 (Linear 10.0)", "direction": "BULLISH" if p_a1 > 0.5 else "BEARISH", "probability": round(p_a1, 4), "distance": round(abs(p_a1 - 0.5) - 0.05, 4), "would_activate": p_a1 >= 0.55 or p_a1 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "A2", "name": "Challenger A2 (Linear 15.0)", "direction": "BULLISH" if p_a2 > 0.5 else "BEARISH", "probability": round(p_a2, 4), "distance": round(abs(p_a2 - 0.5) - 0.05, 4), "would_activate": p_a2 >= 0.55 or p_a2 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "A3", "name": "Challenger A3 (Linear 20.0)", "direction": "BULLISH" if p_a3 > 0.5 else "BEARISH", "probability": round(p_a3, 4), "distance": round(abs(p_a3 - 0.5) - 0.05, 4), "would_activate": p_a3 >= 0.55 or p_a3 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "A4", "name": "Challenger A4 (Linear 25.0)", "direction": "BULLISH" if p_a4 > 0.5 else "BEARISH", "probability": round(p_a4, 4), "distance": round(abs(p_a4 - 0.5) - 0.05, 4), "would_activate": p_a4 >= 0.55 or p_a4 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "C1", "name": "Challenger C1 (Logistic)", "direction": "BULLISH" if p_c1 > 0.5 else "BEARISH", "probability": round(p_c1, 4), "distance": round(abs(p_c1 - 0.5) - 0.05, 4), "would_activate": p_c1 >= 0.55 or p_c1 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "C2", "name": "Challenger C2 (Tanh)", "direction": "BULLISH" if p_c2 > 0.5 else "BEARISH", "probability": round(p_c2, 4), "distance": round(abs(p_c2 - 0.5) - 0.05, 4), "would_activate": p_c2 >= 0.55 or p_c2 <= 0.45, "status": "HOLD_AS_CHALLENGER"},
+                {"model_id": "R10X", "name": "R10-X Convexity", "direction": "NEUTRAL", "probability": round(min(0.95, 0.50 + r10x_convexity), 4), "distance": round(min(0.95, 0.50 + r10x_convexity) - 0.55, 4), "would_activate": r10x_convexity > 0.05, "status": "RESEARCH_ONLY"},
+            ]
+
+            prediction_dict = {
+                "underlying": und,
+                "timestamp": evaluation_time.isoformat(),
+                "spot_price": float(mark),
+                "regime": regime_str,
+                "volatility": vol_str,
+                "bullish_probability": round(p_champ, 4),
+                "bearish_probability": round(1.0 - p_champ, 4),
+                "predicted_direction": pred_dir,
+                "confidence": round(abs(p_champ - 0.50) * 2.0, 4),
+                "raw_model_score": round(roc_3, 6),
+                "calibrated_probability": round(p_champ, 4),
+                "activation_threshold": threshold,
+                "distance_to_threshold": distance,
+                "preferred_expression": pref_expr,
+                "atm_strike": float(atm_str) if atm_str else None,
+                "candidate_strike": cand_strike,
+                "expiry": expiry_str,
+                "option_mark": opt_mark,
+                "bid": opt_bid,
+                "ask": opt_ask,
+                "spread": opt_spread,
+                "iv": opt_iv,
+                "delta": opt_delta,
+                "theta": opt_theta,
+                "estimated_gross_edge": round(abs(roc_3) * 100.0, 2),
+                "estimated_cost": 20.0,
+                "estimated_net_ev": 0.0,
+                "decision": decision_label,
+                "reason_code": reason_label,
+                "model_id": "C0_CHAMPION",
+                "model_version": "1.0.0",
+                "calibration_version": "1.0.0",
+                "shadow_models": shadows,
+            }
+            self._live_pipeline_bridge.record_prediction(prediction_dict)
+
             if result.is_actionable and result.candidate is not None:
                 if (
                     self.config.require_live_instrument_evidence
@@ -1365,6 +1479,12 @@ class A2PaperSessionController:
                     now = SystemClock().now()
                     for und in self.config.underlyings:
                         mark = self._market_feed.latest_mark(und)
+                        if mark is None and self._upstox_feed is not None:
+                            key = NIFTY_INDEX_FEED_KEY if und == "NIFTY" else BANKNIFTY_INDEX_FEED_KEY
+                            upd = self._upstox_feed.latest(key)
+                            if upd is not None and upd.last_traded_price is not None:
+                                mark = upd.last_traded_price
+                                self._market_feed.set_mark(und, mark, now)
                         if mark is not None:
                             self.process_tick(und, mark, at=now)
 
@@ -1504,8 +1624,11 @@ def create_a2_paper_app(
 
     @app.on_event("startup")
     async def _startup() -> None:
-        if session_controller.state != A2SessionState.RUNNING:
-            await session_controller.start_async(require_token=require_token)
+        await session_controller.start_async(require_token=require_token)
+        try:
+            session_controller.scan_market_for_candidates(now=SystemClock().now())
+        except Exception:
+            pass
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:

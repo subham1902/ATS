@@ -68,6 +68,8 @@ class LivePipelineCounters:
     banknifty_volatility: str | None = None
     rejection_reasons: dict[str, int] = field(default_factory=dict)
     rejection_reason_codes: dict[str, int] = field(default_factory=dict)
+    predictions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    recent_predictions: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -123,6 +125,13 @@ class LivePipelineBridge:
             if volatility is not None:
                 self.counters.banknifty_volatility = volatility
 
+    def record_prediction(self, prediction_dict: dict[str, Any]) -> None:
+        und = str(prediction_dict.get("underlying", "UNKNOWN"))
+        self.counters.predictions[und] = prediction_dict
+        self.counters.recent_predictions.append(dict(prediction_dict))
+        if len(self.counters.recent_predictions) > 50:
+            self.counters.recent_predictions = self.counters.recent_predictions[-50:]
+
     def build_projection_input(
         self, *, as_of: UTCDateTime | None = None
     ) -> OperatorProjectionInput:
@@ -171,6 +180,8 @@ class LivePipelineBridge:
             agents=agents,
             provenance=ProvenanceType.LIVE,
             rejection_counts=dict(self.counters.rejection_reasons),
+            predictions=dict(self.counters.predictions),
+            recent_predictions=list(self.counters.recent_predictions),
         )
 
     def snapshot_dict(self) -> dict[str, Any]:
@@ -204,6 +215,8 @@ class LivePipelineBridge:
             "banknifty_volatility": self.counters.banknifty_volatility,
             "rejection_reasons": dict(self.counters.rejection_reasons),
             "rejection_reason_codes": dict(self.counters.rejection_reason_codes),
+            "predictions": dict(self.counters.predictions),
+            "recent_predictions": list(self.counters.recent_predictions),
         }
 
 

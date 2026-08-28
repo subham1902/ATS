@@ -375,8 +375,11 @@ def main() -> None:
             f"Champion calibration: {len(champion_calibration)} frozen as-of-visible observations"
         )
         live_history = load_live_intraday_history(UpstoxReadOnlyClient(), now=SystemClock().now())
+        now_dt = SystemClock().now()
         for underlying, snapshots in live_history.items():
             controller.seed_snapshot_history(underlying, snapshots)
+            if snapshots:
+                controller.process_tick(underlying, snapshots[-1].close, at=now_dt)
         print(
             "Live feature warm-up: "
             + ", ".join(
@@ -384,6 +387,7 @@ def main() -> None:
                 for underlying, snapshots in sorted(live_history.items())
             )
         )
+        controller.scan_market_for_candidates(now=now_dt)
         # Attach & start the pinned DeepSeek Harness (ADVISORY_ONLY, governor-gated)
         try:
             attach_and_start_a2_harness(controller)

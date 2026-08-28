@@ -103,6 +103,54 @@ export interface CandidateClassCounts {
   rare_event: number;
 }
 
+export interface ShadowModelPrediction {
+  model_id: string;
+  name: string;
+  direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+  probability: number;
+  distance: number;
+  would_activate: boolean;
+  status: string;
+}
+
+export interface LiveUnderlyingPrediction {
+  underlying: string;
+  timestamp: string;
+  spot_price: number;
+  regime: string;
+  volatility: string;
+  bullish_probability: number;
+  bearish_probability: number;
+  predicted_direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+  confidence: number;
+  raw_model_score: number;
+  calibrated_probability: number;
+  activation_threshold: number;
+  distance_to_threshold: number;
+  preferred_expression: "LONG_CE" | "LONG_PE" | "HOLD";
+  atm_strike?: number | null;
+  candidate_strike?: string | null;
+  expiry?: string | null;
+  option_mark?: number | null;
+  bid?: number | null;
+  ask?: number | null;
+  spread?: number | null;
+  iv?: number | null;
+  delta?: number | null;
+  gamma?: number | null;
+  theta?: number | null;
+  vega?: number | null;
+  estimated_gross_edge?: number | null;
+  estimated_cost?: number | null;
+  estimated_net_ev?: number | null;
+  decision: "HOLD" | "CANDIDATE" | "REJECTED" | "QUALIFIED";
+  reason_code: string;
+  model_id: string;
+  model_version: string;
+  calibration_version: string;
+  shadow_models?: ShadowModelPrediction[];
+}
+
 export interface OpportunityScannerReadModel {
   last_scan_at: string;
   data_cutoff: string;
@@ -111,6 +159,8 @@ export interface OpportunityScannerReadModel {
   rejections: RejectionBreakdown;
   candidates_by_class: CandidateClassCounts;
   candidate_ids: string[];
+  predictions?: Record<string, LiveUnderlyingPrediction>;
+  recent_predictions?: LiveUnderlyingPrediction[];
 }
 
 // ================================================================

@@ -7,7 +7,7 @@ Missing source facts remain UNKNOWN/null; it never reconstructs R10/R10-X output
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -94,6 +94,8 @@ class OperatorProjectionInput(BaseModel):
     agents: tuple[AgentObservation, ...] = ()
     provenance: ProvenanceType = ProvenanceType.LIVE
     rejection_counts: dict[str, int] = Field(default_factory=dict)
+    predictions: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    recent_predictions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def _value(value: object) -> str:
@@ -426,6 +428,8 @@ def build_operator_snapshot(
                 rare_event=classes.count(CandidateClass.RARE_EVENT),
             ),
             candidate_ids=tuple(str(item.candidate.candidate_id) for item in source.candidates),
+            predictions=dict(source.predictions),
+            recent_predictions=list(source.recent_predictions),
         ),
         edge_ledger=EdgeLedgerReadModel(
             entries=entries,

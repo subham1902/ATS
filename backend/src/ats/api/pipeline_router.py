@@ -56,4 +56,15 @@ def get_pipeline_counters(request: Request) -> dict[str, object]:
     return snap
 
 
+@router.get("/predictions")
+def get_pipeline_predictions(request: Request) -> dict[str, object]:
+    bridge = getattr(request.app.state, "live_pipeline_bridge", None)
+    if bridge is None:
+        return {"predictions": {}, "recent_predictions": []}
+    return {
+        "predictions": getattr(bridge.counters, "predictions", {}),
+        "recent_predictions": getattr(bridge.counters, "recent_predictions", []),
+    }
+
+
 __all__ = ["router"]
