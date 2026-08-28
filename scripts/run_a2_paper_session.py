@@ -54,6 +54,7 @@ from ats.trading_runtime.a2_runner import (
     UpstoxMarketFeedAdapter,
     create_a2_paper_app,
 )
+from ats.trading_runtime.modes import TradingMode
 from ats.trading_runtime.session import (
     RuntimeSessionPhase,
     SessionRuntimeConfig,
@@ -336,13 +337,21 @@ def main() -> None:
     parser.add_argument(
         "--require-token", action="store_true", help="Require ATS_UPSTOX_ACCESS_TOKEN"
     )
+    parser.add_argument(
+        "--mode",
+        choices=["SAFE", "NORMAL", "AGGRESSIVE"],
+        default=os.environ.get("ATS_DEFAULT_MODE", "AGGRESSIVE"),
+        help="Initial operator requested trading mode (default: AGGRESSIVE)",
+    )
     args = parser.parse_args()
 
     if args.serve:
+        requested_mode = TradingMode(args.mode)
         config = A2PaperSessionConfig(
             execution_target="PAPER",
             live_money="DISABLED",
             require_live_instrument_evidence=True,
+            mode=requested_mode,
         )
         feed = UpstoxMarketFeedAdapter()
         controller = A2PaperSessionController(config=config, market_feed=feed)

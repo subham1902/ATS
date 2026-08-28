@@ -2,7 +2,8 @@
 param(
     [string]$HarnessRoot = 'D:\Projects\ATS\tools\deepseek-harness',
     [string]$NodeRoot = 'D:\Projects\ATS\toolchains\node-v24.19.0-win-x64',
-    [switch]$RequireToken = $false
+    [switch]$RequireToken = $false,
+    [string]$Mode = 'AGGRESSIVE'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,6 +21,7 @@ Write-Host " Execution Target : PaperBrokerAdapter (ONLY)" -ForegroundColor Gree
 Write-Host " Live Money       : DISABLED (STRICT INVARIANT)" -ForegroundColor Green
 Write-Host " Real Orders      : 0 (IMPOSSIBLE)" -ForegroundColor Green
 Write-Host " Harness          : ADVISORY_ONLY (GOVERNOR-GATED)" -ForegroundColor Green
+Write-Host " Mode             : $Mode" -ForegroundColor Green
 Write-Host "----------------------------------------------------------------" -ForegroundColor Gray
 
 if (-not (Test-Path -LiteralPath $node)) { throw 'NODE_BINARY_MISSING' }
@@ -42,7 +44,7 @@ New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 #    The backend manages the pinned DeepSeek Harness sidecar internally.
 $backendArguments = @(
     'run', '--with', 'uvicorn==0.40.0', 'python', (Join-Path $repo 'scripts\run_a2_paper_session.py'),
-    '--serve', '--host', '127.0.0.1', '--port', '8000'
+    '--serve', '--host', '127.0.0.1', '--port', '8000', '--mode', $Mode
 )
 if ($RequireToken) { $backendArguments += '--require-token' }
 $backend = Start-Process -FilePath 'uv' -ArgumentList $backendArguments -WorkingDirectory $repo -WindowStyle Hidden -PassThru `

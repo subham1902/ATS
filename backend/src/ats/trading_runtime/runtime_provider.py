@@ -141,6 +141,16 @@ class TradingRuntimeProvider:
                 self._state.must_flatten = sess_status.must_flatten
                 self._state.is_halted = sess_status.is_halted or self._state.is_halted
 
+            if hasattr(cfg, "mode"):
+                if hasattr(engine, "state") and getattr(engine.state, "mode_state", None) is not None:
+                    ms = engine.state.mode_state
+                    self._state.user_mode = ms.user_selected
+                    self._state.effective_mode = ms.effective
+                    self._state.deescalation_reason = ms.deescalation_reason
+                elif self._state.user_mode == TradingMode.NORMAL and cfg.mode != TradingMode.NORMAL:
+                    self._state.user_mode = cfg.mode
+                    self._state.effective_mode = cfg.mode
+
         if hasattr(engine, "market_feed"):
             feed = engine.market_feed
             if hasattr(feed, "is_healthy"):

@@ -336,9 +336,11 @@ def build_operator_snapshot(
         source_state = SourceState.REPLAY
     elif source.provenance is ProvenanceType.FIXTURE:
         source_state = SourceState.FIXTURE
-    elif stale:
+    elif not source.instruments:
+        source_state = SourceState.UNKNOWN
+    elif fresh == 0:
         source_state = SourceState.STALE
-    elif source.instruments and fresh == len(source.instruments):
+    else:
         source_state = SourceState.LIVE
     entries = tuple(_edge_entry(item) for item in source.candidates)
     agents: list[AgentAccountabilityEntry] = []

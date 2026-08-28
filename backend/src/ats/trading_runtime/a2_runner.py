@@ -82,6 +82,7 @@ from ats.trading_runtime.position_monitor import (
     update_mark,
 )
 from ats.trading_runtime.runtime_provider import (
+    RuntimeProviderState,
     TradingRuntimeProvider,
 )
 from ats.trading_runtime.session import SessionRuntimeConfig
@@ -316,7 +317,12 @@ class A2PaperSessionController:
             base_slippage_ticks=self.config.base_slippage_ticks,
             tick_size=self.config.tick_size,
         )
-        self._runtime_provider = runtime_provider or TradingRuntimeProvider()
+        self._runtime_provider = runtime_provider or TradingRuntimeProvider(
+            RuntimeProviderState(
+                user_mode=self.config.mode,
+                effective_mode=self.config.mode,
+            )
+        )
         self._operator_provider = operator_provider or OperatorIntelligenceProvider()
         self._authority = authority
         self._calendar = calendar or default_a2_session_calendar()
@@ -1221,6 +1227,7 @@ class A2PaperSessionController:
                 self._pipeline_counters.calibration_evaluations += 1
             self._pipeline_counters.r10_evaluations += 1
             self._pipeline_counters.r10x_evaluations += 1
+            self._pipeline_counters.candidates_considered += 1
 
             live_option_evidence = None
             if self._upstox_feed is not None:
