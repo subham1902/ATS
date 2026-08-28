@@ -782,9 +782,7 @@ class A2PaperSessionController:
         self._live_pipeline_bridge.record_tick(bridge_key, price, received_at=now)
         if freshness is not None:
             fresh = 1 if freshness is SourceFreshness.FRESH else 0
-            self._live_pipeline_bridge.record_scan(
-                fresh_count=fresh, stale_count=0 if fresh else 1
-            )
+            self._live_pipeline_bridge.record_freshness(fresh_count=fresh)
 
         # 3. Drive the deterministic engine mark / position monitor.
         event = RuntimeEvent(

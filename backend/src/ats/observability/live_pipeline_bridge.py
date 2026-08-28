@@ -88,8 +88,9 @@ class LivePipelineBridge:
             self.counters.banknifty_last = str(price)
         self.counters.last_updated_at = now
 
-    def record_scan(self, *, fresh_count: int, stale_count: int) -> None:
-        self.counters.scanner_observations += fresh_count + stale_count
+    def record_freshness(self, *, fresh_count: int) -> None:
+        """Record feed freshness without impersonating an autonomous scan."""
+
         self.counters.fresh_messages += fresh_count
         self.counters.last_updated_at = SystemClock().now()
 

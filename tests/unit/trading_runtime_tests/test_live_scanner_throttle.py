@@ -11,6 +11,7 @@ from ats.market.feeds.upstox_v3.config import (
     WireFormat,
 )
 from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
+from ats.observability.live_pipeline_bridge import LivePipelineBridge
 from ats.trading_runtime.a2_runner import (
     A2PaperSessionController,
     UpstoxMarketFeedAdapter,
@@ -52,3 +53,13 @@ def test_live_scanner_is_bounded_to_configured_loop_interval() -> None:
     )
     assert controller.pipeline_counters().scanner_observations == 2
     controller.stop()
+
+
+def test_feed_freshness_does_not_mutate_autonomous_scanner_count() -> None:
+    bridge = LivePipelineBridge()
+    bridge.counters.scanner_observations = 7
+
+    bridge.record_freshness(fresh_count=1)
+
+    assert bridge.counters.scanner_observations == 7
+    assert bridge.counters.fresh_messages == 1
