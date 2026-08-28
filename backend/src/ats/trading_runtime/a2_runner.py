@@ -1151,10 +1151,17 @@ class A2PaperSessionController:
                 history.append(snap)
                 if len(history) > 20:
                     history.pop(0)
-                    history = [
-                        h.model_copy(update={"sequence": idx})
-                        for idx, h in enumerate(history, start=1)
-                    ]
+                    renumbered_history: list[MarketSnapshot] = []
+                    for idx, historical_snapshot in enumerate(history, start=1):
+                        renumbered = historical_snapshot.model_copy(
+                            update={"sequence": idx}
+                        )
+                        renumbered_history.append(
+                            renumbered.model_copy(
+                                update={"payload_hash": compute_payload_hash(renumbered)}
+                            )
+                        )
+                    history = renumbered_history
                     self._snapshot_history[und] = history
             else:
                 cur = history[-1]
