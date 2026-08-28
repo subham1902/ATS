@@ -36,8 +36,10 @@ from ats.trading_runtime.modes import (
 )
 from ats.trading_runtime.position_authority import PositionAuthorityStore
 from ats.trading_runtime.position_monitor import (
+    ManagedExitMode,
     MonitoredPosition,
     PositionMonitorConfig,
+    PositionOrigin,
     evaluate_position,
     update_mark,
 )
@@ -236,7 +238,7 @@ class TradingRuntime:
                 hwm=self.state.hwm_state,
                 evaluation_time=event.at,
             )
-            if dec.should_exit_now:
+            if dec.should_exit_now and pos.managed_exit_mode is ManagedExitMode.ATS_MANAGED_EXIT:
                 exits.append(
                     {"position_id": pid, "action": dec.action.value, "reasons": dec.reason_codes}
                 )
@@ -438,10 +440,14 @@ class TradingRuntime:
         quantity: Decimal,
         at: UTCDateTime,
         *,
+        instrument_id: str | None = None,
         lot_size: int | None = None,
         direction: str = "BULLISH",
         expected_edge_r: float = 0.0,
         entry_iv: float | None = None,
+        origin: PositionOrigin = PositionOrigin.ATS_AUTONOMOUS,
+        managed_exit_mode: ManagedExitMode = ManagedExitMode.ATS_MANAGED_EXIT,
+        operator_action_id: str | None = None,
     ) -> None:
         from ats.trading_runtime.risk_terms import derive_position_risk_terms
 
@@ -453,7 +459,8 @@ class TradingRuntime:
         )
         self.state.open_positions[position_id] = MonitoredPosition(
             position_id=position_id,
-            instrument_id=position_id.split(":")[0] if ":" in position_id else position_id,
+            instrument_id=instrument_id
+            or (position_id.split(":")[0] if ":" in position_id else position_id),
             entry_price=mark,
             current_mark=mark,
             quantity=quantity,
@@ -476,7 +483,20 @@ class TradingRuntime:
             lot_size=effective_lot,
             expected_edge_r=expected_edge_r,
             direction=direction,
+            origin=origin,
+            managed_exit_mode=managed_exit_mode,
+            operator_action_id=operator_action_id,
         )
+
+    def set_managed_exit_mode(self, position_id: str, mode: ManagedExitMode) -> bool:
+        """Persist the operator-selected mode in canonical position state."""
+        position = self.state.open_positions.get(position_id)
+        if position is None:
+            return False
+        from dataclasses import replace
+
+        self.state.open_positions[position_id] = replace(position, managed_exit_mode=mode)
+        return True
 
     def request_exit(
         self,

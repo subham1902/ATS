@@ -23,9 +23,11 @@ Presence is projected from the bounded SSE buffer. A material event maps to MARK
 
 ## Manual paper trading and managed exits
 
-This source HEAD does not expose a canonical operator-entry command through Risk and A04. V2 therefore deliberately disables the PAPER ticket instead of routing around governance. Existing `EXIT_POSITION`, `FLATTEN_PORTFOLIO`, pause, resume, mode, and halt commands continue through the runtime router. A future manual-entry implementation must introduce an `OperatorOrderIntent` handler owned by the runtime/controller and prove Risk and A04 authorization before the restricted execution gateway can call PaperBroker.
+The ticket projects only complete provider-derived option events and submits a typed `OperatorOrderIntent`. The controller-owned service validates the exact InstrumentSpec, expiry/strike/type, provider lot quantity, per-option freshness, session, pause/halt state, capital, broker health, and deterministic A04 decision/token before its restricted PaperBroker adapter is callable. No option evidence means no selectable contract and no submission.
 
-Position origin, managed-exit mode, option instrument specifications, and health/exit-pressure evidence are also absent from the current runtime read model. The cockpit labels those values unavailable rather than inferring them. Existing positions are shown as server-authoritative; origin is not silently guessed by financial logic.
+A filled manual intent is immediately inserted into canonical runtime position state with `OPERATOR_MANUAL` origin. Positions persist an explicit `MONITOR_ONLY` or `ATS_MANAGED_EXIT` mode. Ordinary deterministic position-monitor exits are suppressed in monitor-only mode, but mandatory pre-existing account/session flatten remains authoritative. Agents remain explanatory only.
+
+The live launcher attaches manual authority only after its read-only Upstox supervisor has obtained provider-normalized reference contracts. No hard-coded expiry, strike, or option lot is used by manual order validation.
 
 ## Navigation, accessibility, and failure states
 

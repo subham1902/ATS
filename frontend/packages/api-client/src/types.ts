@@ -257,7 +257,7 @@ export interface RuntimeStatusReadModel {
   capital: { available: string; reserved: string; inflight: string; used: string; total: string };
   pnl: { realized: string; unrealized: string; session_peak: string; drawdown_fraction: string };
   loss_state: LossState;
-  open_positions: Array<{ position_id: string; instrument_id: string; quantity: string; entry_price: string; mark_price: string | null; unrealized_pnl: string }>;
+  open_positions: Array<{ position_id: string; instrument_id: string; quantity: string; entry_price: string; mark_price: string | null; unrealized_pnl: string; realized_pnl?: string; origin?: "ATS_AUTONOMOUS" | "OPERATOR_MANUAL" | "EXTERNAL_RECONCILED"; managed_exit_mode?: "MONITOR_ONLY" | "ATS_MANAGED_EXIT"; capital_committed?: string; current_stop?: string | null; target_price?: string | null; trailing_stop?: string | null; time_held_minutes?: number; last_recommendation?: string; recommendation_reasons?: string[] }>;
   recent_decisions: Array<Record<string, unknown>>;
   feed_healthy: boolean;
   broker_healthy: boolean;
@@ -267,9 +267,22 @@ export interface RuntimeStatusReadModel {
 }
 
 export interface RuntimeCommandRequest {
-  command: "SET_MODE" | "PAUSE_NEW_ENTRIES" | "RESUME_NEW_ENTRIES" | "EXIT_POSITION" | "FLATTEN_PORTFOLIO" | "HALT_SYSTEM";
+  command: "SET_MODE" | "PAUSE_NEW_ENTRIES" | "RESUME_NEW_ENTRIES" | "EXIT_POSITION" | "FLATTEN_PORTFOLIO" | "HALT_SYSTEM" | "SET_MANAGED_EXIT" | "SET_MONITOR_ONLY";
   mode?: "SAFE" | "NORMAL" | "AGGRESSIVE" | null;
   position_id?: string | null;
+}
+
+export interface OperatorOrderIntent {
+  operator_action_id: string; instrument_key: string; underlying: "NIFTY" | "BANKNIFTY";
+  expiry: string; strike: string; option_type: "CE" | "PE"; side: "BUY"; lots: number;
+  quantity: string; order_type: "MARKET" | "LIMIT"; requested_price: string | null;
+  origin: "OPERATOR_MANUAL"; requested_at: string; managed_exit_mode: "MONITOR_ONLY" | "ATS_MANAGED_EXIT"; reason?: string | null;
+}
+
+export interface OperatorOrderResult {
+  accepted: boolean; state: "CREATED" | "RISK_ACCEPTED" | "A04_AUTHORIZED" | "ACKNOWLEDGED" | "FILLED" | "REJECTED" | "UNKNOWN";
+  reason_codes: string[]; order_intent_id: string; risk_decision_id: string | null; a04_decision_id: string | null;
+  token_id: string | null; paper_order_id: string | null; fill_id: string | null; position_id: string | null;
 }
 
 export interface RuntimeCommandResult {
@@ -303,6 +316,7 @@ export const ROUTES = {
   agentChat: "/v1/agent-chat",
   runtimeStatus: "/v1/runtime/status",
   runtimeCommand: "/v1/runtime/command",
+  operatorOrders: "/v1/runtime/operator-orders",
   operatorIntelligence: "/v1/operator-intelligence",
   operatorIntelligenceStream: "/v1/operator-intelligence/stream",
   harnessStatus: "/v1/harness/status",

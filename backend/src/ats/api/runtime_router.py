@@ -7,6 +7,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ats.trading_runtime.modes import TradingMode
+from ats.trading_runtime.operator_orders import (
+    OperatorOrderIntent,
+    OperatorOrderResult,
+    OperatorOrderService,
+)
 
 from .runtime_models import RuntimeCommandRequest, RuntimeCommandResult, RuntimeStatusReadModel
 
@@ -88,6 +93,8 @@ _ALLOWED = frozenset(
         "HALT_SYSTEM",
         "START_A2_PAPER_SESSION",
         "STOP_A2_PAPER_SESSION",
+        "SET_MANAGED_EXIT",
+        "SET_MONITOR_ONLY",
     }
 )
 
@@ -177,15 +184,52 @@ def post_runtime_command(
                     engine.request_exit(
                         pid,
                         SystemClock().now(),
-                        reason_codes=("DASHBOARD_EXIT_REQUESTED",),
-                        source="DASHBOARD",
+                        reason_codes=("OPERATOR_MANUAL_EXIT",),
+                        source="OPERATOR",
                     )
                     return RuntimeCommandResult(accepted=True, reason_codes=("EXIT_QUEUED",))
                 return RuntimeCommandResult(accepted=False, reason_codes=("POSITION_NOT_FOUND",))
         return RuntimeCommandResult(
             accepted=True, reason_codes=("COMMAND_ACCEPTED_AWAITING_ENGINE",)
         )
+    if body.command in ("SET_MANAGED_EXIT", "SET_MONITOR_ONLY"):
+        engine = getattr(request.app.state, "trading_runtime_engine", None)
+        if engine is None or body.position_id is None:
+            return RuntimeCommandResult(
+                accepted=False, reason_codes=("POSITION_ENGINE_UNAVAILABLE",)
+            )
+        from ats.trading_runtime.position_monitor import ManagedExitMode
+
+        exit_mode = (
+            ManagedExitMode.ATS_MANAGED_EXIT
+            if body.command == "SET_MANAGED_EXIT"
+            else ManagedExitMode.MONITOR_ONLY
+        )
+        if not engine.set_managed_exit_mode(str(body.position_id), exit_mode):
+            return RuntimeCommandResult(accepted=False, reason_codes=("POSITION_NOT_FOUND",))
+        if provider is not None:
+            provider.update_from_engine(engine)
+        return RuntimeCommandResult(accepted=True, reason_codes=("EXIT_MANAGEMENT_UPDATED",))
     return RuntimeCommandResult(accepted=False, reason_codes=("UNKNOWN_COMMAND",))
+
+
+@router.post("/operator-orders", response_model=OperatorOrderResult)
+def post_operator_order(body: OperatorOrderIntent, request: Request) -> OperatorOrderResult:
+    service = getattr(request.app.state, "operator_order_service", None)
+    if service is None:
+        controller = getattr(request.app.state, "a2_session_controller", None)
+        service = getattr(controller, "operator_order_service", None)
+    if not isinstance(service, OperatorOrderService):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="governed operator order authority is not attached",
+        )
+    result = service.submit(body)
+    provider = getattr(request.app.state, "trading_runtime_provider", None)
+    engine = getattr(request.app.state, "trading_runtime_engine", None)
+    if result.accepted and provider is not None and engine is not None:
+        provider.update_from_engine(engine)
+    return result
 
 
 __all__ = ["router"]

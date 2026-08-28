@@ -15,6 +15,8 @@ import type {
   RiskDecisionReadModel,
   RuntimeCommandRequest,
   RuntimeCommandResult,
+  OperatorOrderIntent,
+  OperatorOrderResult,
   RuntimeStatusReadModel,
   SystemReadModel,
 } from "./types";
@@ -104,6 +106,8 @@ export function createApiClient(options?: ClientOptions) {
     getRuntimeStatus: () => request<RuntimeStatusReadModel>(ROUTES.runtimeStatus, { method: "GET" }, opts),
     runtimeCommand: (body: RuntimeCommandRequest) =>
       request<RuntimeCommandResult>(ROUTES.runtimeCommand, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
+    submitOperatorOrder: (body: OperatorOrderIntent) =>
+      request<OperatorOrderResult>(ROUTES.operatorOrders, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
     getOperatorIntelligence: () =>
       request<OperatorIntelligenceSnapshot>(ROUTES.operatorIntelligence, { method: "GET" }, opts),
     operatorIntelligenceStreamUrl: () =>
