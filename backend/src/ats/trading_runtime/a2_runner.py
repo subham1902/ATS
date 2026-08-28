@@ -167,6 +167,10 @@ _REJECTION_TAXONOMY: dict[str, str] = {
     "SESSION_NOT_RUNNING": "session",
     "INVALID_REFERENCE": "invalid_reference",
     "CALIBRATION_EVIDENCE_REQUIRED": "insufficient_calibration_support",
+    # The thesis engine returns THESIS_SYNTHESIZED for neutral/mixed as well as
+    # directional synthesis; it reaches rejection classification only for the
+    # neutral/mixed branch.
+    "THESIS_SYNTHESIZED": "neutral_thesis",
     "NEGATIVE_NET_EV": "negative_net_ev",
     "SPREAD": "spread",
     "LIQUIDITY": "liquidity",

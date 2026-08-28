@@ -15,7 +15,11 @@ from uuid import uuid4
 
 from ats.contracts.common import SystemClock
 from ats.portfolio.brain import ExposureDirection
-from ats.trading_runtime.a2_runner import A2PaperSessionConfig, A2PaperSessionController
+from ats.trading_runtime.a2_runner import (
+    A2PaperSessionConfig,
+    A2PaperSessionController,
+    classify_rejection,
+)
 from ats.trading_runtime.candidate_factory import build_opportunity_candidate
 
 
@@ -147,3 +151,7 @@ def test_c2_scan_without_calibration_does_not_force_trade():
     counters = controller.pipeline_counters()
     assert counters.candidates_rejected == 1
     assert counters.rejection_reasons.get("insufficient_calibration_support", 0) == 1
+
+
+def test_neutral_synthesized_thesis_has_typed_rejection_category():
+    assert classify_rejection(("THESIS_SYNTHESIZED",)) == "neutral_thesis"
