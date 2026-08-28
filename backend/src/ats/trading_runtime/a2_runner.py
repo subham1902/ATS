@@ -160,6 +160,7 @@ class PipelineCounters:
     paper_orders: int = 0
     paper_fills: int = 0
     rejection_reasons: dict[str, int] = field(default_factory=dict)
+    rejection_reason_codes: dict[str, int] = field(default_factory=dict)
 
 
 _REJECTION_TAXONOMY: dict[str, str] = {
@@ -171,6 +172,7 @@ _REJECTION_TAXONOMY: dict[str, str] = {
     # directional synthesis; it reaches rejection classification only for the
     # neutral/mixed branch.
     "THESIS_SYNTHESIZED": "neutral_thesis",
+    "REGIME_DIRECTION_UNKNOWN": "insufficient_history",
     "NEGATIVE_NET_EV": "negative_net_ev",
     "SPREAD": "spread",
     "LIQUIDITY": "liquidity",
@@ -498,6 +500,7 @@ class A2PaperSessionController:
         )
         c.paper_orders = self._pipeline_counters.paper_orders
         c.paper_fills = self._pipeline_counters.paper_fills
+        c.rejection_reason_codes = dict(self._pipeline_counters.rejection_reason_codes)
 
     def start(self, *, require_token: bool = True) -> bool:
         """Start the A2 paper session synchronously."""
@@ -987,10 +990,14 @@ class A2PaperSessionController:
         category = classify_rejection(reason_codes)
         bucket = self._pipeline_counters.rejection_reasons
         bucket[category] = bucket.get(category, 0) + 1
+        code_bucket = self._pipeline_counters.rejection_reason_codes
+        for code in reason_codes:
+            code_bucket[code] = code_bucket.get(code, 0) + 1
         # Mirror into the operator dashboard bridge (honest, never synthesized).
         self._live_pipeline_bridge.counters.candidates_rejected += 1
         rb = self._live_pipeline_bridge.counters.rejection_reasons
         rb[category] = rb.get(category, 0) + 1
+        self._live_pipeline_bridge.counters.rejection_reason_codes = dict(code_bucket)
         self._consecutive_rejections += 1
         if self._consecutive_rejections >= 5 and self._consecutive_rejections % 5 == 0:
             self.notify_material_event(

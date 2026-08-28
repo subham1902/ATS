@@ -58,6 +58,7 @@ class LivePipelineCounters:
     nifty_last: str | None = None
     banknifty_last: str | None = None
     rejection_reasons: dict[str, int] = field(default_factory=dict)
+    rejection_reason_codes: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -159,6 +160,7 @@ class LivePipelineBridge:
             "nifty_last": self.counters.nifty_last,
             "banknifty_last": self.counters.banknifty_last,
             "rejection_reasons": dict(self.counters.rejection_reasons),
+            "rejection_reason_codes": dict(self.counters.rejection_reason_codes),
         }
 
 

@@ -155,3 +155,7 @@ def test_c2_scan_without_calibration_does_not_force_trade():
 
 def test_neutral_synthesized_thesis_has_typed_rejection_category():
     assert classify_rejection(("THESIS_SYNTHESIZED",)) == "neutral_thesis"
+
+
+def test_unknown_regime_has_typed_history_rejection_category():
+    assert classify_rejection(("REGIME_DIRECTION_UNKNOWN",)) == "insufficient_history"
