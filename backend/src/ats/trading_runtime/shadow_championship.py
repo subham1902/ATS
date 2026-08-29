@@ -491,7 +491,7 @@ class ForwardShadowChampionshipEngine:
         base_slippage_frac = 0.0005
         entry_eff = observed_ask * (1.0 + base_slippage_frac)
         trade_identity = hashlib.sha256(
-            f"{model.model_id}:{ctx.market_state_id}:{quote.instrument_key}".encode("utf-8")
+            f"{model.model_id}:{ctx.market_state_id}:{quote.instrument_key}".encode()
         ).hexdigest()[:16]
 
         self._active_shadow_positions[pos_key] = {

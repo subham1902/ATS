@@ -91,3 +91,14 @@ then establish deterministic feature/state outputs and evidence-grade tests.
 4. M7 does not compute decomposed expected net value despite its name.
 5. C0's formula and 0.55 threshold are preserved and must remain unchanged.
 
+## Continuation status
+
+Codex continued from the identified stopping point in commits `b85a749` and
+`aab5a16`. The invalid hard-coded lot and synthetic option-settlement findings
+were corrected by requiring provider lot metadata and contemporaneous matching
+quotes. A pure `SHADOW_ONLY` Alpha V4 module now covers multi-horizon features,
+regime/specialist routing, disagreement uncertainty and decomposed net EV.
+Historical economic validation, before/after P&L, slow-market edge proof and
+fast-market convexity proof remain `BLOCKED`/`INSUFFICIENT_DATA` because no
+legitimate chronological option history is available. They were not replaced
+with synthetic evidence.

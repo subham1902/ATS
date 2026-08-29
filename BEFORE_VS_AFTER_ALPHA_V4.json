@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-08-30T00:00:00+05:30",
+  "evidence_status": "INSUFFICIENT_PROMOTION_GRADE_OPTION_HISTORY",
+  "comparison": {
+    "baseline": {
+      "model": "C0",
+      "formula": "clamp(0.05,0.95,0.50+5.0*ROC_3)",
+      "threshold": 0.55,
+      "production_champion_unchanged": true
+    },
+    "alpha_v4": {
+      "status": "SHADOW_ONLY",
+      "horizons_minutes": [1, 3, 5, 10, 15, 30],
+      "regimes": ["RANGE", "TREND", "VOL_EXPANSION", "RARE_EVENT", "UNCERTAIN"],
+      "specialists": ["TREND", "MEAN_REVERSION", "BREAKOUT", "VOL_EXPANSION", "R10_X"],
+      "cost_components": ["spread", "slippage", "brokerage", "statutory", "uncertainty", "liquidity"]
+    }
+  },
+  "metrics": {
+    "probability_dispersion": null,
+    "calibration": null,
+    "activation_count": null,
+    "activation_rate": null,
+    "qualified_candidates": null,
+    "net_ev_positive_candidates": null,
+    "portfolio_reach": null,
+    "a04_reach": null,
+    "trade_count": null,
+    "gross_expectancy": null,
+    "net_expectancy": null,
+    "max_drawdown": null,
+    "costs": null,
+    "latency": null
+  },
+  "slow_market_edge_test": "INSUFFICIENT_DATA",
+  "fast_market_convexity_test": "INSUFFICIENT_DATA",
+  "cost_stress": {"1.0x": null, "1.5x": null, "2.0x": null, "3.0x": null},
+  "interpretation": "Null is intentional. More activity is not treated as improvement, and synthetic option prices are not promotion evidence.",
+  "risk_constraints_unchanged": true
+}
+

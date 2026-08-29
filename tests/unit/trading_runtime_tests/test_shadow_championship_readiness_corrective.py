@@ -9,9 +9,9 @@ import pytest
 from ats.trading_runtime.broker import PaperBrokerAdapter
 from ats.trading_runtime.readiness import check_pre_market_readiness
 from ats.trading_runtime.shadow_championship import (
-    ContemporaneousOptionQuote,
     RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH,
     RESEARCH_COUNTERFACTUAL_POLICY_V1_NAME,
+    ContemporaneousOptionQuote,
     ForwardShadowChampionshipEngine,
     MarketObservationContext,
 )
