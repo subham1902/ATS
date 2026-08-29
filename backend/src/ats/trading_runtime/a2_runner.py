@@ -41,6 +41,12 @@ from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate
 from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
 from ats.observability.live_pipeline_bridge import LivePipelineBridge
 from ats.observability.operator_provider import OperatorIntelligenceProvider
+from ats.observability.session_evidence import (
+    EvidenceEventType,
+    EvidencePayload,
+    SessionEvidenceRecorder,
+    SessionIdentity,
+)
 from ats.portfolio.brain import (
     AllocationOutcome,
     CandidateAllocationRequest,
@@ -140,6 +146,8 @@ class A2PaperSessionConfig:
     mode: TradingMode = TradingMode.NORMAL
     require_live_instrument_evidence: bool = False
     runtime_checkpoint_path: str | None = None
+    session_id: UUID | None = None
+    evidence_root: str | None = None
 
 
 @dataclass
@@ -364,6 +372,7 @@ class A2PaperSessionController:
         # Real Upstox V3 runtime feed (read-only market data) and pipeline bridge
         self._upstox_feed: UpstoxV3RuntimeFeed | None = None
         self._live_pipeline_bridge = LivePipelineBridge()
+        self._session_evidence: SessionEvidenceRecorder | None = None
 
         # Advisory-only DeepSeek Harness integration (ADVISORY_ONLY; governor-gated)
         self._harness_integration: Any = None
@@ -636,6 +645,39 @@ class A2PaperSessionController:
         self._pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
         self._portfolio_brain = PortfolioManagerBrain()
 
+        if self.config.session_id is not None and self.config.evidence_root is not None:
+            now = SystemClock().now()
+            try:
+                self._session_evidence = SessionEvidenceRecorder(
+                    SessionIdentity(
+                        session_id=self.config.session_id,
+                        trading_date=now.astimezone().date().isoformat(),
+                        champion_model_id="C0",
+                        champion_model_version="1.0.0",
+                        policy_version="A04_CURRENT",
+                        system_version="A2_ALPHA_V4_INTEGRATED",
+                        started_at=now,
+                    ),
+                    self.config.evidence_root,
+                )
+                if not self._session_evidence.events():
+                    self._session_evidence.record(
+                        EvidenceEventType.SESSION_CREATED,
+                        EvidencePayload(state="CONFIGURED_PAPER_SESSION"),
+                        producer="A2PaperSessionController",
+                        event_time=now,
+                    )
+                self._session_evidence.record(
+                    EvidenceEventType.SESSION_STARTED,
+                    EvidencePayload(state="RUNNING"),
+                    producer="A2PaperSessionController",
+                    event_time=now,
+                )
+            except Exception:
+                self._state = A2SessionState.FAILED
+                self._reason_codes = ["EVIDENCE_RECORDER_START_FAILED"]
+                return False
+
         # Sync runtime provider
         self._runtime_provider.update_from_engine(self._engine)
         self._state = A2SessionState.RUNNING
@@ -682,6 +724,22 @@ class A2PaperSessionController:
 
         if self._harness_integration is not None:
             self._harness_integration.stop()
+
+        if self._session_evidence is not None:
+            now = SystemClock().now()
+            self._session_evidence.record(
+                EvidenceEventType.SESSION_CLOSED,
+                EvidencePayload(state="CLOSED"),
+                producer="A2PaperSessionController",
+                event_time=now,
+            )
+            self._session_evidence.record(
+                EvidenceEventType.SESSION_SUMMARY_FINALIZED,
+                EvidencePayload(state="FINALIZED"),
+                producer="A2PaperSessionController",
+                event_time=now,
+            )
+            self._session_evidence.finalize()
 
         self._state = A2SessionState.STOPPED
         self._reason_codes = ["A2_PAPER_SESSION_STOPPED"]

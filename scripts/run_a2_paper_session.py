@@ -361,6 +361,13 @@ def main() -> None:
             live_money="DISABLED",
             require_live_instrument_evidence=True,
             mode=requested_mode,
+            runtime_checkpoint_path=os.environ.get("ATS_A2_RUNTIME_CHECKPOINT_PATH"),
+            session_id=(
+                UUID(os.environ["ATS_A2_SESSION_ID"])
+                if os.environ.get("ATS_A2_SESSION_ID")
+                else None
+            ),
+            evidence_root=os.environ.get("ATS_A2_EVIDENCE_ROOT"),
         )
         feed = UpstoxMarketFeedAdapter()
         controller = A2PaperSessionController(config=config, market_feed=feed)

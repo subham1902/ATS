@@ -13,6 +13,7 @@ $stateFile = Join-Path $stateRoot 'processes.json'
 $node = Join-Path $NodeRoot 'node.exe'
 $corepack = Join-Path $NodeRoot 'corepack.cmd'
 $harnessBin = Join-Path $HarnessRoot 'packages\examples\acp-demo\lib\bin.js'
+$sessionId = [guid]::NewGuid().ToString()
 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host " ATS A2 LIVE-PAPER MARKET-OPEN LAUNCHER (READ-ONLY MARKET DATA)" -ForegroundColor Cyan
@@ -38,6 +39,9 @@ if ($existing.Count -gt 0) { throw 'ATS_PORT_ALREADY_IN_USE' }
 if (Test-Path -LiteralPath $stateFile) { throw 'ATS_STATE_FILE_ALREADY_EXISTS' }
 $env:Path = $NodeRoot + [IO.Path]::PathSeparator + $env:Path
 $env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
+$env:ATS_A2_SESSION_ID = $sessionId
+$env:ATS_A2_EVIDENCE_ROOT = Join-Path $repo 'data\runtime\sessions'
+$env:ATS_A2_RUNTIME_CHECKPOINT_PATH = Join-Path $stateRoot 'runtime_checkpoint.json'
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 # 1. Launch Backend A2 Paper Session (serves /v1/* including runtime/harness/pipeline)
@@ -66,6 +70,9 @@ $frontend = Start-Process -FilePath $node -ArgumentList @(
     execution_target = 'PAPER'
     live_money = 'DISABLED'
     real_orders_placed = 0
+    session_id = $sessionId
+    evidence_root = $env:ATS_A2_EVIDENCE_ROOT
+    runtime_checkpoint_path = $env:ATS_A2_RUNTIME_CHECKPOINT_PATH
 } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
 
 $deadline = (Get-Date).AddSeconds(45)
@@ -94,6 +101,9 @@ try {
         execution_target = 'PAPER'
         live_money = 'DISABLED'
         real_orders_placed = 0
+        session_id = $sessionId
+        evidence_root = $env:ATS_A2_EVIDENCE_ROOT
+        runtime_checkpoint_path = $env:ATS_A2_RUNTIME_CHECKPOINT_PATH
     } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
 } catch {
     Write-Warning "Listeners initializing..."
