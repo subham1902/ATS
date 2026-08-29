@@ -54,6 +54,7 @@ from ats.portfolio.runtime import (
     PortfolioAuthoritySnapshot,
     ReservationPartition,
 )
+from ats.trading_runtime.alpha_v4_shadow import AlphaV4ForwardShadowAdapter
 from ats.trading_runtime.authority_service import (
     ReservationRequest,
     TradingAuthorityService,
@@ -95,6 +96,7 @@ from ats.trading_runtime.runtime_provider import (
     TradingRuntimeProvider,
 )
 from ats.trading_runtime.session import SessionRuntimeConfig
+from ats.trading_runtime.shadow_championship import ForwardShadowChampionshipEngine
 
 
 def default_a2_session_calendar(trading_dates: tuple[date, ...] | None = None) -> SessionCalendar:
@@ -350,6 +352,8 @@ class A2PaperSessionController:
         self._last_detected_regime: str | None = None
         self._consecutive_rejections: int = 0
         self._snapshot_history: dict[str, list[MarketSnapshot]] = {}
+        self._alpha_v4_shadow = AlphaV4ForwardShadowAdapter()
+        self._forward_shadow_engine = ForwardShadowChampionshipEngine()
         self._provider_key_by_instrument_id: dict[str, str] = {}
         self._tick_size_by_instrument_id: dict[str, Decimal] = {}
 
@@ -805,6 +809,10 @@ class A2PaperSessionController:
         price = update.last_traded_price
         if price is None:
             return
+        if update.instrument_key == NIFTY_INDEX_FEED_KEY:
+            self._alpha_v4_shadow.ingest("NIFTY", update)
+        elif update.instrument_key == BANKNIFTY_INDEX_FEED_KEY:
+            self._alpha_v4_shadow.ingest("BANKNIFTY", update)
         self.ingest_market_update(update.instrument_key, price, update.received_at, freshness)
 
     def ingest_market_update(
@@ -1458,6 +1466,114 @@ class A2PaperSessionController:
                             opt_theta = float(q.greeks.theta) if q.greeks.theta else None
                         break
 
+            # Canonical Forward Shadow evaluation shares the exact A2 market
+            # state, feature bundle and decision timestamp. Alpha V4 consumes
+            # only independently collected one-minute provider observations;
+            # no 5-minute snapshot or missing clock is repurposed.
+            from ats.intelligence.alpha_v4 import AlphaOptionQuote
+            from ats.trading_runtime.shadow_championship import (
+                ContemporaneousOptionQuote,
+                MarketObservationContext,
+            )
+
+            alpha_ce: AlphaOptionQuote | None = None
+            alpha_pe: AlphaOptionQuote | None = None
+            provider_lot_size: int | None = None
+            championship_quotes: dict[str, ContemporaneousOptionQuote] = {}
+            if live_option_evidence is not None:
+                atm = live_option_evidence.option_chain.atm_strike
+                contracts = {
+                    item.instrument_id: item
+                    for item in live_option_evidence.contract_master.instruments
+                }
+                for option_type, expression in (("CE", "LONG_CE"), ("PE", "LONG_PE")):
+                    eligible_quotes = [
+                        q
+                        for q in live_option_evidence.option_chain.quotes
+                        if q.option_type.value == option_type
+                        and q.bid is not None
+                        and q.ask is not None
+                    ]
+                    if not eligible_quotes:
+                        continue
+                    q = min(eligible_quotes, key=lambda item: abs(item.strike - atm))
+                    assert q.bid is not None and q.ask is not None
+                    alpha_quote = AlphaOptionQuote(
+                        q.instrument_id,
+                        option_type,
+                        q.expiry,
+                        float(q.strike),
+                        float(q.bid),
+                        float(q.ask),
+                        q.quote_time,
+                        float(q.open_interest) if q.open_interest is not None else None,
+                        q.implied_volatility,
+                        q.delta,
+                        q.gamma,
+                        q.theta,
+                    )
+                    if option_type == "CE":
+                        alpha_ce = alpha_quote
+                    else:
+                        alpha_pe = alpha_quote
+                    championship_quotes[expression] = ContemporaneousOptionQuote(
+                        q.instrument_id,
+                        q.expiry,
+                        float(q.strike),
+                        option_type,
+                        float(q.bid),
+                        float(q.ask),
+                        q.quote_time,
+                    )
+                    contract = contracts.get(q.instrument_id)
+                    if contract is not None:
+                        lot = int(contract.lot_size)
+                        provider_lot_size = lot if provider_lot_size in (None, lot) else None
+
+            alpha_decision = self._alpha_v4_shadow.evaluate(
+                underlying=und,
+                decision_time=evaluation_time,
+                ce_quote=alpha_ce,
+                pe_quote=alpha_pe,
+                provider_lot_size=provider_lot_size,
+            )
+            alpha_shadow = self._alpha_v4_shadow.telemetry(
+                alpha_decision,
+                market_state_id=str(ctx.market_context_id),
+                feature_bundle_id=str(ctx.feature_bundle_id),
+                decision_time=evaluation_time,
+            )
+            shadow_context = MarketObservationContext(
+                market_state_id=str(ctx.market_context_id),
+                feature_bundle_id=str(ctx.feature_bundle_id),
+                decision_time=evaluation_time,
+                session=evaluation_time.date().isoformat(),
+                underlying=und,
+                spot_price=float(mark),
+                vwap=sum(closes) / len(closes),
+                features={
+                    "roc_1": roc_1,
+                    "roc_3": roc_3,
+                    "roc_5": ((closes[-1] - closes[-6]) / closes[-6] if len(closes) >= 6 else 0.0),
+                    "vol_5": vol_scale,
+                    "accel": roc_1 - roc_3 / 3.0,
+                    "range_pos": 0.5,
+                    "is_trend": 1.0 if regime_str == "TREND" else 0.0,
+                },
+            )
+            try:
+                championship_predictions = self._forward_shadow_engine.evaluate_observation(
+                    shadow_context,
+                    resolved_lot_sizes=(
+                        {und: provider_lot_size} if provider_lot_size is not None else None
+                    ),
+                    contemporaneous_option_quotes=championship_quotes or None,
+                )
+            except Exception:
+                # Forward Shadow is non-authoritative. Recorder/settlement/model
+                # failure must never interrupt C0 -> Portfolio -> Risk -> A04.
+                championship_predictions = []
+
             shadows = [
                 {
                     "model_id": "C0",
@@ -1532,6 +1648,7 @@ class A2PaperSessionController:
                     "status": "RESEARCH_ONLY",
                 },
             ]
+            shadows.append(alpha_shadow)
 
             prediction_dict = {
                 "underlying": und,
@@ -1567,6 +1684,8 @@ class A2PaperSessionController:
                 "model_version": "1.0.0",
                 "calibration_version": "1.0.0",
                 "shadow_models": shadows,
+                "forward_shadow_models": [vars(item) for item in championship_predictions],
+                "forward_shadow_scorecard": self._forward_shadow_engine.get_scorecard(),
             }
             self._live_pipeline_bridge.record_prediction(prediction_dict)
 
