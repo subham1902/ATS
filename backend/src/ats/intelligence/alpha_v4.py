@@ -12,6 +12,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from statistics import fmean, pstdev
+from typing import TypeGuard
+
+from ats.market.derivatives.option_universe import DEFAULT_MAXIMUM_QUOTE_AGE_MS
 
 HORIZONS_MINUTES = (1, 3, 5, 10, 15, 30)
 
@@ -30,12 +33,22 @@ class AlphaAction(StrEnum):
     LONG_PE = "LONG_PE"
 
 
+class EconomicEvidenceProvenance(StrEnum):
+    REAL_OPTION_PAYOFF_MODEL = "REAL_OPTION_PAYOFF_MODEL"
+    SYNTHETIC_TEST_ONLY = "SYNTHETIC_TEST_ONLY"
+
+
+class EdgeEvaluationState(StrEnum):
+    EDGE_EVALUATED = "EDGE_EVALUATED"
+    EDGE_NOT_EVALUABLE = "EDGE_NOT_EVALUABLE"
+
+
 @dataclass(frozen=True)
 class AlphaBar:
-    event_time: datetime
-    source_time: datetime
-    ingest_time: datetime
-    available_to_strategy_time: datetime
+    event_time: datetime | None
+    source_time: datetime | None
+    ingest_time: datetime | None
+    available_to_strategy_time: datetime | None
     open: float
     high: float
     low: float
@@ -51,7 +64,7 @@ class AlphaOptionQuote:
     strike: float
     bid: float
     ask: float
-    observed_at: datetime
+    observed_at: datetime | None
     open_interest: float | None = None
     implied_volatility: float | None = None
     delta: float | None = None
@@ -62,6 +75,7 @@ class AlphaOptionQuote:
 @dataclass(frozen=True)
 class AlphaFeatureBundle:
     decision_time: datetime
+    latest_available_to_strategy_time: datetime
     returns: dict[int, float]
     velocity: float
     acceleration: float
@@ -88,6 +102,15 @@ class ExpectedValueBreakdown:
 
 
 @dataclass(frozen=True)
+class ExpectedOptionPayoffEvidence:
+    value_per_unit: float
+    provenance: EconomicEvidenceProvenance
+    model_id: str
+    model_version: str
+    as_of: datetime
+
+
+@dataclass(frozen=True)
 class AlphaV4Decision:
     p_up: float
     p_down: float
@@ -101,6 +124,8 @@ class AlphaV4Decision:
     preferred_expression: AlphaAction
     recommended_action: AlphaAction
     reason: str
+    edge_evaluation_state: EdgeEvaluationState
+    payoff_provenance: EconomicEvidenceProvenance | None = None
     shadow_status: str = "SHADOW_ONLY"
 
 
@@ -108,16 +133,55 @@ def _finite(values: tuple[float, ...]) -> bool:
     return all(math.isfinite(value) for value in values)
 
 
+def _is_aware_utc(value: object) -> TypeGuard[datetime]:
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        return False
+    offset = value.utcoffset()
+    return offset is not None and offset.total_seconds() == 0
+
+
+def _validate_decision_time(decision_time: datetime) -> None:
+    if not _is_aware_utc(decision_time):
+        raise ValueError("INVALID_TEMPORAL_EVIDENCE")
+
+
+def _validate_bar_clocks(bar: AlphaBar, decision_time: datetime) -> None:
+    clocks = (
+        bar.event_time,
+        bar.source_time,
+        bar.ingest_time,
+        bar.available_to_strategy_time,
+    )
+    if not all(_is_aware_utc(value) for value in clocks):
+        raise ValueError("INVALID_TEMPORAL_EVIDENCE")
+    event_time, source_time, ingest_time, available_time = clocks
+    assert isinstance(event_time, datetime)
+    assert isinstance(source_time, datetime)
+    assert isinstance(ingest_time, datetime)
+    assert isinstance(available_time, datetime)
+    if not event_time <= source_time <= ingest_time <= available_time <= decision_time:
+        raise ValueError("INVALID_TEMPORAL_EVIDENCE")
+
+
 def build_feature_bundle(
-    bars: tuple[AlphaBar, ...], *, decision_time: datetime
+    bars: tuple[AlphaBar, ...],
+    *,
+    decision_time: datetime,
+    maximum_underlying_age_ms: int = DEFAULT_MAXIMUM_QUOTE_AGE_MS,
 ) -> AlphaFeatureBundle:
     """Build V4 features without reading information unavailable at cutoff."""
 
-    eligible = tuple(
-        bar
-        for bar in bars
-        if bar.available_to_strategy_time <= decision_time and bar.event_time <= decision_time
-    )
+    _validate_decision_time(decision_time)
+    for bar in bars:
+        _validate_bar_clocks(bar, decision_time)
+    latest_available = bars[-1].available_to_strategy_time if bars else None
+    if (
+        not isinstance(latest_available, datetime)
+        or (decision_time - latest_available).total_seconds() * 1000 > maximum_underlying_age_ms
+    ):
+        raise ValueError("STALE_UNDERLYING_EVIDENCE")
+
+    eligible = bars
     if len(eligible) < 31:
         raise ValueError("INSUFFICIENT_WARMUP: 31 completed one-minute bars required")
     if any(
@@ -127,7 +191,10 @@ def build_feature_bundle(
         for b in eligible
     ):
         raise ValueError("INVALID_NONFINITE_OR_NONPOSITIVE_BAR")
-    if any(a.event_time >= b.event_time for a, b in zip(eligible, eligible[1:], strict=False)):
+    if any(
+        a.event_time is None or b.event_time is None or a.event_time >= b.event_time
+        for a, b in zip(eligible, eligible[1:], strict=False)
+    ):
         raise ValueError("NON_CHRONOLOGICAL_BARS")
 
     window = eligible[-31:]
@@ -152,6 +219,7 @@ def build_feature_bundle(
 
     return AlphaFeatureBundle(
         decision_time=decision_time,
+        latest_available_to_strategy_time=latest_available,
         returns=returns,
         velocity=returns[3] / 3.0,
         acceleration=returns[1] - (returns[3] / 3.0),
@@ -267,8 +335,20 @@ def decide_alpha_v4(
     ce_quote: AlphaOptionQuote | None,
     pe_quote: AlphaOptionQuote | None,
     provider_lot_size: int | None,
+    expected_payoff_evidence: ExpectedOptionPayoffEvidence | None = None,
+    maximum_option_quote_age_ms: int = DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+    maximum_underlying_age_ms: int = DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+    allow_synthetic_test_economics: bool = False,
     safety_buffer: float = 10.0,
 ) -> AlphaV4Decision:
+    underlying_evidence_valid = (
+        _is_aware_utc(features.decision_time)
+        and _is_aware_utc(features.latest_available_to_strategy_time)
+        and features.latest_available_to_strategy_time <= features.decision_time
+        and (features.decision_time - features.latest_available_to_strategy_time).total_seconds()
+        * 1000
+        <= maximum_underlying_age_ms
+    )
     regime = classify_regime(features)
     specialists, active = specialist_probabilities(features, regime)
     probabilities = list(specialists.values())
@@ -280,18 +360,47 @@ def decide_alpha_v4(
 
     expression = AlphaAction.LONG_CE if p_up >= 0.5 else AlphaAction.LONG_PE
     quote = ce_quote if expression is AlphaAction.LONG_CE else pe_quote
-    if regime is AlphaRegime.UNCERTAIN:
+    if not underlying_evidence_valid:
+        reason = "STALE_UNDERLYING_EVIDENCE"
+        ev = None
+    elif regime is AlphaRegime.UNCERTAIN:
         reason = "UNCERTAIN_REGIME"
         ev = None
-    elif quote is None or provider_lot_size is None or quote.observed_at > features.decision_time:
-        reason = "OPTION_EVIDENCE_UNAVAILABLE"
+    elif quote is None or provider_lot_size is None:
+        reason = "MISSING_OPTION_EVIDENCE"
+        ev = None
+    elif not _is_aware_utc(quote.observed_at):
+        reason = "INVALID_TEMPORAL_EVIDENCE"
+        ev = None
+    elif quote.observed_at > features.decision_time:
+        reason = "FUTURE_OPTION_EVIDENCE"
+        ev = None
+    elif (
+        features.decision_time - quote.observed_at
+    ).total_seconds() * 1000 > maximum_option_quote_age_ms:
+        reason = "STALE_OPTION_EVIDENCE"
+        ev = None
+    elif expected_payoff_evidence is None:
+        reason = "ECONOMIC_PAYOFF_EVIDENCE_UNAVAILABLE"
+        ev = None
+    elif (
+        not _is_aware_utc(expected_payoff_evidence.as_of)
+        or expected_payoff_evidence.as_of > features.decision_time
+        or not math.isfinite(expected_payoff_evidence.value_per_unit)
+    ):
+        reason = "INVALID_ECONOMIC_PAYOFF_EVIDENCE"
+        ev = None
+    elif (
+        expected_payoff_evidence.provenance is EconomicEvidenceProvenance.SYNTHETIC_TEST_ONLY
+        and not allow_synthetic_test_economics
+    ):
+        reason = "ECONOMIC_PAYOFF_EVIDENCE_UNAVAILABLE"
         ev = None
     else:
-        directional_edge = abs(p_up - 0.5) * 2.0
-        payoff = quote.ask * expected_move * directional_edge
+        assert expected_payoff_evidence is not None
         ev = estimate_net_value(
             quote=quote,
-            expected_option_payoff=payoff,
+            expected_option_payoff=expected_payoff_evidence.value_per_unit,
             uncertainty=uncertainty,
             lot_size=provider_lot_size,
         )
@@ -315,6 +424,71 @@ def decide_alpha_v4(
         preferred_expression=expression,
         recommended_action=action,
         reason=reason,
+        edge_evaluation_state=(
+            EdgeEvaluationState.EDGE_EVALUATED
+            if ev is not None
+            else EdgeEvaluationState.EDGE_NOT_EVALUABLE
+        ),
+        payoff_provenance=(
+            expected_payoff_evidence.provenance
+            if ev is not None and expected_payoff_evidence is not None
+            else None
+        ),
+    )
+
+
+def evaluate_alpha_v4(
+    bars: tuple[AlphaBar, ...],
+    *,
+    decision_time: datetime,
+    ce_quote: AlphaOptionQuote | None,
+    pe_quote: AlphaOptionQuote | None,
+    provider_lot_size: int | None,
+    expected_payoff_evidence: ExpectedOptionPayoffEvidence | None = None,
+    maximum_option_quote_age_ms: int = DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+    maximum_underlying_age_ms: int = DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+    allow_synthetic_test_economics: bool = False,
+    safety_buffer: float = 10.0,
+) -> AlphaV4Decision:
+    """Fail-closed ingress for decision-critical temporal evidence."""
+
+    try:
+        features = build_feature_bundle(
+            bars,
+            decision_time=decision_time,
+            maximum_underlying_age_ms=maximum_underlying_age_ms,
+        )
+    except (TypeError, ValueError) as exc:
+        reason = (
+            "STALE_UNDERLYING_EVIDENCE"
+            if str(exc) == "STALE_UNDERLYING_EVIDENCE"
+            else "INVALID_TEMPORAL_EVIDENCE"
+        )
+        return AlphaV4Decision(
+            p_up=0.5,
+            p_down=0.5,
+            p_range=1.0,
+            expected_move=0.0,
+            expected_volatility=0.0,
+            uncertainty=1.0,
+            regime=AlphaRegime.UNCERTAIN,
+            active_specialist="NONE",
+            expected_value=None,
+            preferred_expression=AlphaAction.HOLD,
+            recommended_action=AlphaAction.HOLD,
+            reason=reason,
+            edge_evaluation_state=EdgeEvaluationState.EDGE_NOT_EVALUABLE,
+        )
+    return decide_alpha_v4(
+        features,
+        ce_quote=ce_quote,
+        pe_quote=pe_quote,
+        provider_lot_size=provider_lot_size,
+        expected_payoff_evidence=expected_payoff_evidence,
+        maximum_option_quote_age_ms=maximum_option_quote_age_ms,
+        maximum_underlying_age_ms=maximum_underlying_age_ms,
+        allow_synthetic_test_economics=allow_synthetic_test_economics,
+        safety_buffer=safety_buffer,
     )
 
 
@@ -325,11 +499,15 @@ __all__ = [
     "AlphaOptionQuote",
     "AlphaRegime",
     "AlphaV4Decision",
+    "EconomicEvidenceProvenance",
+    "EdgeEvaluationState",
     "ExpectedValueBreakdown",
+    "ExpectedOptionPayoffEvidence",
     "HORIZONS_MINUTES",
     "build_feature_bundle",
     "classify_regime",
     "decide_alpha_v4",
     "estimate_net_value",
+    "evaluate_alpha_v4",
     "specialist_probabilities",
 ]
