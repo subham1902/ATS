@@ -9,6 +9,7 @@ import pytest
 from ats.trading_runtime.broker import PaperBrokerAdapter
 from ats.trading_runtime.readiness import check_pre_market_readiness
 from ats.trading_runtime.shadow_championship import (
+    ContemporaneousOptionQuote,
     RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH,
     RESEARCH_COUNTERFACTUAL_POLICY_V1_NAME,
     ForwardShadowChampionshipEngine,
@@ -200,7 +201,20 @@ def test_research_counterfactual_exit_policy_provenance() -> None:
             "accel": 0.01,
         },
     )
-    engine.evaluate_observation(ctx1)
+    entry_quote = ContemporaneousOptionQuote(
+        instrument_key="NSE_FO|NIFTY_TEST_CE",
+        expiry="2026-09-03",
+        strike=24150.0,
+        option_type="CE",
+        bid_price=99.0,
+        ask_price=100.0,
+        observed_at=now,
+    )
+    engine.evaluate_observation(
+        ctx1,
+        resolved_lot_sizes={"NIFTY": 65},
+        contemporaneous_option_quotes={"LONG_CE": entry_quote},
+    )
 
     # Step spot down sharply to trigger STOP_LOSS
     now_later = datetime.fromtimestamp(now.timestamp() + 300, tz=UTC)
@@ -222,7 +236,20 @@ def test_research_counterfactual_exit_policy_provenance() -> None:
             "accel": -0.01,
         },
     )
-    engine.evaluate_observation(ctx2)
+    exit_quote = ContemporaneousOptionQuote(
+        instrument_key="NSE_FO|NIFTY_TEST_CE",
+        expiry="2026-09-03",
+        strike=24150.0,
+        option_type="CE",
+        bid_price=90.0,
+        ask_price=91.0,
+        observed_at=now_later,
+    )
+    engine.evaluate_observation(
+        ctx2,
+        resolved_lot_sizes={"NIFTY": 65},
+        contemporaneous_option_quotes={"LONG_CE": exit_quote},
+    )
 
     trades = engine._settled_trades
     assert len(trades) > 0
@@ -231,3 +258,59 @@ def test_research_counterfactual_exit_policy_provenance() -> None:
         assert t.exit_policy_hash == RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH
         assert t.shadow_status == "SHADOW_ONLY"
         assert t.cost_stress_mult == 1.5
+
+
+def test_counterfactual_entry_fails_closed_without_provider_metadata_and_quote() -> None:
+    engine = ForwardShadowChampionshipEngine()
+    now = datetime.now(UTC)
+    ctx = MarketObservationContext(
+        market_state_id="ms_no_evidence",
+        feature_bundle_id="fb_no_evidence",
+        decision_time=now,
+        session="TEST_SESSION",
+        underlying="NIFTY",
+        spot_price=24150.0,
+        vwap=24140.0,
+        features={"roc_3": 0.02, "accel": 0.01},
+    )
+
+    engine.evaluate_observation(ctx)
+
+    assert engine._active_shadow_positions == {}
+
+
+def test_counterfactual_trade_identity_is_deterministic() -> None:
+    now = datetime(2026, 8, 31, 4, 0, tzinfo=UTC)
+    ctx = MarketObservationContext(
+        market_state_id="ms_deterministic",
+        feature_bundle_id="fb_deterministic",
+        decision_time=now,
+        session="TEST_SESSION",
+        underlying="NIFTY",
+        spot_price=24150.0,
+        vwap=24140.0,
+        features={"roc_3": 0.02, "accel": 0.01},
+    )
+    quote = ContemporaneousOptionQuote(
+        instrument_key="NSE_FO|NIFTY_TEST_CE",
+        expiry="2026-09-03",
+        strike=24150.0,
+        option_type="CE",
+        bid_price=99.0,
+        ask_price=100.0,
+        observed_at=now,
+    )
+
+    engines = [ForwardShadowChampionshipEngine(), ForwardShadowChampionshipEngine()]
+    for engine in engines:
+        engine.evaluate_observation(
+            ctx,
+            resolved_lot_sizes={"NIFTY": 65},
+            contemporaneous_option_quotes={"LONG_CE": quote},
+        )
+
+    ids = [
+        engine._active_shadow_positions["C0:NIFTY"]["shadow_trade_id"]
+        for engine in engines
+    ]
+    assert ids[0] == ids[1]

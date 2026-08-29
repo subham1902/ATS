@@ -15,7 +15,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import math
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -42,6 +41,19 @@ class MarketObservationContext:
     spot_price: float
     vwap: float
     features: dict[str, float]
+
+
+@dataclass(frozen=True)
+class ContemporaneousOptionQuote:
+    """Provider-derived option evidence available at the decision timestamp."""
+
+    instrument_key: str
+    expiry: str
+    strike: float
+    option_type: str
+    bid_price: float
+    ask_price: float
+    observed_at: datetime
 
 
 @dataclass
@@ -410,12 +422,12 @@ class ForwardShadowChampionshipEngine:
         ctx: MarketObservationContext,
         *,
         resolved_lot_sizes: dict[str, int] | None = None,
-        contemporaneous_option_quotes: dict[str, Any] | None = None,
+        contemporaneous_option_quotes: dict[str, ContemporaneousOptionQuote] | None = None,
     ) -> list[ShadowModelPrediction]:
         predictions: list[ShadowModelPrediction] = []
 
         # 1. Evaluate counterfactual position exits first
-        self._check_counterfactual_exits(ctx)
+        self._check_counterfactual_exits(ctx, contemporaneous_option_quotes)
 
         # 2. Evaluate each shadow model contemporaneously on shared market state
         for m in self.models:
@@ -447,39 +459,62 @@ class ForwardShadowChampionshipEngine:
         ctx: MarketObservationContext,
         pred: ShadowModelPrediction,
         resolved_lot_sizes: dict[str, int] | None,
-        quotes: dict[str, Any] | None,
+        quotes: dict[str, ContemporaneousOptionQuote] | None,
     ) -> None:
         pos_key = f"{model.model_id}:{ctx.underlying}"
 
-        # Lot size resolution: query dynamic resolved lot sizes if present
-        if resolved_lot_sizes and ctx.underlying in resolved_lot_sizes:
-            lot_size = resolved_lot_sizes[ctx.underlying]
-        else:
-            lot_size = 25 if ctx.underlying == "NIFTY" else 15
+        # Counterfactual economics fail closed. Lot size and option price must
+        # both be contemporaneous provider evidence; neither may be inferred
+        # from the underlying or a remembered exchange schedule.
+        lot_size = (resolved_lot_sizes or {}).get(ctx.underlying)
+        quote = (quotes or {}).get(pred.preferred_expression)
+        expected_option_type = "CE" if pred.preferred_expression == "LONG_CE" else "PE"
+        if (
+            type(lot_size) is not int
+            or lot_size <= 0
+            or quote is None
+            or quote.option_type != expected_option_type
+            or quote.observed_at > ctx.decision_time
+            or not all(
+                math.isfinite(value)
+                for value in (quote.strike, quote.bid_price, quote.ask_price)
+            )
+            or quote.strike <= 0
+            or quote.bid_price <= 0
+            or quote.ask_price < quote.bid_price
+        ):
+            return
 
-        # Deconstructed Cost & Slippage Provenance:
-        # Base slippage = 0.05% (0.0005)
-        # Brokerage = ₹40 flat turn + STT 0.0625%
-        atm_spot = ctx.spot_price
-        est_ask = atm_spot * 0.012
+        # Research-only slippage remains explicit and is applied to the
+        # observed ask. The quote itself is never synthesized.
+        observed_ask = quote.ask_price
         base_slippage_frac = 0.0005
-        entry_eff = est_ask * (1.0 + base_slippage_frac)
+        entry_eff = observed_ask * (1.0 + base_slippage_frac)
+        trade_identity = hashlib.sha256(
+            f"{model.model_id}:{ctx.market_state_id}:{quote.instrument_key}".encode("utf-8")
+        ).hexdigest()[:16]
 
         self._active_shadow_positions[pos_key] = {
-            "shadow_trade_id": f"st_{uuid.uuid4().hex[:8]}",
+            "shadow_trade_id": f"st_{trade_identity}",
             "model_id": model.model_id,
             "session": ctx.session,
             "underlying": ctx.underlying,
             "direction": pred.preferred_expression,
             "entry_time": ctx.decision_time,
-            "entry_spot": ctx.spot_price,
-            "entry_ask": est_ask,
+            "instrument_key": quote.instrument_key,
+            "expiry": quote.expiry,
+            "strike": quote.strike,
+            "entry_ask": observed_ask,
             "entry_price_eff": entry_eff,
             "quantity": lot_size,
             "bars_held": 0,
         }
 
-    def _check_counterfactual_exits(self, ctx: MarketObservationContext) -> None:
+    def _check_counterfactual_exits(
+        self,
+        ctx: MarketObservationContext,
+        quotes: dict[str, ContemporaneousOptionQuote] | None,
+    ) -> None:
         for pos_key in list(self._active_shadow_positions.keys()):
             pos = self._active_shadow_positions[pos_key]
             if pos["underlying"] != ctx.underlying:
@@ -488,13 +523,21 @@ class ForwardShadowChampionshipEngine:
             bars_held = pos["bars_held"] + 1
             pos["bars_held"] = bars_held
 
-            spot_move = ctx.spot_price - pos["entry_spot"]
-            direction_mult = 1.0 if pos["direction"] == "LONG_CE" else -1.0
-            option_price_change = 0.50 * direction_mult * spot_move - (0.5 * bars_held)
+            quote = (quotes or {}).get(pos["direction"])
+            if (
+                quote is None
+                or quote.instrument_key != pos["instrument_key"]
+                or quote.observed_at > ctx.decision_time
+                or not math.isfinite(quote.bid_price)
+                or quote.bid_price <= 0
+            ):
+                # Missing/stale/mismatched option evidence cannot manufacture
+                # a favorable exit. Keep the research position unresolved.
+                continue
 
-            est_bid = max(1.0, pos["entry_ask"] + option_price_change)
+            observed_bid = quote.bid_price
             base_slippage_frac = 0.0005
-            exit_eff = est_bid * (1.0 - base_slippage_frac)
+            exit_eff = observed_bid * (1.0 - base_slippage_frac)
             ret_pct = (exit_eff - pos["entry_price_eff"]) / pos["entry_price_eff"]
 
             exit_now = False
@@ -518,7 +561,7 @@ class ForwardShadowChampionshipEngine:
                 statutory = 40.0 + (0.000625 * exit_eff * qty)
                 slippage_friction = (
                     (pos["entry_price_eff"] - pos["entry_ask"]) * qty
-                    + (est_bid - exit_eff) * qty
+                    + (observed_bid - exit_eff) * qty
                 )
                 cost_stress_mult = 1.5
                 total_costs = (statutory + slippage_friction) * cost_stress_mult
@@ -536,7 +579,7 @@ class ForwardShadowChampionshipEngine:
                         entry_ask=round(pos["entry_ask"], 2),
                         entry_price_eff=round(pos["entry_price_eff"], 2),
                         exit_time=ctx.decision_time.isoformat(),
-                        exit_bid=round(est_bid, 2),
+                        exit_bid=round(observed_bid, 2),
                         exit_price_eff=round(exit_eff, 2),
                         quantity=qty,
                         gross_pnl=round(gross_pnl, 2),
