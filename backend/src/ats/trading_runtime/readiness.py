@@ -119,6 +119,12 @@ def check_pre_market_readiness(
     real_broker_flag: bool = False,
     synthetic_mode: bool = False,
 ) -> NextSessionReadiness:
+    """Legacy fixture evaluator.
+
+    Connected operators must use ``connected_readiness`` via the readiness CLI.
+    This compatibility seam can exercise synthetic fixtures but can never emit
+    a connected-ready verdict from constructor defaults.
+    """
     now_str = datetime.now(UTC).isoformat()
     blocking_reasons: list[str] = []
     warnings: list[str] = []
@@ -193,6 +199,9 @@ def check_pre_market_readiness(
     open_positions = len(broker.query_positions())
     portfolio_health = True
     a04_health = True
+
+    if not synthetic_mode:
+        blocking_reasons.append("CONNECTED_READINESS_API_REQUIRED")
 
     # Final Verdict Logic
     ready_for_a2_paper = len(blocking_reasons) == 0
