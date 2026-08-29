@@ -7,7 +7,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from ats.intelligence.alpha_v4 import AlphaBar, AlphaOptionQuote, AlphaV4Decision, evaluate_alpha_v4
+from ats.intelligence.alpha_v4 import (
+    AlphaAction,
+    AlphaBar,
+    AlphaOptionQuote,
+    AlphaRegime,
+    AlphaV4Decision,
+    EdgeEvaluationState,
+    evaluate_alpha_v4,
+)
 from ats.market.derivatives.option_universe import DEFAULT_MAXIMUM_QUOTE_AGE_MS
 from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate
 
@@ -123,16 +131,33 @@ class AlphaV4ForwardShadowAdapter:
             bars = (invalid,)
         else:
             bars = tuple(item.bar() for item in self._minutes.get(underlying, ()))
-        return evaluate_alpha_v4(
-            bars,
-            decision_time=decision_time,
-            ce_quote=ce_quote,
-            pe_quote=pe_quote,
-            provider_lot_size=provider_lot_size,
-            expected_payoff_evidence=None,
-            maximum_option_quote_age_ms=DEFAULT_MAXIMUM_QUOTE_AGE_MS,
-            maximum_underlying_age_ms=DEFAULT_MAXIMUM_QUOTE_AGE_MS,
-        )
+        try:
+            return evaluate_alpha_v4(
+                bars,
+                decision_time=decision_time,
+                ce_quote=ce_quote,
+                pe_quote=pe_quote,
+                provider_lot_size=provider_lot_size,
+                expected_payoff_evidence=None,
+                maximum_option_quote_age_ms=DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+                maximum_underlying_age_ms=DEFAULT_MAXIMUM_QUOTE_AGE_MS,
+            )
+        except Exception:
+            return AlphaV4Decision(
+                p_up=0.5,
+                p_down=0.5,
+                p_range=1.0,
+                expected_move=0.0,
+                expected_volatility=0.0,
+                uncertainty=1.0,
+                regime=AlphaRegime.UNCERTAIN,
+                active_specialist="NONE",
+                expected_value=None,
+                preferred_expression=AlphaAction.HOLD,
+                recommended_action=AlphaAction.HOLD,
+                reason="SHADOW_FAILED",
+                edge_evaluation_state=EdgeEvaluationState.EDGE_NOT_EVALUABLE,
+            )
 
     @staticmethod
     def telemetry(

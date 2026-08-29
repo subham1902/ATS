@@ -93,3 +93,26 @@ def test_live_adapter_rejects_stale_option_on_strong_directional_state() -> None
 
     assert decision.recommended_action is AlphaAction.HOLD
     assert decision.reason == "STALE_OPTION_EVIDENCE"
+
+
+def test_live_adapter_isolates_alpha_model_failure(monkeypatch) -> None:
+    adapter, decision_time = _warm_adapter()
+
+    def fail(**_kwargs):
+        raise RuntimeError("injected shadow failure")
+
+    monkeypatch.setattr(
+        "ats.trading_runtime.alpha_v4_shadow.evaluate_alpha_v4",
+        lambda *_args, **kwargs: fail(**kwargs),
+    )
+    decision = adapter.evaluate(
+        underlying="NIFTY",
+        decision_time=decision_time,
+        ce_quote=None,
+        pe_quote=None,
+        provider_lot_size=None,
+    )
+
+    assert decision.recommended_action is AlphaAction.HOLD
+    assert decision.reason == "SHADOW_FAILED"
+    assert decision.expected_value is None
