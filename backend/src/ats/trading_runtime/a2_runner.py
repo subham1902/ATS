@@ -1043,9 +1043,15 @@ class A2PaperSessionController:
         for key in keys:
             update = feed.latest(key) if feed is not None else None
             source_time = update.provider_timestamp or update.exchange_timestamp if update else None
+            event_time = update.exchange_timestamp if update else None
             raw_age = (now - source_time).total_seconds() * 1000 if source_time else None
             authority_age = (now - update.received_at).total_seconds() * 1000 if update else None
-            clock_valid = bool(update and source_time and source_time <= update.received_at <= now)
+            clock_valid = bool(
+                update
+                and event_time
+                and source_time
+                and event_time <= source_time <= update.received_at <= now
+            )
             four_clock_valid = four_clock_valid and clock_valid
             samples.append(
                 {
@@ -1055,6 +1061,7 @@ class A2PaperSessionController:
                         if update and update.provider_timestamp
                         else None
                     ),
+                    "event_time": event_time.isoformat() if event_time else None,
                     "source_time": source_time.isoformat() if source_time else None,
                     "ingest_time": update.received_at.isoformat() if update else None,
                     "available_to_strategy_time": (
@@ -1174,6 +1181,7 @@ class A2PaperSessionController:
             return
         decision_time = SystemClock().now()
         source_time = update.provider_timestamp or update.exchange_timestamp
+        event_time = update.exchange_timestamp
         raw_age = (
             (decision_time - source_time).total_seconds() * 1000
             if source_time is not None
@@ -1182,7 +1190,9 @@ class A2PaperSessionController:
         authority_age = (decision_time - update.received_at).total_seconds() * 1000
         skew = raw_age is not None and raw_age < 0
         four_clock_valid = bool(
-            source_time is not None and source_time <= update.received_at <= decision_time
+            event_time is not None
+            and source_time is not None
+            and event_time <= source_time <= update.received_at <= decision_time
         )
         market_state_id = str(uuid4())
         facts = {
