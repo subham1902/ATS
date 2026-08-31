@@ -1,0 +1,59 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "ATS autonomous A2 paper readiness — 2026-09-01",
+    "description": "Evidence-backed safety, autonomy, and qualification report for the corrected NSE A2 paper system.",
+    "generatedAt": "2026-08-31T11:15:00+05:30",
+    "cards": [],
+    "charts": [
+      {
+        "id": "qualification",
+        "title": "Qualification results",
+        "subtitle": "Passed checks; skipped tests are separately disclosed and are not failures.",
+        "type": "bar",
+        "dataset": "qualification",
+        "encodings": {
+          "x": {"field": "suite", "type": "ordinal", "label": "Suite"},
+          "y": {"field": "passed", "type": "quantitative", "label": "Passed", "format": "number"}
+        }
+      }
+    ],
+    "tables": [],
+    "sources": [
+      {"id": "report", "label": "Final readiness report", "path": "FINAL_REPORT_AUTONOMOUS_PAPER_READINESS_2026-09-01.md"},
+      {"id": "runner", "label": "A2 runtime", "path": "backend/src/ats/trading_runtime/a2_runner.py"},
+      {"id": "selector", "label": "Instrument selector", "path": "backend/src/ats/intelligence/instrument_selector/engine.py"},
+      {"id": "upstox", "label": "Upstox V3 market data feed", "url": "https://upstox.com/developer/api-documentation/v3/get-market-data-feed/"},
+      {"id": "nse_holidays", "label": "NSE F&O 2026 holiday circular", "url": "https://nsearchives.nseindia.com/content/circulars/FAOP71777.pdf"},
+      {"id": "sebi", "label": "SEBI safer retail algorithmic trading framework", "url": "https://www.sebi.gov.in/legal/circulars/feb-2025/safer-participation-of-retail-investors-in-algorithmic-trading_91614.html"}
+    ],
+    "blocks": [
+      {"id": "summary", "type": "markdown", "sourceId": "report", "body": "# ATS autonomous A2 paper readiness\n\n**Verdict: READY_WITH_LIMITATIONS_FOR_2026-09-01_A2_PAPER**\n\nThe corrected runtime is qualified for a fresh canonical paper-session attempt. Live money remains disabled, profit is not guaranteed, and missing economic evidence must produce HOLD."},
+      {"id": "qualification_chart", "type": "chart", "chartId": "qualification"},
+      {"id": "safety", "type": "markdown", "sourceId": "report", "body": "## Safety posture\n\nStage 2 is enforced inside execution; freshness is 2,000 ms; operator orders are disabled by default; synthetic option economics and challenger P&L misattribution are prohibited; real broker authority remains absent."},
+      {"id": "next", "type": "markdown", "sourceId": "report", "body": "## Required next action\n\nAt 09:00 IST run reconciliation and the canonical connected premarket checker. Launch only on `READY_FOR_A2_PAPER_SESSION`; after 09:15 require `MARKET_OPEN_DATA_READY`. Accept zero trades and never weaken controls."}
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-31T11:15:00+05:30",
+    "status": "ready_with_limitations",
+    "datasets": {
+      "qualification": [
+        {"suite": "Backend", "passed": 1892},
+        {"suite": "Frontend", "passed": 73},
+        {"suite": "Mypy files", "passed": 305},
+        {"suite": "Build", "passed": 1}
+      ],
+      "summary": [{"corrected_head": "b642a8d4d2ee1a0fb6d2242ed8e8d71578ccb471", "live_money": "DISABLED", "real_orders": 0, "valid_forward_sessions": 0}],
+      "limitations": [
+        {"item": "Forward session evidence", "status": "NOT_AVAILABLE"},
+        {"item": "Governed calibration artifact", "status": "NOT_AVAILABLE"},
+        {"item": "Profit guarantee", "status": "IMPOSSIBLE_TO_ASSERT"},
+        {"item": "PostgreSQL external integration", "status": "NOT_RUN"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "ATS autonomy and profitability-readiness technical audit",
+    "description": "Evidence-backed readiness audit for the NSE A2 paper runtime on 2026-08-31.",
+    "generatedAt": "2026-08-31T00:50:00+05:30",
+    "cards": [],
+    "charts": [
+      {
+        "id": "risk_priority",
+        "title": "Unresolved findings require operational and research work",
+        "subtitle": "Count of explicitly identified findings by priority; these are not trading-performance metrics.",
+        "headerMarkdown": "## Unresolved findings by priority",
+        "type": "bar",
+        "dataset": "risk_priority",
+        "source": {
+          "label": "Literal aggregation of audited findings by priority",
+          "query": {
+            "engine": "duckdb",
+            "sql": "SELECT 'Blocking' AS priority, 1 AS count UNION ALL SELECT 'High', 3 UNION ALL SELECT 'Medium', 2"
+          }
+        },
+        "encodings": {
+          "x": { "field": "priority", "type": "ordinal", "label": "Priority" },
+          "y": { "field": "count", "type": "quantitative", "label": "Finding count", "format": "number" }
+        }
+      }
+    ],
+    "tables": [],
+    "sources": [
+      { "id": "audit_report", "label": "ATS technical audit", "path": "reports/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31.md" },
+      { "id": "code_changes", "label": "Audited ATS source changes", "path": "backend/src/ats/trading_runtime/a2_runner.py" },
+      { "id": "validation_logs", "label": "Local validation commands summarized in audit", "path": "reports/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31.md" },
+      { "id": "session_evidence", "label": "Canonical paper-session evidence", "path": "data/runtime/sessions" },
+      { "id": "upstox_v3", "label": "Upstox Market Data Feed V3", "url": "https://upstox.com/developer/api-documentation/v3/get-market-data-feed/" },
+      { "id": "nse_timing", "label": "NSE market timings", "url": "https://www.nseindia.com/static/market-data/market-timings" },
+      { "id": "sebi_algo", "label": "SEBI retail algorithmic trading circular", "url": "https://www.sebi.gov.in/legal/circulars/feb-2025/safer-participation-of-retail-investors-in-algorithmic-trading_91614.html" },
+      { "id": "timeseries", "label": "scikit-learn TimeSeriesSplit", "url": "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html" }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# ATS autonomy and profitability-readiness technical audit\n\n**Audit date:** 2026-08-31 IST  \n**Execution scope:** A2 paper only; live money disabled; no real broker-order calls"
+      },
+      {
+        "id": "summary_title",
+        "type": "markdown",
+        "sourceId": "audit_report",
+        "body": "## Technical summary\n\nThe system is materially safer after targeted correctness repairs, but it is **not ready for unattended market execution** and has no demonstrated profit guarantee. The frozen checkpoint did not enforce Stage 2 inside execution, accepted a 10-second live freshness window, and could silently stop scanning when real option evidence arrived. Those defects are fixed without changing C0, the 0.55 threshold, Portfolio Brain, Risk, A04, costs, sizing policy, or challenger authority.\n\nThe only defensible forward-alpha verdict is **SESSION_NOT_VALID_FOR_FORWARD_ALPHA** because no genuine NSE forward session has completed."
+      },
+      {
+        "id": "profitability",
+        "type": "markdown",
+        "sourceId": "audit_report",
+        "body": "## Profitability is not established\n\nC0 is a simple three-bar rate-of-change rule and has no valid forward option-economic sample. Historical calibration uses underlying outcomes, while the option selector estimates payoff through a delta-based proxy. Challenger forecast metrics are model-specific, but challenger order, fill, and P&L metrics are produced by an ordinary production controller rather than a controller using each challenger. These results cannot justify model promotion or expected-profit claims."
+      },
+      { "id": "risk_chart", "type": "chart", "chartId": "risk_priority" },
+      {
+        "id": "method",
+        "type": "markdown",
+        "sourceId": "audit_report",
+        "body": "## Scope, methodology, and evidence\n\nThe audit traced lifecycle, Upstox V3 ingestion, freshness, option evidence, autonomous scanning, deterministic authorities, paper execution, evidence finalization, forensic reads, calibration provenance, research tournaments, test collection, typing, lint, frontend contracts, production build, and dependency audit. It placed no orders, called no real-order endpoint, changed no trading threshold, and promoted no model.\n\nA system is considered autonomous-ready only when the exact reviewed HEAD passes fresh Stage 1 and live Stage 2, all decision-critical subscriptions are fresh, no operator-created candidate is needed, stale evidence fails closed, canonical finalization succeeds, and the evidence chain verifies. Profitability additionally requires forward net outcomes after real costs and adequate sample size."
+      },
+      {
+        "id": "next",
+        "type": "markdown",
+        "sourceId": "audit_report",
+        "body": "## Next actions\n\n1. Review and commit only the demonstrated correctness changes, then bind qualification to the new HEAD.\n2. Run the pinned toolchain, PostgreSQL integration tests, and long research tests in separate bounded CI jobs.\n3. Run fresh Stage 1 and Stage 2 on the target market date; do not override any blocker.\n4. Collect Forward Session 01 with no manual entries and verify Stage 2, scanner-failure, data-quality, and integrity evidence.\n5. Collect genuine option outcome labels and bind calibration data by version and hash before assessing profitability.\n6. Repair challenger attribution and remove synthetic option assumptions before any promotion study.\n7. Disable or authenticate local mutation routes in forward-experiment mode.\n\n**Recommended action:** REQUALIFY_CORRECTED_HEAD_THEN_COLLECT_FORWARD_SESSION_01."
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "sourceId": "audit_report",
+        "body": "## Limitations and open questions\n\nThis premarket audit did not validate today's provider authentication, BOD truth, dynamic Monday contracts, live entitlement, market-open latency, disconnect recovery, real option depth and Greeks, autonomous candidates, paper fills, or end-of-day finalization under genuine NSE flow. Repository-wide Ruff still reports 303 findings. The broad Python suite reached 99% without failure after the fixes but was bounded during a long research tail; database-dependent tests require an external PostgreSQL service.\n\nOpen questions include whether C0 produces meaningful dispersion in real flow, how often legitimate option economics are available, whether fills and exits remain realistic after all costs, and whether five valid forward sessions show stable calibration and drawdown behavior."
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-31T00:50:00+05:30",
+    "status": "ready",
+    "datasets": {
+      "summary": [{ "operational_status": "REQUALIFICATION REQUIRED", "mypy_files": 305, "frontend_tests": 80, "valid_forward_sessions": 0 }],
+      "readiness": [
+        { "area": "Live-money safety", "status": "PASS", "conclusion": "Paper-only invariants remain; no real-order endpoint was called." },
+        { "area": "Stage 2 execution authority", "status": "FIXED", "conclusion": "Execution now requires LIVE state and all 22 dynamic keys fresh." },
+        { "area": "Decision freshness", "status": "FIXED", "conclusion": "Production live silence and stale limits are 2,000 ms." },
+        { "area": "Live option telemetry", "status": "FIXED", "conclusion": "Canonical quote and Greek fields are used; scanner failures are visible." },
+        { "area": "Forensics", "status": "FIXED", "conclusion": "Canonical manifests and legacy sessions are readable and verifiable." },
+        { "area": "Forward evidence", "status": "NOT AVAILABLE", "conclusion": "No valid genuine NSE session or profit sample exists." }
+      ],
+      "changes": [
+        { "defect": "Stage 2 was operator-advisory only", "resolution": "Added an internal fail-closed execution invariant.", "policy_impact": "No model or threshold change" },
+        { "defect": "Live runtime permitted ten-second-old evidence", "resolution": "Aligned runtime and V3 supervisor to two seconds.", "policy_impact": "Implements existing charter" },
+        { "defect": "Real option quote fields caused hidden scanner failure", "resolution": "Corrected fields and exported scanner-failure telemetry.", "policy_impact": "Observability and correctness only" },
+        { "defect": "Forensics searched the wrong manifest and had broken reader code", "resolution": "Canonical discovery, persisted identity, and legacy fallback added.", "policy_impact": "Evidence integrity only" },
+        { "defect": "Database fixture skipped unrelated tests", "resolution": "Scoped migrations to database consumers; fixed explicit replay lot fixtures.", "policy_impact": "Test validity only" }
+      ],
+      "validation": [
+        { "check": "Backend mypy", "result": "305 files, zero errors" },
+        { "check": "Changed-file Ruff", "result": "PASS" },
+        { "check": "Focused runtime and forensics tests", "result": "41 passed plus 2 reader regressions" },
+        { "check": "Frontend tests", "result": "80 passed" },
+        { "check": "Next.js production build", "result": "PASS, 18 static pages" },
+        { "check": "Production dependency audit", "result": "No known vulnerabilities" },
+        { "check": "Repository-wide Ruff", "result": "303 findings remain" },
+        { "check": "Broad Python suite", "result": "Reached 99 percent without failure; long research tail bounded" }
+      ],
+      "risk_priority": [
+        { "priority": "Blocking", "count": 1 },
+        { "priority": "High", "count": 3 },
+        { "priority": "Medium", "count": 2 }
+      ],
+      "risks": [
+        { "priority": "BLOCKING", "finding": "No genuine market-open forward evidence", "required_action": "Fresh Stage 1, Stage 2, full paper session, and verified finalization" },
+        { "priority": "HIGH", "finding": "Historical calibration is external and not hash-bound", "required_action": "Version and hash a provenance manifest" },
+        { "priority": "HIGH", "finding": "Option economics are proxy-based", "required_action": "Collect contemporaneous option outcomes after real costs" },
+        { "priority": "HIGH", "finding": "Challenger trading metrics are not model-attributable", "required_action": "Inject each challenger into an isolated execution simulation" },
+        { "priority": "MEDIUM", "finding": "Manual local mutation seam can contaminate the experiment", "required_action": "Disable by default or authenticate forward-experiment mutations" },
+        { "priority": "MEDIUM", "finding": "Current shell is Node 26 while packages request Node 24.19", "required_action": "Use the pinned market-day toolchain" }
+      ]
+    }
+  },
+  "sources": [
+    { "id": "audit_report", "label": "ATS technical audit", "path": "reports/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31.md" },
+    { "id": "code_changes", "label": "Audited ATS source changes", "path": "backend/src/ats/trading_runtime/a2_runner.py" },
+    { "id": "validation_logs", "label": "Validation summary", "path": "reports/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31/ATS_AUTONOMY_TECHNICAL_AUDIT_2026-08-31.md" },
+    { "id": "session_evidence", "label": "Canonical paper-session evidence", "path": "data/runtime/sessions" },
+    { "id": "upstox_v3", "label": "Upstox Market Data Feed V3", "url": "https://upstox.com/developer/api-documentation/v3/get-market-data-feed/" },
+    { "id": "nse_timing", "label": "NSE market timings", "url": "https://www.nseindia.com/static/market-data/market-timings" },
+    { "id": "sebi_algo", "label": "SEBI retail algorithmic trading circular", "url": "https://www.sebi.gov.in/legal/circulars/feb-2025/safer-participation-of-retail-investors-in-algorithmic-trading_91614.html" },
+    { "id": "timeseries", "label": "scikit-learn TimeSeriesSplit", "url": "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html" }
+  ]
+}
