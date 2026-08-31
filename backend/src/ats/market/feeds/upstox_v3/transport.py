@@ -135,8 +135,12 @@ class UpstoxV3Transport:
                 uri,
                 open_timeout=limits.connect_timeout_ms / 1000,
                 close_timeout=2,
-                ping_interval=20,
-                ping_timeout=20,
+                # Upstox V3 sends the heartbeat ping when the feed is idle.
+                # Let the client library automatically pong to that provider
+                # heartbeat; an additional client ping was observed to close
+                # otherwise subscribed sessions with a local ping timeout.
+                # Bounded receive timeouts remain the local liveness guard.
+                ping_interval=None,
                 max_queue=limits.maximum_buffered_frames,
             )
         except Exception as error:

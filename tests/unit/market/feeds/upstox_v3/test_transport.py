@@ -97,6 +97,7 @@ def test_connect_subscribe_receive_close_and_reconnect_are_bounded() -> None:
     assert sockets[0].closed is True
     assert authorizer.calls == 2
     assert captured[0]["max_queue"] == 4
+    assert captured[0]["ping_interval"] is None
     transport.close()
 
 
