@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -70,6 +71,32 @@ class EvidenceEventType(StrEnum):
     OPERATOR_COMMAND = "OPERATOR_COMMAND"
     HARNESS_ADVISORY_CREATED = "HARNESS_ADVISORY_CREATED"
     SESSION_SUMMARY_FINALIZED = "SESSION_SUMMARY_FINALIZED"
+    STAGE1_RESULT = "STAGE1_RESULT"
+    STAGE2_CONNECTION_STATE = "STAGE2_CONNECTION_STATE"
+    STAGE2_SUBSCRIPTION_PLAN = "STAGE2_SUBSCRIPTION_PLAN"
+    STAGE2_SUBSCRIPTION_SAMPLE = "STAGE2_SUBSCRIPTION_SAMPLE"
+    STAGE2_FRESHNESS_DECISION = "STAGE2_FRESHNESS_DECISION"
+    CLOCK_EVIDENCE = "CLOCK_EVIDENCE"
+    NORMALIZED_MARKET_EVENT = "NORMALIZED_MARKET_EVENT"
+    FEATURE_STATE = "FEATURE_STATE"
+    PRODUCTION_PREDICTION = "PRODUCTION_PREDICTION"
+    THESIS_DECISION = "THESIS_DECISION"
+    CANDIDATE_DECISION = "CANDIDATE_DECISION"
+    TOKEN_EVENT = "TOKEN_EVENT"
+    ORDER_EVENT = "ORDER_EVENT"
+    FILL_EVENT = "FILL_EVENT"
+    POSITION_EVENT = "POSITION_EVENT"
+    EXIT_EVENT = "EXIT_EVENT"
+    PNL_EVENT = "PNL_EVENT"
+    OPTION_EVIDENCE = "OPTION_EVIDENCE"
+    SHADOW_MODEL_STATE = "SHADOW_MODEL_STATE"
+    SAME_STATE_MODEL_RECORD = "SAME_STATE_MODEL_RECORD"
+    COUNTERFACTUAL_ENTRY = "COUNTERFACTUAL_ENTRY"
+    COUNTERFACTUAL_EXIT = "COUNTERFACTUAL_EXIT"
+    COUNTERFACTUAL_SETTLEMENT = "COUNTERFACTUAL_SETTLEMENT"
+    SCANNER_FAILURE = "SCANNER_FAILURE"
+    DATA_QUALITY_EVENT = "DATA_QUALITY_EVENT"
+    RECORDER_HEALTH = "RECORDER_HEALTH"
 
 
 class SessionIdentity(ATSBaseModel):
@@ -118,6 +145,9 @@ class EvidencePayload(ATSBaseModel):
     source_id: str | None = None
     state_hash: str | None = None
     note: str | None = None
+    # Versioned event-specific facts. Values remain inside payload_hash and the
+    # session hash chain; this is not an unverified metadata escape hatch.
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class SessionEvidenceEvent(ATSBaseModel):
@@ -194,6 +224,11 @@ class SessionEvidenceRecorder:
         self.root.mkdir(parents=True, exist_ok=True)
         self.events_path = self.root / "events.jsonl"
         self.manifest_path = self.root / "manifest.json"
+        self.write_failures = 0
+        self.fsync_failures = 0
+        self.dropped_records = 0
+        self.last_write_latency_ms = 0.0
+        self.max_write_latency_ms = 0.0
         self._events = self._load_events()
 
     def _load_events(self) -> list[SessionEvidenceEvent]:
@@ -228,10 +263,22 @@ class SessionEvidenceRecorder:
             raise ValueError("event previous hash does not continue durable ledger")
         self.verify((*self._events, event))
         line = event.model_dump_json() + "\n"
-        with self.events_path.open("ab") as handle:
-            handle.write(line.encode("utf-8"))
-            handle.flush()
-            os.fsync(handle.fileno())
+        started = time.perf_counter()
+        try:
+            with self.events_path.open("ab") as handle:
+                handle.write(line.encode("utf-8"))
+                handle.flush()
+                try:
+                    os.fsync(handle.fileno())
+                except OSError:
+                    self.fsync_failures += 1
+                    raise
+        except OSError:
+            self.write_failures += 1
+            raise
+        finally:
+            self.last_write_latency_ms = (time.perf_counter() - started) * 1000
+            self.max_write_latency_ms = max(self.max_write_latency_ms, self.last_write_latency_ms)
         self._events.append(event)
         return event
 
@@ -242,6 +289,9 @@ class SessionEvidenceRecorder:
         *,
         producer: str,
         event_time: datetime | None = None,
+        source_time: datetime | None = None,
+        available_to_strategy_time: datetime | None = None,
+        correlation_id: UUID | None = None,
     ) -> SessionEvidenceEvent:
         previous = self._events[-1].event_hash() if self._events else None
         return self.append(
@@ -253,6 +303,9 @@ class SessionEvidenceRecorder:
                 producer=producer,
                 event_time=event_time,
                 previous_event_hash=previous,
+                source_time=source_time,
+                available_to_strategy_time=available_to_strategy_time,
+                correlation_id=correlation_id,
             )
         )
 
@@ -271,6 +324,21 @@ class SessionEvidenceRecorder:
         )
         self.manifest_path.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
         return manifest
+
+    def health_snapshot(self) -> dict[str, Any]:
+        """Return durable-recorder facts without claiming asynchronous capacity."""
+        return {
+            "recorder_path": str(self.root),
+            "sequence_counter": len(self._events),
+            "last_hash": self._events[-1].event_hash() if self._events else None,
+            "write_failures": self.write_failures,
+            "fsync_failures": self.fsync_failures,
+            "dropped_records": self.dropped_records,
+            "queue_depth": 0,
+            "last_write_latency_ms": self.last_write_latency_ms,
+            "max_write_latency_ms": self.max_write_latency_ms,
+            "fsync_mode": "EACH_EVENT",
+        }
 
     def events(self) -> tuple[SessionEvidenceEvent, ...]:
         return tuple(self._events)

@@ -13,6 +13,7 @@ INVARIANTS:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from dataclasses import dataclass, field, replace
 from datetime import date, time
@@ -40,6 +41,7 @@ from ats.market.feeds.upstox_v3.instrument_keys import (
 )
 from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate
 from ats.market.feeds.upstox_v3.runtime_feed import UpstoxV3RuntimeFeed
+from ats.observability.forward_evidence import build_manifest, persist_manifest
 from ats.observability.live_pipeline_bridge import LivePipelineBridge
 from ats.observability.operator_provider import OperatorIntelligenceProvider
 from ats.observability.session_evidence import (
@@ -719,6 +721,19 @@ class A2PaperSessionController:
                     producer="A2PaperSessionController",
                     event_time=now,
                 )
+                stage1_path = os.environ.get("ATS_A2_STAGE1_EVIDENCE_PATH")
+                if stage1_path:
+                    stage1 = json.loads(Path(stage1_path).read_text(encoding="utf-8-sig"))
+                    self._session_evidence.record(
+                        EvidenceEventType.STAGE1_RESULT,
+                        EvidencePayload(
+                            decision=str(stage1.get("verdict")),
+                            state="DURABLE_PREMARKET_ACCEPTANCE",
+                            details=stage1,
+                        ),
+                        producer="A2PaperSessionController",
+                        event_time=now,
+                    )
             except Exception:
                 self._state = A2SessionState.FAILED
                 self._reason_codes = ["EVIDENCE_RECORDER_START_FAILED"]
@@ -763,6 +778,7 @@ class A2PaperSessionController:
                 now, reason_code="A2_SESSION_STOP_FLATTEN", source="CONTROLLER"
             )
             for pid in list(self._engine.state.open_positions.keys()):
+                self._record_position_exit(pid, now, "A2_SESSION_STOP_FLATTEN")
                 self._engine.handle_exit_fill(pid, now)
 
         if self._engine is not None:
@@ -773,6 +789,15 @@ class A2PaperSessionController:
 
         if self._session_evidence is not None:
             now = SystemClock().now()
+            self._session_evidence.record(
+                EvidenceEventType.RECORDER_HEALTH,
+                EvidencePayload(
+                    state="HEALTHY",
+                    details=self._session_evidence.health_snapshot(),
+                ),
+                producer="SessionEvidenceRecorder",
+                event_time=now,
+            )
             self._session_evidence.record(
                 EvidenceEventType.SESSION_CLOSED,
                 EvidencePayload(state="CLOSED"),
@@ -786,6 +811,12 @@ class A2PaperSessionController:
                 event_time=now,
             )
             self._session_evidence.finalize()
+            forward_manifest = build_manifest(
+                self._session_evidence,
+                source_commit=os.environ.get("ATS_SOURCE_COMMIT", "UNKNOWN"),
+                prior_counted_dates=self._prior_counted_forward_dates(),
+            )
+            persist_manifest(self._session_evidence, forward_manifest)
 
         self._state = A2SessionState.STOPPED
         self._reason_codes = ["A2_PAPER_SESSION_STOPPED"]
@@ -875,6 +906,9 @@ class A2PaperSessionController:
                 self._engine.request_exit(
                     pid, now, reason_codes=tuple(exit_info.get("reasons", ())), source="MONITOR"
                 )
+                self._record_position_exit(
+                    pid, now, ",".join(exit_info.get("reasons", ())) or "MONITOR_EXIT"
+                )
                 self._engine.handle_exit_fill(pid, now)
                 self.notify_material_event(
                     "POSITION_DETERIORATION",
@@ -893,6 +927,60 @@ class A2PaperSessionController:
             "events_processed": self._events_processed,
             "runtime": runtime_outcome,
         }
+
+    def _record_position_exit(self, position_id: str, now: UTCDateTime, reason: str) -> None:
+        recorder = self._session_evidence
+        engine = self._engine
+        if recorder is None or engine is None:
+            return
+        position = engine.state.open_positions.get(position_id)
+        if position is None:
+            return
+        multiplier = Decimal("1") if position.direction == "BULLISH" else Decimal("-1")
+        exit_mark = position.current_mark or position.entry_price
+        gross = (exit_mark - position.entry_price) * position.quantity * multiplier
+        recorder.record(
+            EvidenceEventType.EXIT_EVENT,
+            EvidencePayload(
+                instrument_id=position.instrument_id,
+                position_id=UUID(position_id),
+                decision="EXIT",
+                reason_code=reason,
+                quantity=position.quantity,
+                price=exit_mark,
+            ),
+            producer="TradingRuntime",
+            event_time=now,
+        )
+        recorder.record(
+            EvidenceEventType.POSITION_EVENT,
+            EvidencePayload(
+                instrument_id=position.instrument_id,
+                position_id=UUID(position_id),
+                state="CLOSED",
+                quantity=position.quantity,
+                price=exit_mark,
+            ),
+            producer="TradingRuntime",
+            event_time=now,
+        )
+        recorder.record(
+            EvidenceEventType.PNL_EVENT,
+            EvidencePayload(
+                instrument_id=position.instrument_id,
+                position_id=UUID(position_id),
+                net_pnl=None,
+                state="PAPER_GROSS_EXIT_EVIDENCE",
+                details={
+                    "gross_pnl": str(gross),
+                    "costs": None,
+                    "net_pnl": None,
+                    "exit_reason": reason,
+                },
+            ),
+            producer="TradingRuntime",
+            event_time=now,
+        )
 
     def attach_upstox_runtime_feed(self, feed: UpstoxV3RuntimeFeed) -> None:
         """Attach the read-only Upstox V3 runtime feed to this A2 session.
@@ -915,18 +1003,155 @@ class A2PaperSessionController:
         the complete dynamic universe, and inclusive freshness for every key.
         """
 
+        evaluation_time = now or SystemClock().now()
         if not self.config.require_live_instrument_evidence:
             return True
+        if self._session_evidence is not None and (
+            self._session_evidence.write_failures > 0
+            or self._session_evidence.fsync_failures > 0
+            or self._session_evidence.dropped_records > 0
+        ):
+            self._reason_codes = ["EVIDENCE_RECORDER_UNHEALTHY_NEW_RISK_DENIED"]
+            return False
         feed = self._upstox_feed
         if feed is None or feed.connection_state is not ConnectionState.LIVE:
+            self._record_stage2_evidence(evaluation_time, ready=False)
             return False
         expected_subscriptions = 2 + (10 * len(self.config.underlyings))
         if len(feed.subscription_specs) != expected_subscriptions:
+            self._record_stage2_evidence(evaluation_time, ready=False)
             return False
-        freshness = feed.freshness_summary(now=now or SystemClock().now())
-        return len(freshness) == expected_subscriptions and all(
+        freshness = feed.freshness_summary(now=evaluation_time)
+        ready = len(freshness) == expected_subscriptions and all(
             state == SourceFreshness.FRESH.value for state in freshness.values()
         )
+        self._record_stage2_evidence(evaluation_time, ready=ready)
+        return ready
+
+    def _record_stage2_evidence(self, now: UTCDateTime, *, ready: bool) -> None:
+        recorder = self._session_evidence
+        feed = self._upstox_feed
+        if recorder is None:
+            return
+        expected = 2 + (10 * len(self.config.underlyings))
+        connection = feed.connection_state.value if feed is not None else "DISCONNECTED"
+        specs = feed.subscription_specs if feed is not None else ()
+        keys = [str(spec.instrument_key) for spec in specs]
+        freshness = feed.freshness_summary(now=now) if feed is not None else {}
+        samples: list[dict[str, Any]] = []
+        four_clock_valid = True
+        for key in keys:
+            update = feed.latest(key) if feed is not None else None
+            source_time = update.provider_timestamp or update.exchange_timestamp if update else None
+            raw_age = (now - source_time).total_seconds() * 1000 if source_time else None
+            authority_age = (now - update.received_at).total_seconds() * 1000 if update else None
+            clock_valid = bool(update and source_time and source_time <= update.received_at <= now)
+            four_clock_valid = four_clock_valid and clock_valid
+            samples.append(
+                {
+                    "instrument_key": key,
+                    "provider_timestamp_raw": (
+                        update.provider_timestamp.isoformat()
+                        if update and update.provider_timestamp
+                        else None
+                    ),
+                    "source_time": source_time.isoformat() if source_time else None,
+                    "ingest_time": update.received_at.isoformat() if update else None,
+                    "available_to_strategy_time": (
+                        update.received_at.isoformat() if update else None
+                    ),
+                    "authority_evaluation_time": now.isoformat(),
+                    "raw_provider_age_ms": raw_age,
+                    "normalized_authority_age_ms": authority_age,
+                    "clock_skew_detected": raw_age is not None and raw_age < 0,
+                    "clock_skew_ms": -raw_age if raw_age is not None and raw_age < 0 else 0,
+                    "normalization_rule_id": "RECEIPT_CLOCK_AUTHORITY_V1",
+                    "four_clock_valid": clock_valid,
+                    "freshness": freshness.get(key, "UNKNOWN"),
+                }
+            )
+        common = {
+            "trading_date": recorder.identity.trading_date,
+            "decision_timestamp": now.isoformat(),
+            "provider_transport_state": connection,
+            "expected_subscription_count": expected,
+            "actual_subscription_count": len(specs),
+            "instrument_keys": keys,
+            "freshness_threshold_ms": self.config.max_quote_age_ms,
+        }
+        recorder.record(
+            EvidenceEventType.STAGE2_CONNECTION_STATE,
+            EvidencePayload(state=connection, details=common),
+            producer="A2PaperSessionController",
+            event_time=now,
+        )
+        recorder.record(
+            EvidenceEventType.STAGE2_SUBSCRIPTION_PLAN,
+            EvidencePayload(
+                state="COMPLETE" if len(specs) == expected else "INCOMPLETE",
+                details=common,
+            ),
+            producer="A2PaperSessionController",
+            event_time=now,
+        )
+        recorder.record(
+            EvidenceEventType.STAGE2_SUBSCRIPTION_SAMPLE,
+            EvidencePayload(state="SAMPLED", details={**common, "samples": samples}),
+            producer="A2PaperSessionController",
+            event_time=now,
+        )
+        all_fresh = len(freshness) == expected and all(
+            value == SourceFreshness.FRESH.value for value in freshness.values()
+        )
+        recorder.record(
+            EvidenceEventType.STAGE2_FRESHNESS_DECISION,
+            EvidencePayload(
+                decision="MARKET_OPEN_DATA_READY" if ready else "BLOCKED_MARKET_DATA_READY",
+                reason_code=None if ready else "STAGE2_REQUIREMENTS_NOT_MET",
+                details={
+                    **common,
+                    "freshness": freshness,
+                    "all_required_fresh": all_fresh,
+                    "four_clock_valid": four_clock_valid,
+                },
+            ),
+            producer="A2PaperSessionController",
+            event_time=now,
+        )
+        if feed is not None:
+            for option in feed.telemetry().get("option_evidence", []):
+                recorder.record(
+                    EvidenceEventType.OPTION_EVIDENCE,
+                    EvidencePayload(
+                        instrument_id=str(option.get("instrument_key")),
+                        underlying=str(option.get("underlying")),
+                        state=str(option.get("freshness", "UNKNOWN")),
+                        details=option,
+                    ),
+                    producer="UpstoxV3RuntimeFeed",
+                    event_time=now,
+                )
+
+    def _prior_counted_forward_dates(self) -> frozenset[date]:
+        recorder = self._session_evidence
+        if recorder is None:
+            return frozenset()
+        dates: set[date] = set()
+        for path in Path(self.config.evidence_root or "").glob(
+            "*/*/FORWARD_EVIDENCE_MANIFEST.json"
+        ):
+            if path.parent == recorder.root:
+                continue
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+                if manifest.get("final_validity_classification") in {
+                    "VALID_FORWARD_SESSION",
+                    "VALID_FORWARD_SESSION_WITH_LIMITATIONS",
+                }:
+                    dates.add(date.fromisoformat(str(manifest["trading_date"])))
+            except (OSError, ValueError, KeyError, json.JSONDecodeError):
+                continue
+        return frozenset(dates)
 
     def _on_normalized_update(
         self, update: NormalizedFeedUpdate, freshness: SourceFreshness
@@ -938,7 +1163,74 @@ class A2PaperSessionController:
             self._alpha_v4_shadow.ingest("NIFTY", update)
         elif update.instrument_key == BANKNIFTY_INDEX_FEED_KEY:
             self._alpha_v4_shadow.ingest("BANKNIFTY", update)
+        self._record_normalized_clock_evidence(update, freshness)
         self.ingest_market_update(update.instrument_key, price, update.received_at, freshness)
+
+    def _record_normalized_clock_evidence(
+        self, update: NormalizedFeedUpdate, freshness: SourceFreshness
+    ) -> None:
+        recorder = self._session_evidence
+        if recorder is None:
+            return
+        decision_time = SystemClock().now()
+        source_time = update.provider_timestamp or update.exchange_timestamp
+        raw_age = (
+            (decision_time - source_time).total_seconds() * 1000
+            if source_time is not None
+            else None
+        )
+        authority_age = (decision_time - update.received_at).total_seconds() * 1000
+        skew = raw_age is not None and raw_age < 0
+        four_clock_valid = bool(
+            source_time is not None and source_time <= update.received_at <= decision_time
+        )
+        market_state_id = str(uuid4())
+        facts = {
+            "market_state_id": market_state_id,
+            "instrument_key": update.instrument_key,
+            "provider_timestamp_raw": (
+                update.provider_timestamp.isoformat() if update.provider_timestamp else None
+            ),
+            "event_time": (
+                update.exchange_timestamp.isoformat() if update.exchange_timestamp else None
+            ),
+            "source_time": source_time.isoformat() if source_time else None,
+            "ingest_time": update.received_at.isoformat(),
+            "available_to_strategy_time": update.received_at.isoformat(),
+            "decision_time": decision_time.isoformat(),
+            "raw_provider_age_ms": raw_age,
+            "normalized_authority_age_ms": authority_age,
+            "clock_skew_detected": skew,
+            "clock_skew_ms": -raw_age if skew and raw_age is not None else 0,
+            "normalization_rule_id": "RECEIPT_CLOCK_AUTHORITY_V1",
+            "four_clock_valid": four_clock_valid,
+            "freshness": freshness.value,
+        }
+        recorder.record(
+            EvidenceEventType.CLOCK_EVIDENCE,
+            EvidencePayload(
+                instrument_id=update.instrument_key,
+                state="VALID" if four_clock_valid else "INVALID",
+                reason_code="CLOCK_SKEW" if skew else None,
+                details=facts,
+            ),
+            producer="UpstoxV3RuntimeFeed",
+            event_time=update.exchange_timestamp or update.received_at,
+            source_time=source_time,
+            available_to_strategy_time=update.received_at,
+        )
+        recorder.record(
+            EvidenceEventType.NORMALIZED_MARKET_EVENT,
+            EvidencePayload(
+                instrument_id=update.instrument_key,
+                state=freshness.value,
+                details={**facts, "update": update.model_dump(mode="json")},
+            ),
+            producer="UpstoxV3RuntimeFeed",
+            event_time=update.exchange_timestamp or update.received_at,
+            source_time=source_time,
+            available_to_strategy_time=update.received_at,
+        )
 
     def ingest_market_update(
         self,
@@ -1042,6 +1334,19 @@ class A2PaperSessionController:
         evaluation_time = now or SystemClock().now()
         self._candidates_evaluated += 1
         self._pipeline_counters.candidates_considered += 1
+        recorder = self._session_evidence
+        if recorder is not None:
+            recorder.record(
+                EvidenceEventType.CANDIDATE_DECISION,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    instrument_id=candidate.instrument_id,
+                    decision="REACHED",
+                    details={"candidate": candidate.model_dump(mode="json")},
+                ),
+                producer="A2PaperSessionController",
+                event_time=evaluation_time,
+            )
 
         # Stage 2 is an execution invariant, not an operator-only advisory check.
         # Shadow evaluation may continue while unsafe data deterministically blocks risk.
@@ -1156,6 +1461,22 @@ class A2PaperSessionController:
             quote_fresh=True,
         )
         alloc = self._portfolio_brain.allocate(req, ctx)
+        if recorder is not None:
+            recorder.record(
+                EvidenceEventType.PORTFOLIO_DECISION,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    decision=alloc.outcome.value,
+                    reason_codes=tuple(alloc.reason_codes),
+                    quantity=alloc.approved_quantity,
+                    details={
+                        "approved_capital": str(alloc.approved_capital),
+                        "requested_capital": str(requested_capital),
+                    },
+                ),
+                producer="PortfolioManagerBrain",
+                event_time=evaluation_time,
+            )
         if alloc.outcome not in (AllocationOutcome.ALLOW, AllocationOutcome.ALLOW_REDUCED):
             if alloc.outcome is AllocationOutcome.DENY:
                 self._pipeline_counters.portfolio_brain_deny += 1
@@ -1181,6 +1502,18 @@ class A2PaperSessionController:
             res_res = self._authority.try_reserve_for_candidate(
                 res_req, evaluation_time=evaluation_time
             )
+            if recorder is not None:
+                recorder.record(
+                    EvidenceEventType.A04_AUTHORITY_DECISION,
+                    EvidencePayload(
+                        candidate_id=candidate.candidate_id,
+                        decision=res_res.outcome.value,
+                        reason_codes=tuple(res_res.reason_codes),
+                        details={"reservation_id": str(res_req.reservation_id)},
+                    ),
+                    producer="TradingAuthorityService",
+                    event_time=evaluation_time,
+                )
             if res_res.outcome.value != "ALLOW":
                 self._pipeline_counters.a04_deny += 1
                 self._record_rejection(("AUTHORITY_RESERVATION_DENIED", *res_res.reason_codes))
@@ -1229,11 +1562,60 @@ class A2PaperSessionController:
         self._pipeline_counters.paper_orders += 1
         self._pipeline_counters.a04_allow += 1
         self._pipeline_counters.candidates_qualified += 1
+        if recorder is not None:
+            recorder.record(
+                EvidenceEventType.RISK_DECISION_CREATED,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    decision="NOT_REACHED",
+                    reason_code="NO_SEPARATE_RISK_DECISION_IN_CURRENT_RUNNER_PATH",
+                ),
+                producer="A2PaperSessionController",
+                event_time=evaluation_time,
+            )
+            recorder.record(
+                EvidenceEventType.TOKEN_EVENT,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    decision="NOT_REACHED",
+                    reason_code="NO_AUTONOMY_TOKEN_IN_CURRENT_RUNNER_PATH",
+                ),
+                producer="A2PaperSessionController",
+                event_time=evaluation_time,
+            )
+            recorder.record(
+                EvidenceEventType.ORDER_EVENT,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    instrument_id=candidate.instrument_id,
+                    decision="PAPER_ORDER_ACCEPTED",
+                    quantity=order_qty,
+                    price=slipped_price,
+                    source_id=str(order_status.order_id),
+                    details={"execution_target": "PAPER", "request": vars(order_req)},
+                ),
+                producer="PaperBrokerAdapter",
+                event_time=evaluation_time,
+            )
 
         # 5. Simulate Paper Fill
         self._broker.seed_fill(order_status.order_id, slipped_price, order_qty, now=evaluation_time)
         self._paper_fills_recorded += 1
         self._pipeline_counters.paper_fills += 1
+        if recorder is not None:
+            recorder.record(
+                EvidenceEventType.FILL_EVENT,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    instrument_id=candidate.instrument_id,
+                    quantity=order_qty,
+                    price=slipped_price,
+                    source_id=str(order_status.order_id),
+                    state="PAPER_FILL",
+                ),
+                producer="PaperBrokerAdapter",
+                event_time=evaluation_time,
+            )
 
         # 6. Add to TradingRuntime open positions
         pos_id = str(uuid4())
@@ -1260,6 +1642,24 @@ class A2PaperSessionController:
             origin=PositionOrigin.ATS_AUTONOMOUS,
             managed_exit_mode=ManagedExitMode.ATS_MANAGED_EXIT,
         )
+        if recorder is not None:
+            recorder.record(
+                EvidenceEventType.POSITION_EVENT,
+                EvidencePayload(
+                    candidate_id=candidate.candidate_id,
+                    instrument_id=candidate.instrument_id,
+                    position_id=UUID(pos_id),
+                    quantity=order_qty,
+                    price=slipped_price,
+                    state="OPENED",
+                    details={
+                        "capital_allocated": str(alloc.approved_capital),
+                        "execution_target": "PAPER",
+                    },
+                ),
+                producer="TradingRuntime",
+                event_time=evaluation_time,
+            )
 
         self._runtime_provider.update_from_engine(self._engine)
         self._consecutive_rejections = 0
@@ -1511,9 +1911,21 @@ class A2PaperSessionController:
                         self._tick_size_by_instrument_id.update(
                             live_option_evidence.tick_size_by_instrument_id
                         )
-                except Exception:
+                except Exception as exc:
                     self._pipeline_counters.option_evidence_failures += 1
                     live_option_evidence = None
+                    if self._session_evidence is not None:
+                        self._session_evidence.record(
+                            EvidenceEventType.SCANNER_FAILURE,
+                            EvidencePayload(
+                                underlying=und,
+                                state="DATA_UNAVAILABLE",
+                                reason_code="OPTION_EVIDENCE_BUILD_FAILED",
+                                details={"exception_type": type(exc).__name__},
+                            ),
+                            producer="A2MarketScanner",
+                            event_time=evaluation_time,
+                        )
 
             result = pipeline.evaluate(
                 snapshots=tuple(history),
@@ -1740,6 +2152,24 @@ class A2PaperSessionController:
                 # Forward Shadow is non-authoritative. Recorder/settlement/model
                 # failure must never interrupt C0 -> Portfolio -> Risk -> A04.
                 championship_predictions = []
+            if self._session_evidence is not None:
+                for (
+                    evidence_type,
+                    evidence_facts,
+                ) in self._forward_shadow_engine.drain_durable_evidence():
+                    # Mandatory evidence writes are deliberately outside the
+                    # shadow-model exception boundary: failure invalidates the
+                    # research session instead of silently dropping facts.
+                    self._session_evidence.record(
+                        EvidenceEventType(evidence_type),
+                        EvidencePayload(
+                            model_id=str(evidence_facts.get("model_id", "M2")),
+                            state="SHADOW_ONLY",
+                            details=evidence_facts,
+                        ),
+                        producer="ForwardShadowChampionship",
+                        event_time=evaluation_time,
+                    )
 
             shadows = [
                 {
@@ -1856,6 +2286,114 @@ class A2PaperSessionController:
             }
             self._live_pipeline_bridge.record_prediction(prediction_dict)
 
+            recorder = self._session_evidence
+            if recorder is not None:
+                state_id = str(ctx.market_context_id)
+                feature_valid = result.regime is not None
+                recorder.record(
+                    EvidenceEventType.FEATURE_STATE,
+                    EvidencePayload(
+                        feature_bundle_id=ctx.feature_bundle_id,
+                        underlying=und,
+                        state="VALID" if feature_valid else "INVALID",
+                        reason_codes=tuple(result.reason_codes) if not feature_valid else (),
+                        details={
+                            "market_state_id": state_id,
+                            "quality_state": quality_state.value,
+                            "quality_flags": list(quality_flags),
+                            "roc_3": roc_3 if feature_valid else None,
+                            "authoritative": feature_valid,
+                        },
+                    ),
+                    producer="MarketIntelligencePipeline",
+                    event_time=evaluation_time,
+                )
+                if feature_valid:
+                    recorder.record(
+                        EvidenceEventType.PRODUCTION_PREDICTION,
+                        EvidencePayload(
+                            underlying=und,
+                            model_id="C0",
+                            model_version="1.0.0",
+                            probability=Decimal(str(p_champ)),
+                            activation_threshold=Decimal("0.55"),
+                            decision=decision_label,
+                            reason_code=reason_label,
+                            details={
+                                "market_state_id": state_id,
+                                "roc_3": roc_3,
+                                "p_up": p_champ,
+                                "threshold": 0.55,
+                                "authority": "PRODUCTION",
+                            },
+                        ),
+                        producer="C0ProductionChampion",
+                        event_time=evaluation_time,
+                    )
+                else:
+                    upstream = (
+                        str(result.reason_codes[0]) if result.reason_codes else "FEATURE_INVALID"
+                    )
+                    recorder.record(
+                        EvidenceEventType.DATA_QUALITY_EVENT,
+                        EvidencePayload(
+                            underlying=und,
+                            state="FEATURE_CONSTRUCTION_FAILED",
+                            reason_code=upstream,
+                            details={
+                                "market_state_id": state_id,
+                                "authoritative_c0": "NOT_REACHED",
+                                "thesis": "NOT_REACHED",
+                                "candidate": "NOT_REACHED",
+                                "portfolio": "NOT_REACHED",
+                                "risk": "NOT_REACHED",
+                                "a04": "NOT_REACHED",
+                            },
+                        ),
+                        producer="MarketIntelligencePipeline",
+                        event_time=evaluation_time,
+                    )
+                recorder.record(
+                    EvidenceEventType.SHADOW_MODEL_STATE,
+                    EvidencePayload(
+                        underlying=und,
+                        state="SHADOW_ONLY",
+                        details={
+                            "market_state_id": state_id,
+                            "alpha_v4": alpha_shadow,
+                            "championship": [vars(item) for item in championship_predictions],
+                            "c0_observability": {
+                                "p_up": p_champ,
+                                "label": "NON_AUTHORITATIVE_OBSERVABILITY",
+                            },
+                        },
+                    ),
+                    producer="ForwardShadowChampionship",
+                    event_time=evaluation_time,
+                )
+                recorder.record(
+                    EvidenceEventType.SAME_STATE_MODEL_RECORD,
+                    EvidencePayload(
+                        underlying=und,
+                        state="CORRELATED",
+                        details={
+                            "market_state_id": state_id,
+                            "decision_time": evaluation_time.isoformat(),
+                            "regime": regime_str,
+                            "c0": {
+                                "authority": "PRODUCTION" if feature_valid else "NOT_REACHED",
+                                "p_up": p_champ if feature_valid else None,
+                            },
+                            "alpha_v4": alpha_shadow,
+                            "m2_r10x": [vars(item) for item in championship_predictions],
+                            "option_economics_available": live_option_evidence is not None,
+                            "data_quality": quality_state.value,
+                        },
+                    ),
+                    producer="A2SameStateCorrelator",
+                    event_time=evaluation_time,
+                )
+
             if result.is_actionable and result.candidate is not None:
                 if (
                     self.config.require_live_instrument_evidence
@@ -1892,6 +2430,16 @@ class A2PaperSessionController:
             self._record_rejection(last_reason_codes)
 
         if valid_underlyings_scanned == 0:
+            if self._session_evidence is not None:
+                self._session_evidence.record(
+                    EvidenceEventType.SCANNER_FAILURE,
+                    EvidencePayload(
+                        state="DATA_UNAVAILABLE",
+                        reason_code="INVALID_REFERENCE",
+                    ),
+                    producer="A2MarketScanner",
+                    event_time=evaluation_time,
+                )
             self._record_rejection(("INVALID_REFERENCE",))
             self._sync_live_pipeline_bridge()
             return {"considered": 0, "qualified": 0, "reason": "INVALID_REFERENCE"}

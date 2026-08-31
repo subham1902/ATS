@@ -14,6 +14,7 @@ $node = Join-Path $NodeRoot 'node.exe'
 $corepack = Join-Path $NodeRoot 'corepack.cmd'
 $harnessBin = Join-Path $HarnessRoot 'packages\examples\acp-demo\lib\bin.js'
 $sessionId = [guid]::NewGuid().ToString()
+$acceptancePath = Join-Path $repo 'data\runtime\pre_market_acceptance.json'
 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host " ATS A2 LIVE-PAPER MARKET-OPEN LAUNCHER (READ-ONLY MARKET DATA)" -ForegroundColor Cyan
@@ -37,11 +38,20 @@ if ($RequireToken -and -not $hasToken) { throw 'ATS_UPSTOX_ACCESS_TOKEN_REQUIRED
 $existing = @(Get-NetTCPConnection -State Listen -LocalPort 8000,3000 -ErrorAction SilentlyContinue)
 if ($existing.Count -gt 0) { throw 'ATS_PORT_ALREADY_IN_USE' }
 if (Test-Path -LiteralPath $stateFile) { throw 'ATS_STATE_FILE_ALREADY_EXISTS' }
+if (-not (Test-Path -LiteralPath $acceptancePath)) { throw 'STAGE1_DURABLE_EVIDENCE_MISSING' }
+$acceptance = Get-Content -LiteralPath $acceptancePath -Raw | ConvertFrom-Json
+$today = (Get-Date).ToString('yyyy-MM-dd')
+$head = (& git -C $repo rev-parse HEAD).Trim()
+if ($acceptance.verdict -ne 'READY_FOR_A2_PAPER_SESSION') { throw 'STAGE1_NOT_READY' }
+if ($acceptance.trading_date -ne $today) { throw 'STAGE1_EVIDENCE_NOT_TODAY' }
+if ($acceptance.source_commit -ne $head) { throw 'STAGE1_HEAD_MISMATCH' }
 $env:Path = $NodeRoot + [IO.Path]::PathSeparator + $env:Path
 $env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
 $env:ATS_A2_SESSION_ID = $sessionId
 $env:ATS_A2_EVIDENCE_ROOT = Join-Path $repo 'data\runtime\sessions'
 $env:ATS_A2_RUNTIME_CHECKPOINT_PATH = Join-Path $stateRoot 'runtime_checkpoint.json'
+$env:ATS_A2_STAGE1_EVIDENCE_PATH = $acceptancePath
+$env:ATS_SOURCE_COMMIT = $head
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 # 1. Launch Backend A2 Paper Session (serves /v1/* including runtime/harness/pipeline)
