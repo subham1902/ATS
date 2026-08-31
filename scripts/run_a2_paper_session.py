@@ -176,9 +176,13 @@ class ReadOnlyUpstoxSupervisor:
                 self._feed = feed
                 self._controller.attach_upstox_runtime_feed(feed)
                 await asyncio.to_thread(feed.connect_live)
-                self._set_feed_health(True)
+                # A socket connect is not proof of usable market data.  New
+                # risk remains fail-closed until the full dynamic universe
+                # has received fresh, ordered Stage-2 evidence.
+                self._set_feed_health(False)
                 while not self._stop.is_set():
                     await asyncio.to_thread(feed.receive_live)
+                    self._set_feed_health(self._controller.market_open_data_ready())
             except asyncio.CancelledError:
                 raise
             except Exception as error:
