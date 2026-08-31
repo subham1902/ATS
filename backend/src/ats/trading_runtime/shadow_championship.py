@@ -418,6 +418,7 @@ class ForwardShadowChampionshipEngine:
         self._active_shadow_positions: dict[str, dict[str, Any]] = {}
         self._settled_trades: list[CounterfactualTrade] = []
         self._predictions_history: list[ShadowModelPrediction] = []
+        self._durable_evidence_outbox: list[tuple[str, dict[str, Any]]] = []
 
     def loaded_model_identities(self) -> list[ModelIdentity]:
         return [m.identity() for m in self.models]
@@ -504,15 +505,45 @@ class ForwardShadowChampionshipEngine:
             "session": ctx.session,
             "underlying": ctx.underlying,
             "direction": pred.preferred_expression,
+            "market_state_id": ctx.market_state_id,
+            "decision_time": ctx.decision_time,
             "entry_time": ctx.decision_time,
             "instrument_key": quote.instrument_key,
             "expiry": quote.expiry,
             "strike": quote.strike,
+            "entry_bid": quote.bid_price,
             "entry_ask": observed_ask,
             "entry_price_eff": entry_eff,
             "quantity": lot_size,
             "bars_held": 0,
         }
+        self._durable_evidence_outbox.append(
+            (
+                "COUNTERFACTUAL_ENTRY",
+                {
+                    "counterfactual_id": f"st_{trade_identity}",
+                    "model_id": model.model_id,
+                    "market_state_id": ctx.market_state_id,
+                    "decision_time": ctx.decision_time.isoformat(),
+                    "instrument_key": quote.instrument_key,
+                    "contract_identity": {
+                        "expiry": quote.expiry,
+                        "strike": quote.strike,
+                        "option_type": quote.option_type,
+                    },
+                    "dynamic_lot_size": lot_size,
+                    "entry_bid": quote.bid_price,
+                    "entry_ask": quote.ask_price,
+                    "entry_price_rule": "OBSERVED_ASK_PLUS_5BPS_SLIPPAGE",
+                    "entry_price": entry_eff,
+                    "cost_model_version": "RESEARCH_COST_V1",
+                    "slippage_fraction": base_slippage_frac,
+                    "exit_rule": RESEARCH_COUNTERFACTUAL_POLICY_V1_NAME,
+                    "exit_policy_hash": RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH,
+                    "settlement_provenance": "CONTEMPORANEOUS_PROVIDER_OPTION_QUOTES",
+                },
+            )
+        )
 
     def _check_counterfactual_exits(
         self,
@@ -571,35 +602,62 @@ class ForwardShadowChampionshipEngine:
                 net_pnl = gross_pnl - total_costs
                 holding_sec = (ctx.decision_time - pos["entry_time"]).total_seconds()
 
-                self._settled_trades.append(
-                    CounterfactualTrade(
-                        shadow_trade_id=pos["shadow_trade_id"],
-                        model_id=pos["model_id"],
-                        session=pos["session"],
-                        underlying=pos["underlying"],
-                        direction=pos["direction"],
-                        entry_time=pos["entry_time"].isoformat(),
-                        entry_ask=round(pos["entry_ask"], 2),
-                        entry_price_eff=round(pos["entry_price_eff"], 2),
-                        exit_time=ctx.decision_time.isoformat(),
-                        exit_bid=round(observed_bid, 2),
-                        exit_price_eff=round(exit_eff, 2),
-                        quantity=qty,
-                        gross_pnl=round(gross_pnl, 2),
-                        statutory_costs=round(statutory, 2),
-                        slippage_friction=round(slippage_friction, 2),
-                        cost_stress_mult=cost_stress_mult,
-                        total_costs=round(total_costs, 2),
-                        net_pnl=round(net_pnl, 2),
-                        return_pct=round(ret_pct, 4),
-                        holding_seconds=holding_sec,
-                        exit_reason=exit_reason,
-                        exit_policy_name=RESEARCH_COUNTERFACTUAL_POLICY_V1_NAME,
-                        exit_policy_hash=RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH,
-                        shadow_status="SHADOW_ONLY",
+                settled = CounterfactualTrade(
+                    shadow_trade_id=pos["shadow_trade_id"],
+                    model_id=pos["model_id"],
+                    session=pos["session"],
+                    underlying=pos["underlying"],
+                    direction=pos["direction"],
+                    entry_time=pos["entry_time"].isoformat(),
+                    entry_ask=round(pos["entry_ask"], 2),
+                    entry_price_eff=round(pos["entry_price_eff"], 2),
+                    exit_time=ctx.decision_time.isoformat(),
+                    exit_bid=round(observed_bid, 2),
+                    exit_price_eff=round(exit_eff, 2),
+                    quantity=qty,
+                    gross_pnl=round(gross_pnl, 2),
+                    statutory_costs=round(statutory, 2),
+                    slippage_friction=round(slippage_friction, 2),
+                    cost_stress_mult=cost_stress_mult,
+                    total_costs=round(total_costs, 2),
+                    net_pnl=round(net_pnl, 2),
+                    return_pct=round(ret_pct, 4),
+                    holding_seconds=holding_sec,
+                    exit_reason=exit_reason,
+                    exit_policy_name=RESEARCH_COUNTERFACTUAL_POLICY_V1_NAME,
+                    exit_policy_hash=RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH,
+                    shadow_status="SHADOW_ONLY",
+                )
+                self._settled_trades.append(settled)
+                self._durable_evidence_outbox.append(
+                    (
+                        "COUNTERFACTUAL_SETTLEMENT",
+                        {
+                            **vars(settled),
+                            "counterfactual_id": pos["shadow_trade_id"],
+                            "market_state_id": pos["market_state_id"],
+                            "instrument_key": pos["instrument_key"],
+                            "contract_identity": {
+                                "expiry": pos["expiry"],
+                                "strike": pos["strike"],
+                                "option_type": quote.option_type,
+                            },
+                            "entry_bid": pos["entry_bid"],
+                            "entry_price_rule": "OBSERVED_ASK_PLUS_5BPS_SLIPPAGE",
+                            "exit_price_rule": "OBSERVED_BID_MINUS_5BPS_SLIPPAGE",
+                            "cost_model_version": "RESEARCH_COST_V1",
+                            "settlement_provenance": "CONTEMPORANEOUS_PROVIDER_OPTION_QUOTES",
+                            "monetary_classification": "FORWARD_VALID_COUNTERFACTUAL_PNL",
+                        },
                     )
                 )
                 del self._active_shadow_positions[pos_key]
+
+    def drain_durable_evidence(self) -> tuple[tuple[str, dict[str, Any]], ...]:
+        """Transfer new research facts to the session recorder exactly once."""
+        evidence = tuple(self._durable_evidence_outbox)
+        self._durable_evidence_outbox.clear()
+        return evidence
 
     def get_scorecard(self) -> dict[str, Any]:
         scorecard: dict[str, Any] = {}

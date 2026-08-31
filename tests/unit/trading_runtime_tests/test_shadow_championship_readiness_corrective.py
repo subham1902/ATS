@@ -206,6 +206,15 @@ def test_research_counterfactual_exit_policy_provenance() -> None:
         resolved_lot_sizes={"NIFTY": 65},
         contemporaneous_option_quotes={"LONG_CE": entry_quote},
     )
+    entries = engine.drain_durable_evidence()
+    assert entries
+    assert all(kind == "COUNTERFACTUAL_ENTRY" for kind, _ in entries)
+    assert all(
+        facts["entry_price_rule"] == "OBSERVED_ASK_PLUS_5BPS_SLIPPAGE"
+        and facts["dynamic_lot_size"] == 65
+        and facts["settlement_provenance"] == "CONTEMPORANEOUS_PROVIDER_OPTION_QUOTES"
+        for _, facts in entries
+    )
 
     # Step spot down sharply to trigger STOP_LOSS
     now_later = datetime.fromtimestamp(now.timestamp() + 300, tz=UTC)
@@ -240,6 +249,14 @@ def test_research_counterfactual_exit_policy_provenance() -> None:
         ctx2,
         resolved_lot_sizes={"NIFTY": 65},
         contemporaneous_option_quotes={"LONG_CE": exit_quote},
+    )
+    settlements = engine.drain_durable_evidence()
+    assert settlements
+    assert all(kind == "COUNTERFACTUAL_SETTLEMENT" for kind, _ in settlements)
+    assert all(
+        facts["monetary_classification"] == "FORWARD_VALID_COUNTERFACTUAL_PNL"
+        and facts["exit_price_rule"] == "OBSERVED_BID_MINUS_5BPS_SLIPPAGE"
+        for _, facts in settlements
     )
 
     trades = engine._settled_trades
