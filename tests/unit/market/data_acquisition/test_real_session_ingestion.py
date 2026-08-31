@@ -38,6 +38,10 @@ DATASETS = {
     "NIFTY": HISTORY_DIR / "nifty_options_a2_replay_v1",
     "BANKNIFTY": HISTORY_DIR / "banknifty_options_a2_replay_v1",
 }
+pytestmark = pytest.mark.skipif(
+    not all((path / "observations.jsonl").is_file() for path in DATASETS.values()),
+    reason="requires local immutable Upstox historical artifacts",
+)
 UNDERLYING_IDS = {
     "NSE_INDEX_NIFTY_50",
     "NSE_INDEX_NIFTY_BANK",
