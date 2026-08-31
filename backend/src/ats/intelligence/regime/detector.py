@@ -37,9 +37,10 @@ def detect_regime(
     _validate_history(market_context, feature_history)
     current = feature_history[-1]
     familiarity = min(1.0, len(feature_history) / configuration.full_familiarity_bars)
+    fatal_flags = set(current.quality_flags) - {"VOLUME_UNAVAILABLE"}
     if (
         market_context.data_quality_state in (DataQualityState.INVALID, DataQualityState.UNKNOWN)
-        or current.quality_flags
+        or fatal_flags
         or not _REQUIRED.issubset(current.features)
     ):
         return _evidence(

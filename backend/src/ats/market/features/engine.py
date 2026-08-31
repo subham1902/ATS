@@ -67,8 +67,19 @@ def _validate_prefix(prefix: tuple[MarketSnapshot, ...]) -> None:
             raise FeatureInputError("mixed instruments are not permitted")
         if snapshot.timeframe != first.timeframe:
             raise FeatureInputError("mixed timeframes are not permitted")
-        if snapshot.quality_state is not DataQualityState.GOOD or snapshot.quality_flags:
-            raise FeatureInputError("only GOOD snapshots without quality flags are safe")
+        # Snapshots must be GOOD or DEGRADED specifically with VOLUME_UNAVAILABLE
+        if snapshot.quality_state not in (DataQualityState.GOOD, DataQualityState.DEGRADED):
+            raise FeatureInputError("snapshot quality state is not safe for feature evaluation")
+        fatal_flags = set(snapshot.quality_flags) - {"VOLUME_UNAVAILABLE"}
+        if fatal_flags:
+            raise FeatureInputError(f"fatal quality flags present: {sorted(fatal_flags)}")
+        if (
+            snapshot.quality_state is DataQualityState.DEGRADED
+            and "VOLUME_UNAVAILABLE" not in snapshot.quality_flags
+        ):
+            raise FeatureInputError(
+                "only GOOD snapshots or DEGRADED with VOLUME_UNAVAILABLE are safe"
+            )
         if compute_payload_hash(snapshot) != snapshot.payload_hash:
             raise FeatureInputError("snapshot payload hash is invalid")
         if index:
@@ -110,14 +121,17 @@ def _compute_rolling_features(prefix: tuple[MarketSnapshot, ...]) -> dict[str, f
     with localcontext(_DECIMAL_CONTEXT) as context:
         if len(prefix) >= 3:
             window = prefix[-3:]
-            volume_sum = sum((bar.volume for bar in window), Decimal(0))
-            volume_mean = context.divide(volume_sum, Decimal(3))
-            values["rolling_volume_mean_3"] = _finite_float(volume_mean)
-            values["relative_volume_3"] = (
-                0.0
-                if volume_mean == 0
-                else _finite_float(context.divide(window[-1].volume, volume_mean))
-            )
+            # Compute volume-dependent features only if real volume is available on all window bars
+            volume_available = not any("VOLUME_UNAVAILABLE" in bar.quality_flags for bar in window)
+            if volume_available:
+                volume_sum = sum((bar.volume for bar in window), Decimal(0))
+                volume_mean = context.divide(volume_sum, Decimal(3))
+                values["rolling_volume_mean_3"] = _finite_float(volume_mean)
+                values["relative_volume_3"] = (
+                    0.0
+                    if volume_mean == 0
+                    else _finite_float(context.divide(window[-1].volume, volume_mean))
+                )
             trailing_high = max(bar.high for bar in window)
             trailing_low = min(bar.low for bar in window)
             price_range = trailing_high - trailing_low
@@ -182,6 +196,16 @@ def compute_feature_bundle(
         code: feature_values[code] for code in V1_FEATURE_CODES if code in feature_values
     }
     cutoff = prefix[-1]
+    
+    flags: list[str] = []
+    has_vol_unavailable = any("VOLUME_UNAVAILABLE" in s.quality_flags for s in prefix)
+    if has_vol_unavailable:
+        flags.append("VOLUME_UNAVAILABLE")
+    
+    expected_count = len(V1_FEATURE_CODES) - (2 if has_vol_unavailable else 0)
+    if len(ordered_values) < expected_count:
+        flags.append(_WARMUP_FLAG)
+        
     bundle = FeatureBundle(
         schema_version="1.0",
         feature_bundle_id=uuid5(
@@ -191,7 +215,7 @@ def compute_feature_bundle(
         snapshot_id=cutoff.snapshot_id,
         feature_version=resolved_configuration.registry_version,
         features=ordered_values,
-        quality_flags=() if len(ordered_values) == len(V1_FEATURE_CODES) else (_WARMUP_FLAG,),
+        quality_flags=tuple(flags),
         computed_at=cutoff.received_at,
         input_hash=input_hash,
     )
