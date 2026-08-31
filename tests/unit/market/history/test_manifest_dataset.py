@@ -28,9 +28,7 @@ def test_manifest_is_frozen_and_complete() -> None:
 
 
 def test_manifest_quality_summary_classifies_stale_rows_as_degraded() -> None:
-    dataset = build_test_dataset(
-        (*scenario_normal_series(3), scenario_stale_bar())
-    )
+    dataset = build_test_dataset((*scenario_normal_series(3), scenario_stale_bar()))
     summary = dataset.manifest.quality_summary
     assert summary.good_count == 3
     assert summary.degraded_count == 1

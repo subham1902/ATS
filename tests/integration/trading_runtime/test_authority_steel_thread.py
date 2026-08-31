@@ -1,25 +1,34 @@
-"""TEST_ONLY steel thread: candidate -> A04 -> token -> OrderIntent -> PaperBroker -> Fill -> Position.
+"""TEST_ONLY authority steel thread.
+
+Candidate -> A04 -> token -> OrderIntent -> PaperBroker -> Fill -> Position.
 
 All inputs are TEST_ONLY / NON_MARKET_DATA. Authority flow is real production code.
 """
 
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from decimal import Decimal
 
 from ats.contracts.common import UTCDateTime
-from ats.contracts.domain.hashing import compute_payload_hash
-from ats.contracts.domain.models import Fill, OrderIntent, PaperOrder, Position
-from ats.contracts.domain.types import AdvisoryOutcome, DataQualityState, PaperOrderStatus, PaperOrderType, Side
-from ats.contracts.governance.types import CandidateStatus
+from ats.contracts.domain.types import (
+    DataQualityState,
+    PaperOrderStatus,
+)
 from ats.execution.paper import PaperMarketFacts, PaperSubmissionScenario
 from ats.execution.paper.broker import process_paper_order, submit_paper_order
 from ats.execution.paper.models import PaperExecutionPolicy
-from ats.kernel.autonomy import construct_autonomy_token, validate_token_eligibility, validate_token_for_use
+from ats.kernel.autonomy import (
+    construct_autonomy_token,
+    validate_token_eligibility,
+    validate_token_for_use,
+)
 from ats.kernel.order_guard import validate_order_intent
-from ats.kernel.types import AutonomyTokenPolicy, GateCode, KernelOutcome, OrderEvaluationFacts, OrderGuardPolicy
+from ats.kernel.types import (
+    AutonomyTokenPolicy,
+    GateCode,
+    KernelOutcome,
+)
 
 from tests.unit.kernel.fixtures import T0, _validated, make_kernel_fixture, uid
 
@@ -74,16 +83,19 @@ def _make_authorized_token(x: dict[str, object]) -> object:
 def test_full_steel_thread_end_to_end() -> None:
     x = make_kernel_fixture()
     token = _make_authorized_token(x)
-    assert validate_token_for_use(
-        token,
-        evaluation_time=T0,
-        candidate_id=token.candidate_id,  # type: ignore[union-attr]
-        policy_id=token.policy_id,  # type: ignore[union-attr]
-        policy_version=token.policy_version,  # type: ignore[union-attr]
-        risk_decision_id=token.risk_decision_id,  # type: ignore[union-attr]
-        advisory_id=token.advisory_id,  # type: ignore[union-attr]
-        current_system_state_version=1,
-    ).outcome is KernelOutcome.ALLOW
+    assert (
+        validate_token_for_use(
+            token,
+            evaluation_time=T0,
+            candidate_id=token.candidate_id,  # type: ignore[union-attr]
+            policy_id=token.policy_id,  # type: ignore[union-attr]
+            policy_version=token.policy_version,  # type: ignore[union-attr]
+            risk_decision_id=token.risk_decision_id,  # type: ignore[union-attr]
+            advisory_id=token.advisory_id,  # type: ignore[union-attr]
+            current_system_state_version=1,
+        ).outcome
+        is KernelOutcome.ALLOW
+    )
 
     intent = _validated(
         x["order"],
@@ -134,14 +146,28 @@ def test_full_steel_thread_end_to_end() -> None:
     auth = KernelResult(outcome=KernelOutcome.ALLOW, reason_codes=(GateCode.OK,))  # type: ignore[arg-type]
     # Use real broker submit path
     result = submit_paper_order(
-        intent=intent, authorization=auth, instrument=instrument, market=market, policy=policy, evaluation_time=T0
+        intent=intent,
+        authorization=auth,
+        instrument=instrument,
+        market=market,
+        policy=policy,
+        evaluation_time=T0,
     )
     assert result.order is not None
-    assert result.order.status in (PaperOrderStatus.ACCEPTED, PaperOrderStatus.FILLED, PaperOrderStatus.PARTIALLY_FILLED)
+    assert result.order.status in (
+        PaperOrderStatus.ACCEPTED,
+        PaperOrderStatus.FILLED,
+        PaperOrderStatus.PARTIALLY_FILLED,
+    )
     # Process one quote to fill
     if result.order.status == PaperOrderStatus.ACCEPTED:
         filled_order, fills = process_paper_order(
-            order=result.order, intent=intent, instrument=instrument, market=market, policy=policy, evaluation_time=_t0_plus(1)
+            order=result.order,
+            intent=intent,
+            instrument=instrument,
+            market=market,
+            policy=policy,
+            evaluation_time=_t0_plus(1),
         )
         assert len(fills) >= 1
         assert filled_order.status in (PaperOrderStatus.FILLED, PaperOrderStatus.PARTIALLY_FILLED)
@@ -227,7 +253,6 @@ def test_exit_authority_through_safe_path() -> None:
         supervisor_advisory_id=token.advisory_id,  # type: ignore[union-attr]
     )
     # Even with UNKNOWN execution safety, REDUCE should be allowed when fully_known_safe is handled
-    from ats.contracts.governance.types import RiskDirection
 
     assert token.candidate_id == x["candidate"].candidate_id  # type: ignore[union-attr]
     _ = intent
@@ -267,7 +292,12 @@ def test_partial_fill_and_duplicate_fill_idempotent() -> None:
 
     auth = KernelResult(outcome=KernelOutcome.ALLOW, reason_codes=(GateCode.OK,))  # type: ignore[arg-type]
     result = submit_paper_order(
-        intent=intent, authorization=auth, instrument=instrument, market=market, policy=policy, evaluation_time=T0
+        intent=intent,
+        authorization=auth,
+        instrument=instrument,
+        market=market,
+        policy=policy,
+        evaluation_time=T0,
     )
     assert result.order is not None
 

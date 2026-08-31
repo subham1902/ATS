@@ -222,7 +222,9 @@ def _edge_entry(item: CandidateObservation) -> EdgeLedgerEntry:
         expected_net_value=(
             _float(portfolio.expected_net_value)
             if portfolio
-            else _float(rare.expected_net_value) if rare else None
+            else _float(rare.expected_net_value)
+            if rare
+            else None
         ),
         portfolio_penalty=penalty,
         approved_capital=str(portfolio.approved_capital) if portfolio else None,
@@ -307,9 +309,7 @@ def _lineage(item: CandidateObservation) -> tuple[EvidenceLineageNode, ...]:
                 node_type="A04Decision",
                 node_id=str(risk_decision.risk_decision_id),
                 timestamp=risk_decision.decided_at,
-                status=(
-                    "VERIFIED" if _value(risk_decision.decision) == "ALLOW" else "REJECTED"
-                ),
+                status=("VERIFIED" if _value(risk_decision.decision) == "ALLOW" else "REJECTED"),
                 metrics={"outcome": _value(risk_decision.decision)},
                 hash=str(risk_decision.payload_hash),
                 summary="Canonical deterministic A04 risk decision.",

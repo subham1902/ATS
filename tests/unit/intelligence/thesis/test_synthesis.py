@@ -98,8 +98,10 @@ def test_wrong_price_level_kind_is_rejected() -> None:
 
 
 def test_unbound_price_level_source_is_rejected() -> None:
-    changed = facts().support_levels[0].model_copy(
-        update={"source_ref": UUID("50000000-0000-0000-0000-000000000001")}
+    changed = (
+        facts()
+        .support_levels[0]
+        .model_copy(update={"source_ref": UUID("50000000-0000-0000-0000-000000000001")})
     )
     invalid = facts().model_copy(update={"support_levels": (changed,)})
     with pytest.raises(ThesisSynthesisError, match="outside supplied evidence"):

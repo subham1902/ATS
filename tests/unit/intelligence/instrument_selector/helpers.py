@@ -34,9 +34,7 @@ def chain(**quote_updates: object):
 
 
 def distribution(*, expected_return: float = 0.01):
-    value = base_distribution().model_copy(
-        update={"expected_return_fraction": expected_return}
-    )
+    value = base_distribution().model_copy(update={"expected_return_fraction": expected_return})
     return value.model_copy(update={"payload_hash": compute_payload_hash(value)})
 
 

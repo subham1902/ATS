@@ -6,8 +6,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts.common import ATSBaseModel
 from ats.contracts.domain import DOMAIN_CONTRACTS
 from ats.contracts.domain.types import (
@@ -17,8 +15,9 @@ from ats.contracts.domain.types import (
     PositionStatus,
     RiskOutcome,
 )
+from pydantic import ValidationError
 
-from .fixtures import HASH, LATER, NOW, make_contracts
+from .fixtures import HASH, NOW, make_contracts
 
 
 @pytest.fixture(scope="module")
@@ -27,12 +26,16 @@ def contracts() -> dict[str, ATSBaseModel]:
 
 
 @pytest.mark.parametrize("contract_type", DOMAIN_CONTRACTS, ids=lambda value: value.__name__)
-def test_valid_fixture_exists(contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]) -> None:
+def test_valid_fixture_exists(
+    contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]
+) -> None:
     assert isinstance(contracts[contract_type.__name__], contract_type)
 
 
 @pytest.mark.parametrize("contract_type", DOMAIN_CONTRACTS, ids=lambda value: value.__name__)
-def test_schema_version_is_exact(contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]) -> None:
+def test_schema_version_is_exact(
+    contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]
+) -> None:
     value = contracts[contract_type.__name__]
     assert value.schema_version == "1.0"  # type: ignore[attr-defined]
     with pytest.raises(ValidationError):
@@ -49,7 +52,9 @@ def test_extra_fields_are_rejected(
 
 
 @pytest.mark.parametrize("contract_type", DOMAIN_CONTRACTS, ids=lambda value: value.__name__)
-def test_models_are_frozen(contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]) -> None:
+def test_models_are_frozen(
+    contract_type: type[ATSBaseModel], contracts: dict[str, ATSBaseModel]
+) -> None:
     value = contracts[contract_type.__name__]
     with pytest.raises(ValidationError):
         value.schema_version = "1.0"  # type: ignore[attr-defined,misc]

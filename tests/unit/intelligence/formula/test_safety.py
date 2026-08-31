@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
 from ats.contracts.intelligence.models import FormulaDefinition
 from ats.contracts.intelligence.types import (
     FormulaNode,
@@ -154,14 +152,18 @@ def test_future_data_protection_lag() -> None:
 
 
 def test_future_data_not_accessible_long_series() -> None:
-    ctx = FormulaEvaluationContext(evaluation_index=2, series={"close": [1.0, 2.0, 3.0, 100.0, 100.0]})
+    ctx = FormulaEvaluationContext(
+        evaluation_index=2, series={"close": [1.0, 2.0, 3.0, 100.0, 100.0]}
+    )
     f = make_formula(op(FormulaOperator.SMA, feat("close"), lit_int(3)), "FINITE_FLOAT")
     assert evaluate(f, ctx).float_value == pytest.approx(2.0)
 
 
 def test_nested_ast() -> None:
     ctx = FormulaEvaluationContext(evaluation_index=4, series={"close": [1.0, 2.0, 3.0, 4.0, 5.0]})
-    inner = op(FormulaOperator.ADD, feat("close"), op(FormulaOperator.SMA, feat("close"), lit_int(3)))
+    inner = op(
+        FormulaOperator.ADD, feat("close"), op(FormulaOperator.SMA, feat("close"), lit_int(3))
+    )
     outer = op(FormulaOperator.GT, inner, lit_int(6))
     f = make_formula(outer, "BOOLEAN", "ENTRY_FILTER")
     assert evaluate(f, ctx).boolean_value is True
@@ -212,7 +214,7 @@ def test_nan_rejected_in_series() -> None:
 
 
 def test_inf_rejected_in_literal() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         lit_float(float("inf"))
 
 

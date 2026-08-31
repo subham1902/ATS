@@ -20,7 +20,6 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta, timezone
-
 from typing import Any
 
 _INDIA_TZ = timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
@@ -219,32 +218,34 @@ class MarketOpenAcceptanceGate:
             freshness = later.get("freshness", {})
             scans_now = later.get("scanner_observations", 0)
 
-            market_open_checks.extend([
-                Check(
-                    "active_dynamic_subscriptions",
-                    later.get("subscription_count") == 22,
-                    f"count={later.get('subscription_count')}",
-                    category="market_open",
-                ),
-                Check(
-                    "active_nifty_banknifty_atm2_fresh",
-                    len(freshness) == 22 and all(v == "FRESH" for v in freshness.values()),
-                    f"fresh={sum(v == 'FRESH' for v in freshness.values())}/22",
-                    category="market_open",
-                ),
-                Check(
-                    "active_feed_counters_increasing",
-                    int(later.get("upstox_raw_messages", 0)) > first_raw,
-                    f"raw_msgs={first_raw}->{later.get('upstox_raw_messages', 0)}",
-                    category="market_open",
-                ),
-                Check(
-                    "active_autonomous_scanner_running",
-                    int(scans_now) >= first_scans,
-                    f"scans={scans_now}",
-                    category="market_open",
-                ),
-            ])
+            market_open_checks.extend(
+                [
+                    Check(
+                        "active_dynamic_subscriptions",
+                        later.get("subscription_count") == 22,
+                        f"count={later.get('subscription_count')}",
+                        category="market_open",
+                    ),
+                    Check(
+                        "active_nifty_banknifty_atm2_fresh",
+                        len(freshness) == 22 and all(v == "FRESH" for v in freshness.values()),
+                        f"fresh={sum(v == 'FRESH' for v in freshness.values())}/22",
+                        category="market_open",
+                    ),
+                    Check(
+                        "active_feed_counters_increasing",
+                        int(later.get("upstox_raw_messages", 0)) > first_raw,
+                        f"raw_msgs={first_raw}->{later.get('upstox_raw_messages', 0)}",
+                        category="market_open",
+                    ),
+                    Check(
+                        "active_autonomous_scanner_running",
+                        int(scans_now) >= first_scans,
+                        f"scans={scans_now}",
+                        category="market_open",
+                    ),
+                ]
+            )
         else:
             market_open_checks.append(
                 Check(

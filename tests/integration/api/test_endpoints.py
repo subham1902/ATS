@@ -174,6 +174,7 @@ def test_safe_autonomy_activity_and_sse_visibility() -> None:
     activity = x["client"].get("/v1/activity")
     assert activity.status_code == 200
     assert activity.json()["replay_supported"] is False
+
     class DisconnectAfterFirstEvent:
         def __init__(self) -> None:
             self.calls = 0
@@ -182,9 +183,7 @@ def test_safe_autonomy_activity_and_sse_visibility() -> None:
             self.calls += 1
             return self.calls > 1
 
-    route = next(
-        route for route in x["app"].routes if getattr(route, "path", None) == "/v1/stream"
-    )
+    route = next(route for route in x["app"].routes if getattr(route, "path", None) == "/v1/stream")
     stream = route.endpoint(DisconnectAfterFirstEvent(), x["reader"])
     assert stream.media_type == "text/event-stream"
     assert stream.headers["x-ats-replay-supported"] == "false"

@@ -237,8 +237,18 @@ def _expiry_tag(expiry: str) -> str:
     # 2026-09-24 -> 24SEP26
     year, month, day = expiry.split("-")
     month_abbr = [
-        "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-        "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+        "JAN",
+        "FEB",
+        "MAR",
+        "APR",
+        "MAY",
+        "JUN",
+        "JUL",
+        "AUG",
+        "SEP",
+        "OCT",
+        "NOV",
+        "DEC",
     ]
     return f"{day}{month_abbr[int(month) - 1]}{year[2:]}"
 

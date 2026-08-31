@@ -1,4 +1,5 @@
 """Deterministic summary/replay helpers for a session evidence ledger."""
+
 from __future__ import annotations
 
 from collections import Counter

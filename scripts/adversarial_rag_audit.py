@@ -129,9 +129,7 @@ def generate_adversarial_100_test_set() -> list[AdversarialQuery]:
             AdversarialQuery(
                 query_id=f"NEG_{i:02d}",
                 category="negative_control",
-                query_text=(
-                    f"What is threshold for quantum annealing stochastic optimizer {i}?"
-                ),
+                query_text=(f"What is threshold for quantum annealing stochastic optimizer {i}?"),
                 expected_doc_ids=(),
                 is_negative_control=True,
                 expected_answer_fact="INSUFFICIENT_EVIDENCE: Concept does not exist in ATS.",

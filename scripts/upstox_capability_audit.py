@@ -95,12 +95,15 @@ def classify(name: str, url: str, notes: str = ""):
 
 
 results = []
+underlying_key = urllib.parse.quote("NSE_INDEX|Nifty 50")
+banknifty_key = urllib.parse.quote("NSE_INDEX|Nifty Bank")
+option_key = urllib.parse.quote("NSE_FO|69824")
 
 # 1. Control: underlying historical candle (known to work)
 results.append(
     classify(
         "historical_candle_underlying",
-        f"{BASE}/historical-candle/{urllib.parse.quote('NSE_INDEX|Nifty 50')}/1minute/2026-08-25/2026-08-25",
+        f"{BASE}/historical-candle/{underlying_key}/1minute/2026-08-25/2026-08-25",
         "Control probe; should be AVAILABLE.",
     )
 )
@@ -109,8 +112,8 @@ results.append(
 results.append(
     classify(
         "historical_candle_option",
-        f"{BASE}/historical-candle/{urllib.parse.quote('NSE_FO|69824')}/1minute/2026-08-25/2026-08-25",
-        "Real BANKNIFTY option instrument key from local 2026-08-25 data. Determines if option history is refetchable for other dates.",
+        f"{BASE}/historical-candle/{option_key}/1minute/2026-08-25/2026-08-25",
+        "Real BANKNIFTY option key from local 2026-08-25 evidence; tests refetchability.",
     )
 )
 
@@ -118,7 +121,7 @@ results.append(
 results.append(
     classify(
         "option_contract_expiries",
-        f"{BASE}/option/contract?instrument_key={urllib.parse.quote('NSE_INDEX|Nifty Bank')}",
+        f"{BASE}/option/contract?instrument_key={banknifty_key}",
         "Returns available expiry dates for underlying; needed to resolve historical expiries.",
     )
 )
@@ -127,7 +130,7 @@ results.append(
 results.append(
     classify(
         "option_chain_live",
-        f"{BASE}/option/option-chain?instrument_key={urllib.parse.quote('NSE_INDEX|Nifty Bank')}&expiry_date=2026-08-27",
+        f"{BASE}/option/option-chain?instrument_key={banknifty_key}&expiry_date=2026-08-27",
         "Live option chain; informational only (not historical).",
     )
 )
@@ -137,7 +140,7 @@ results.append(
     classify(
         "instrument_master",
         f"{BASE}/market-quote/instrument/master?format=json",
-        "Master file to resolve historical contract metadata (strike, expiry, type, lot_size, tick_size).",
+        "Master resolves historical strike, expiry, type, lot size, and tick size.",
     )
 )
 
@@ -145,7 +148,7 @@ results.append(
 results.append(
     classify(
         "intraday_candle_option",
-        f"{BASE}/historical-candle/{urllib.parse.quote('NSE_FO|69824')}/1minute/2026-08-25/2026-08-25",
+        f"{BASE}/historical-candle/{option_key}/1minute/2026-08-25/2026-08-25",
         "Same as #2 (intraday minute candle for option).",
     )
 )

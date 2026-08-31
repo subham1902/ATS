@@ -60,15 +60,20 @@ def test_determinism_of_observation():
     cm = oet.resolve_contract(CACHE, "NIFTY", 25000.0, "LONG_CE", offset=0)
     eb = oet.OptionBar(ts=None, o=100.0, h=110.0, low=95.0, c=105.0, v=1000, oi=5000)
     xb = oet.OptionBar(ts=None, o=108.0, h=112.0, low=104.0, c=110.0, v=1000, oi=5000)
-    o1 = oet.build_economic_observation("s", "NIFTY", None, "LONG_CE", cm, eb, xb, oet.EvidenceClass.REAL_OPTION_BAR)
-    o2 = oet.build_economic_observation("s", "NIFTY", None, "LONG_CE", cm, eb, xb, oet.EvidenceClass.REAL_OPTION_BAR)
+    o1 = oet.build_economic_observation(
+        "s", "NIFTY", None, "LONG_CE", cm, eb, xb, oet.EvidenceClass.REAL_OPTION_BAR
+    )
+    o2 = oet.build_economic_observation(
+        "s", "NIFTY", None, "LONG_CE", cm, eb, xb, oet.EvidenceClass.REAL_OPTION_BAR
+    )
     assert o1.entry_price == o2.entry_price
     assert o1.net_pnl == o2.net_pnl
     assert o1.contract.lot_size == 65
 
 
 def test_as_of_admission_rejects_future_bar():
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     past = datetime(2026, 8, 25, 10, 0, tzinfo=UTC)
     future = datetime(2026, 8, 25, 10, 5, tzinfo=UTC)
     assert oet.as_of_admission(past, past) is True

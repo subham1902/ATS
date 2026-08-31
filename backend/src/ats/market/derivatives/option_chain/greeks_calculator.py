@@ -95,16 +95,14 @@ def compute_deterministic_greeks(
     discount = math.exp(-rate * years)
     if request.option_type is OptionType.CE:
         delta = _normal_cdf(d1)
-        theta_core = (
-            -(spot * density * sigma) / (2 * sqrt_years)
-            - rate * strike * discount * _normal_cdf(d2)
-        )
+        theta_core = -(spot * density * sigma) / (
+            2 * sqrt_years
+        ) - rate * strike * discount * _normal_cdf(d2)
     else:
         delta = _normal_cdf(d1) - 1.0
-        theta_core = (
-            -(spot * density * sigma) / (2 * sqrt_years)
-            + rate * strike * discount * _normal_cdf(-d2)
-        )
+        theta_core = -(spot * density * sigma) / (
+            2 * sqrt_years
+        ) + rate * strike * discount * _normal_cdf(-d2)
     gamma = density / (spot * sigma_sqrt_t)
     vega_per_iv_point = spot * density * sqrt_years / 100.0
     outputs = {

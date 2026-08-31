@@ -38,8 +38,7 @@ def test_no_production_module_constructs_raw_replay() -> None:
         if _CONSTRUCTOR_PATTERN.search(text):
             offenders.append(str(source))
     assert offenders == [], (
-        "raw DeterministicReplay construction outside the history gate: "
-        + ", ".join(offenders)
+        "raw DeterministicReplay construction outside the history gate: " + ", ".join(offenders)
     )
 
 
@@ -49,9 +48,8 @@ def test_no_production_module_deep_imports_replay_engine() -> None:
         text = source.read_text(encoding="utf-8")
         if _DEEP_IMPORT_TOKEN in text:
             offenders.append(str(source))
-    assert offenders == [], (
-        "deep replay-engine imports outside the history gate: "
-        + ", ".join(offenders)
+    assert offenders == [], "deep replay-engine imports outside the history gate: " + ", ".join(
+        offenders
     )
 
 
@@ -79,9 +77,7 @@ def test_gated_session_hides_future_bars_and_records_ledger() -> None:
     assert isinstance(session, HistoricalReplaySession)
     first = session.advance()
     gated_bars = [
-        item
-        for item in session.visible_observations()
-        if item.kind.value == "MARKET_BAR"
+        item for item in session.visible_observations() if item.kind.value == "MARKET_BAR"
     ]
     assert len(gated_bars) == 1
     assert gated_bars[0].times.event_time == first.bar_timestamp
@@ -89,9 +85,5 @@ def test_gated_session_hides_future_bars_and_records_ledger() -> None:
     remaining = len(dataset.bars) - 1
     for _ in range(remaining):
         session.advance()
-    all_bars = [
-        item
-        for item in session.visible_observations()
-        if item.kind.value == "MARKET_BAR"
-    ]
+    all_bars = [item for item in session.visible_observations() if item.kind.value == "MARKET_BAR"]
     assert len(all_bars) == len(dataset.bars)

@@ -5,21 +5,22 @@ forensic artifacts (summary, funnel, timeline, gate audit, probability
 distribution, near-activations, decisions, orders, fills, positions,
 predictions, rejections, integrity).
 """
+
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
+from uuid import UUID
 
-from ats.contracts.common import UTCDateTime
 from ats.observability.session_evidence import (
     EvidenceEventType,
-    EvidencePayload,
+    EvidenceManifest,
     SessionEvidenceEvent,
     SessionEvidenceRecorder,
     SessionIdentity,
 )
 from ats.observability.session_forensics import (
-    IntegrityStatus,
     analyze_rejections,
     audit_gates,
     build_session_summary,
@@ -32,7 +33,6 @@ from ats.observability.session_forensics import (
     find_near_activations,
     verify_integrity,
 )
-
 
 # ============================================================================
 # Read Service
@@ -56,7 +56,7 @@ class SessionForensicsReader:
         identity = self._resolve_identity(session_id)
         if identity is None:
             return None
-        events = self._load_events(identity)
+        events = self._load_events_for_identity(identity)
         if events is None:
             return None
         return build_session_summary(identity, events)
@@ -91,7 +91,9 @@ class SessionForensicsReader:
                         "event_time_utc": ev.event_time.isoformat(),
                         "model_id": ev.payload.model_id,
                         "underlying": ev.payload.underlying,
-                        "probability": float(ev.payload.probability) if ev.payload.probability is not None else None,
+                        "probability": float(ev.payload.probability)
+                        if ev.payload.probability is not None
+                        else None,
                         "decision": ev.payload.decision,
                         "reason_code": ev.payload.reason_code,
                     }
@@ -116,7 +118,9 @@ class SessionForensicsReader:
                         "event_time_utc": ev.event_time.isoformat(),
                         "event_type": ev.event_type.value,
                         "decision": ev.payload.decision,
-                        "reason_codes": list(ev.payload.reason_codes) if ev.payload.reason_codes else [],
+                        "reason_codes": list(ev.payload.reason_codes)
+                        if ev.payload.reason_codes
+                        else [],
                     }
                 )
         return out
@@ -198,14 +202,25 @@ class SessionForensicsReader:
         events = self._load_events_safe(session_id)
         if events is None:
             return None
-        identity = self._resolve_identity(session_id)
         return explain_why_no_trade(events)
 
-    def get_near_activations(self, session_id: str, *, threshold: float = 0.55, max_distance: float = 0.05, limit: int = 20) -> list[dict[str, Any]] | None:
+    def get_near_activations(
+        self,
+        session_id: str,
+        *,
+        threshold: float = 0.55,
+        max_distance: float = 0.05,
+        limit: int = 20,
+    ) -> list[dict[str, Any]] | None:
         events = self._load_events_safe(session_id)
         if events is None:
             return None
-        return find_near_activations(events, threshold=threshold, max_distance=max_distance, limit=limit)
+        return find_near_activations(
+            events,
+            threshold=threshold,
+            max_distance=max_distance,
+            limit=limit,
+        )
 
     def get_model_distribution(self, session_id: str) -> dict[str, Any] | None:
         events = self._load_events_safe(session_id)
@@ -217,7 +232,7 @@ class SessionForensicsReader:
         discovered = discover_sessions(str(self.root))
         for item in discovered:
             if item["session_id"] == session_id:
-                return item.get("finalized", False)
+                return bool(item.get("finalized", False))
         return False
 
     def finalize_session(self, session_id: str) -> dict[str, Any] | None:
@@ -247,38 +262,34 @@ class SessionForensicsReader:
         # Scan the evidence root for the session directory
         for item in discover_sessions(str(self.root)):
             if item["session_id"] == session_id:
-                date_dir = item.get("trading_date", "").split("/")[-1] if isinstance(item.get("trading_date"), str) else ""
-                # We reconstruct from manifest if available, else from events
                 manifest_path = item.get("manifest_path")
                 if manifest_path and Path(manifest_path).exists():
-                    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+                    manifest_text = Path(manifest_path).read_text(encoding="utf-8")
+                    manifest = EvidenceManifest.model_validate_json(manifest_text)
+                    if manifest.identity is not None:
+                        return manifest.identity
+
+                # Legacy manifests lack identity metadata. Reconstruct the
+                # location-critical fields from the first verified event.
+                events_path = Path(str(item["events_path"]))
+                for line in events_path.read_text(encoding="utf-8").splitlines():
+                    if not line:
+                        continue
+                    event = SessionEvidenceEvent.model_validate_json(line)
                     return SessionIdentity(
                         session_id=UUID(session_id),
-                        trading_date=manifest.get("trading_date", item.get("trading_date", "")),
-                        champion_model_id=manifest.get("champion", "C0"),
-                        champion_model_version=manifest.get("champion_version", "1.0.0"),
-                        policy_version=manifest.get("policy_version", "1.0.0"),
-                        system_version=manifest.get("system_version", "a2-paper"),
-                        started_at=datetime.fromisoformat(manifest.get("started_at", "2026-01-01T09:15:00")),
-                        market=manifest.get("market", "NSE"),
+                        trading_date=str(item.get("trading_date", "")),
+                        champion_model_id="C0",
+                        champion_model_version="1.0.0",
+                        policy_version="A04_CURRENT",
+                        system_version="A2_PAPER_LEGACY_MANIFEST",
+                        started_at=datetime.fromisoformat(event.event_time.isoformat()),
                     )
-                else:
-                    # Try to read first event for identity
-                    events_path = Path(str(self.root)) / item.get("trading_date", "") / session_id / "events.jsonl"
-                    if events_path.exists():
-                        for line in events_path.read_text(encoding="utf-8").splitlines():
-                            if not line:
-                                continue
-                            ev = SessionEvidenceEvent.model_validate_json(line)
-                            # We need identity from session_evidence setup; assume identity built from events path
-                            # For simplicity, reconstruct from first event session_id
-                            # The session identity is usually stored in the events; but for simplicity we build a basic identity
-                            # For real usage, the session identity should be persisted in manifest; we use manifest approach.
-                            # If no manifest, return None.
-                            return None
         return None
 
-    def _load_events_for_identity(self, identity: SessionIdentity) -> tuple[SessionEvidenceEvent, ...] | None:
+    def _load_events_for_identity(
+        self, identity: SessionIdentity
+    ) -> tuple[SessionEvidenceEvent, ...] | None:
         recorder = SessionEvidenceRecorder(identity, self.root)
         try:
             events = recorder.events()

@@ -90,7 +90,9 @@ def test_forbidden_backend_dependencies_are_absent() -> None:
     declared: set[str] = set()
     for manifest_path in manifests:
         manifest = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
-        declared.update(item.split("=", 1)[0].lower() for item in manifest["project"]["dependencies"])
+        declared.update(
+            item.split("=", 1)[0].lower() for item in manifest["project"]["dependencies"]
+        )
         for group in manifest.get("dependency-groups", {}).values():
             declared.update(item.split("=", 1)[0].lower() for item in group)
     assert declared.isdisjoint(forbidden)

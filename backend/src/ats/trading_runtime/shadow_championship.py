@@ -31,6 +31,7 @@ RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH = hashlib.sha256(
 # 1. Data Contracts & Events
 # ----------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class MarketObservationContext:
     market_state_id: str
@@ -132,9 +133,11 @@ class CounterfactualTrade:
     exit_policy_hash: str = RESEARCH_COUNTERFACTUAL_POLICY_V1_HASH
     shadow_status: str = "SHADOW_ONLY"
 
+
 # ----------------------------------------------------------------------
 # 2. Base Shadow Model & Implementations (C0 + M1..M9 + R10-X)
 # ----------------------------------------------------------------------
+
 
 class BaseShadowModel:
     def __init__(
@@ -389,9 +392,11 @@ class ShadowR10X(BaseShadowModel):
         p = 1.0 / (1.0 + math.exp(-max(-6.0, min(6.0, score))))
         return max(0.05, min(0.95, p))
 
+
 # ----------------------------------------------------------------------
 # 3. Main Forward Shadow Championship Engine
 # ----------------------------------------------------------------------
+
 
 class ForwardShadowChampionshipEngine:
     """Zero-authority forward shadow evaluation and counterfactual settlement engine."""
@@ -476,8 +481,7 @@ class ForwardShadowChampionshipEngine:
             or quote.option_type != expected_option_type
             or quote.observed_at > ctx.decision_time
             or not all(
-                math.isfinite(value)
-                for value in (quote.strike, quote.bid_price, quote.ask_price)
+                math.isfinite(value) for value in (quote.strike, quote.bid_price, quote.ask_price)
             )
             or quote.strike <= 0
             or quote.bid_price <= 0
@@ -559,10 +563,9 @@ class ForwardShadowChampionshipEngine:
 
                 # Explicit Deconstructed Costs:
                 statutory = 40.0 + (0.000625 * exit_eff * qty)
-                slippage_friction = (
-                    (pos["entry_price_eff"] - pos["entry_ask"]) * qty
-                    + (observed_bid - exit_eff) * qty
-                )
+                slippage_friction = (pos["entry_price_eff"] - pos["entry_ask"]) * qty + (
+                    observed_bid - exit_eff
+                ) * qty
                 cost_stress_mult = 1.5
                 total_costs = (statutory + slippage_friction) * cost_stress_mult
                 net_pnl = gross_pnl - total_costs

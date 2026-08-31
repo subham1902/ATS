@@ -99,9 +99,7 @@ def available_expiries(
 ) -> tuple[str, ...]:
     """Unique ascending expiries actually listed for the requested contract family."""
 
-    validate_master_for_use(
-        master, evaluation_time=evaluation_time, maximum_age_ms=maximum_age_ms
-    )
+    validate_master_for_use(master, evaluation_time=evaluation_time, maximum_age_ms=maximum_age_ms)
     if instrument_type is DerivativeInstrumentType.FUTIDX and option_type is not None:
         raise ValueError("FUTIDX query cannot specify option_type")
     expiries = {

@@ -2,7 +2,13 @@ from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import (
+    ClassVar as _ClassVar,
+    Iterable as _Iterable,
+    Mapping as _Mapping,
+    Optional as _Optional,
+    Union as _Union,
+)
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -27,6 +33,7 @@ class MarketStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     NORMAL_CLOSE: _ClassVar[MarketStatus]
     CLOSING_START: _ClassVar[MarketStatus]
     CLOSING_END: _ClassVar[MarketStatus]
+
 initial_feed: Type
 live_feed: Type
 market_info: Type
@@ -51,13 +58,21 @@ class LTPC(_message.Message):
     ltt: int
     ltq: int
     cp: float
-    def __init__(self, ltp: _Optional[float] = ..., ltt: _Optional[int] = ..., ltq: _Optional[int] = ..., cp: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        ltp: _Optional[float] = ...,
+        ltt: _Optional[int] = ...,
+        ltq: _Optional[int] = ...,
+        cp: _Optional[float] = ...,
+    ) -> None: ...
 
 class MarketLevel(_message.Message):
     __slots__ = ("bidAskQuote",)
     BIDASKQUOTE_FIELD_NUMBER: _ClassVar[int]
     bidAskQuote: _containers.RepeatedCompositeFieldContainer[Quote]
-    def __init__(self, bidAskQuote: _Optional[_Iterable[_Union[Quote, _Mapping]]] = ...) -> None: ...
+    def __init__(
+        self, bidAskQuote: _Optional[_Iterable[_Union[Quote, _Mapping]]] = ...
+    ) -> None: ...
 
 class MarketOHLC(_message.Message):
     __slots__ = ("ohlc",)
@@ -75,7 +90,13 @@ class Quote(_message.Message):
     bidP: float
     askQ: int
     askP: float
-    def __init__(self, bidQ: _Optional[int] = ..., bidP: _Optional[float] = ..., askQ: _Optional[int] = ..., askP: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        bidQ: _Optional[int] = ...,
+        bidP: _Optional[float] = ...,
+        askQ: _Optional[int] = ...,
+        askP: _Optional[float] = ...,
+    ) -> None: ...
 
 class OptionGreeks(_message.Message):
     __slots__ = ("delta", "theta", "gamma", "vega", "rho")
@@ -89,7 +110,14 @@ class OptionGreeks(_message.Message):
     gamma: float
     vega: float
     rho: float
-    def __init__(self, delta: _Optional[float] = ..., theta: _Optional[float] = ..., gamma: _Optional[float] = ..., vega: _Optional[float] = ..., rho: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        delta: _Optional[float] = ...,
+        theta: _Optional[float] = ...,
+        gamma: _Optional[float] = ...,
+        vega: _Optional[float] = ...,
+        rho: _Optional[float] = ...,
+    ) -> None: ...
 
 class OHLC(_message.Message):
     __slots__ = ("interval", "open", "high", "low", "close", "vol", "ts")
@@ -107,10 +135,30 @@ class OHLC(_message.Message):
     close: float
     vol: int
     ts: int
-    def __init__(self, interval: _Optional[str] = ..., open: _Optional[float] = ..., high: _Optional[float] = ..., low: _Optional[float] = ..., close: _Optional[float] = ..., vol: _Optional[int] = ..., ts: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self,
+        interval: _Optional[str] = ...,
+        open: _Optional[float] = ...,
+        high: _Optional[float] = ...,
+        low: _Optional[float] = ...,
+        close: _Optional[float] = ...,
+        vol: _Optional[int] = ...,
+        ts: _Optional[int] = ...,
+    ) -> None: ...
 
 class MarketFullFeed(_message.Message):
-    __slots__ = ("ltpc", "marketLevel", "optionGreeks", "marketOHLC", "atp", "vtt", "oi", "iv", "tbq", "tsq")
+    __slots__ = (
+        "ltpc",
+        "marketLevel",
+        "optionGreeks",
+        "marketOHLC",
+        "atp",
+        "vtt",
+        "oi",
+        "iv",
+        "tbq",
+        "tsq",
+    )
     LTPC_FIELD_NUMBER: _ClassVar[int]
     MARKETLEVEL_FIELD_NUMBER: _ClassVar[int]
     OPTIONGREEKS_FIELD_NUMBER: _ClassVar[int]
@@ -131,7 +179,19 @@ class MarketFullFeed(_message.Message):
     iv: float
     tbq: float
     tsq: float
-    def __init__(self, ltpc: _Optional[_Union[LTPC, _Mapping]] = ..., marketLevel: _Optional[_Union[MarketLevel, _Mapping]] = ..., optionGreeks: _Optional[_Union[OptionGreeks, _Mapping]] = ..., marketOHLC: _Optional[_Union[MarketOHLC, _Mapping]] = ..., atp: _Optional[float] = ..., vtt: _Optional[int] = ..., oi: _Optional[float] = ..., iv: _Optional[float] = ..., tbq: _Optional[float] = ..., tsq: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        ltpc: _Optional[_Union[LTPC, _Mapping]] = ...,
+        marketLevel: _Optional[_Union[MarketLevel, _Mapping]] = ...,
+        optionGreeks: _Optional[_Union[OptionGreeks, _Mapping]] = ...,
+        marketOHLC: _Optional[_Union[MarketOHLC, _Mapping]] = ...,
+        atp: _Optional[float] = ...,
+        vtt: _Optional[int] = ...,
+        oi: _Optional[float] = ...,
+        iv: _Optional[float] = ...,
+        tbq: _Optional[float] = ...,
+        tsq: _Optional[float] = ...,
+    ) -> None: ...
 
 class IndexFullFeed(_message.Message):
     __slots__ = ("ltpc", "marketOHLC")
@@ -139,7 +199,11 @@ class IndexFullFeed(_message.Message):
     MARKETOHLC_FIELD_NUMBER: _ClassVar[int]
     ltpc: LTPC
     marketOHLC: MarketOHLC
-    def __init__(self, ltpc: _Optional[_Union[LTPC, _Mapping]] = ..., marketOHLC: _Optional[_Union[MarketOHLC, _Mapping]] = ...) -> None: ...
+    def __init__(
+        self,
+        ltpc: _Optional[_Union[LTPC, _Mapping]] = ...,
+        marketOHLC: _Optional[_Union[MarketOHLC, _Mapping]] = ...,
+    ) -> None: ...
 
 class FullFeed(_message.Message):
     __slots__ = ("marketFF", "indexFF")
@@ -147,7 +211,11 @@ class FullFeed(_message.Message):
     INDEXFF_FIELD_NUMBER: _ClassVar[int]
     marketFF: MarketFullFeed
     indexFF: IndexFullFeed
-    def __init__(self, marketFF: _Optional[_Union[MarketFullFeed, _Mapping]] = ..., indexFF: _Optional[_Union[IndexFullFeed, _Mapping]] = ...) -> None: ...
+    def __init__(
+        self,
+        marketFF: _Optional[_Union[MarketFullFeed, _Mapping]] = ...,
+        indexFF: _Optional[_Union[IndexFullFeed, _Mapping]] = ...,
+    ) -> None: ...
 
 class FirstLevelWithGreeks(_message.Message):
     __slots__ = ("ltpc", "firstDepth", "optionGreeks", "vtt", "oi", "iv")
@@ -163,7 +231,15 @@ class FirstLevelWithGreeks(_message.Message):
     vtt: int
     oi: float
     iv: float
-    def __init__(self, ltpc: _Optional[_Union[LTPC, _Mapping]] = ..., firstDepth: _Optional[_Union[Quote, _Mapping]] = ..., optionGreeks: _Optional[_Union[OptionGreeks, _Mapping]] = ..., vtt: _Optional[int] = ..., oi: _Optional[float] = ..., iv: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        ltpc: _Optional[_Union[LTPC, _Mapping]] = ...,
+        firstDepth: _Optional[_Union[Quote, _Mapping]] = ...,
+        optionGreeks: _Optional[_Union[OptionGreeks, _Mapping]] = ...,
+        vtt: _Optional[int] = ...,
+        oi: _Optional[float] = ...,
+        iv: _Optional[float] = ...,
+    ) -> None: ...
 
 class Feed(_message.Message):
     __slots__ = ("ltpc", "fullFeed", "firstLevelWithGreeks", "requestMode")
@@ -175,7 +251,13 @@ class Feed(_message.Message):
     fullFeed: FullFeed
     firstLevelWithGreeks: FirstLevelWithGreeks
     requestMode: RequestMode
-    def __init__(self, ltpc: _Optional[_Union[LTPC, _Mapping]] = ..., fullFeed: _Optional[_Union[FullFeed, _Mapping]] = ..., firstLevelWithGreeks: _Optional[_Union[FirstLevelWithGreeks, _Mapping]] = ..., requestMode: _Optional[_Union[RequestMode, str]] = ...) -> None: ...
+    def __init__(
+        self,
+        ltpc: _Optional[_Union[LTPC, _Mapping]] = ...,
+        fullFeed: _Optional[_Union[FullFeed, _Mapping]] = ...,
+        firstLevelWithGreeks: _Optional[_Union[FirstLevelWithGreeks, _Mapping]] = ...,
+        requestMode: _Optional[_Union[RequestMode, str]] = ...,
+    ) -> None: ...
 
 class MarketInfo(_message.Message):
     __slots__ = ("segmentStatus",)
@@ -185,7 +267,10 @@ class MarketInfo(_message.Message):
         VALUE_FIELD_NUMBER: _ClassVar[int]
         key: str
         value: MarketStatus
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[_Union[MarketStatus, str]] = ...) -> None: ...
+        def __init__(
+            self, key: _Optional[str] = ..., value: _Optional[_Union[MarketStatus, str]] = ...
+        ) -> None: ...
+
     SEGMENTSTATUS_FIELD_NUMBER: _ClassVar[int]
     segmentStatus: _containers.ScalarMap[str, MarketStatus]
     def __init__(self, segmentStatus: _Optional[_Mapping[str, MarketStatus]] = ...) -> None: ...
@@ -198,7 +283,10 @@ class FeedResponse(_message.Message):
         VALUE_FIELD_NUMBER: _ClassVar[int]
         key: str
         value: Feed
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[_Union[Feed, _Mapping]] = ...) -> None: ...
+        def __init__(
+            self, key: _Optional[str] = ..., value: _Optional[_Union[Feed, _Mapping]] = ...
+        ) -> None: ...
+
     TYPE_FIELD_NUMBER: _ClassVar[int]
     FEEDS_FIELD_NUMBER: _ClassVar[int]
     CURRENTTS_FIELD_NUMBER: _ClassVar[int]
@@ -207,4 +295,10 @@ class FeedResponse(_message.Message):
     feeds: _containers.MessageMap[str, Feed]
     currentTs: int
     marketInfo: MarketInfo
-    def __init__(self, type: _Optional[_Union[Type, str]] = ..., feeds: _Optional[_Mapping[str, Feed]] = ..., currentTs: _Optional[int] = ..., marketInfo: _Optional[_Union[MarketInfo, _Mapping]] = ...) -> None: ...
+    def __init__(
+        self,
+        type: _Optional[_Union[Type, str]] = ...,
+        feeds: _Optional[_Mapping[str, Feed]] = ...,
+        currentTs: _Optional[int] = ...,
+        marketInfo: _Optional[_Union[MarketInfo, _Mapping]] = ...,
+    ) -> None: ...

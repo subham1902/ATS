@@ -129,6 +129,7 @@ class IntelligencePipelineConfig:
             near_expiry_penalty_fraction=Decimal("0.02"),
             bar_duration_minutes=5,
             theta_semantics=ThetaSemantics.PER_CALENDAR_DAY,
+            require_observed_option_payoff=False,
         )
     )
 
@@ -344,9 +345,7 @@ class MarketIntelligencePipeline:
                 instrument_cand = sel_res.candidates[0]
             else:
                 rejection_codes = tuple(
-                    code
-                    for rejection in sel_res.rejections
-                    for code in rejection.reason_codes
+                    code for rejection in sel_res.rejections for code in rejection.reason_codes
                 )
                 return PipelineResult(
                     is_actionable=False,

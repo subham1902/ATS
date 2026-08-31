@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts import canonical_sha256
 from ats.contracts.domain import DOMAIN_CONTRACTS, compute_payload_hash
 from ats.contracts.domain.models import (
@@ -22,6 +20,8 @@ from ats.contracts.domain.types import (
     PredicateOperator,
     RiskOutcome,
 )
+from pydantic import ValidationError
+
 from tests.unit.contracts.domain.fixtures import make_contracts
 
 EXPECTED_CONTRACT_NAMES = (
@@ -69,9 +69,7 @@ def test_uuid_references_survive_immutable_round_trip() -> None:
 def test_true_probability_fields_reject_out_of_range(value: Decimal) -> None:
     confidence = make_contracts()["ConfidenceEvidence"]
     with pytest.raises(ValidationError):
-        ConfidenceEvidence.model_validate(
-            {**confidence.model_dump(), "raw_probability": value}
-        )
+        ConfidenceEvidence.model_validate({**confidence.model_dump(), "raw_probability": value})
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
@@ -102,7 +100,6 @@ def test_alpha_authority_literals_are_closed() -> None:
 
 def test_draft_and_advisory_cannot_express_executable_authority() -> None:
     draft = make_contracts()["StrategyPolicyDraft"]
-    advisory = make_contracts()["SupervisorAdvisory"]
     with pytest.raises(ValidationError):
         StrategyPolicyDraft.model_validate({**draft.model_dump(), "executable": True})
     assert "executable" not in SupervisorAdvisory.model_fields
@@ -121,9 +118,7 @@ def test_risk_outcomes_are_closed_and_unknown_is_representable(decision: RiskOut
 @pytest.mark.parametrize("recommendation", list(AdvisoryOutcome))
 def test_advisory_outcomes_are_closed(recommendation: AdvisoryOutcome) -> None:
     value = make_contracts()["SupervisorAdvisory"]
-    restored = type(value).model_validate(
-        {**value.model_dump(), "recommendation": recommendation}
-    )
+    restored = type(value).model_validate({**value.model_dump(), "recommendation": recommendation})
     assert restored.recommendation is recommendation  # type: ignore[attr-defined]
 
 

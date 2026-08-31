@@ -269,9 +269,7 @@ class UpstoxV3RuntimeFeed:
                     "lot_size": spec.lot_size,
                     "tick_size": str(spec.tick_size),
                     "freshness": (
-                        freshness_state.value
-                        if freshness_state is not None
-                        else "UNKNOWN"
+                        freshness_state.value if freshness_state is not None else "UNKNOWN"
                     ),
                     "provider_timestamp": (
                         provider_time.isoformat() if provider_time is not None else None
@@ -289,9 +287,7 @@ class UpstoxV3RuntimeFeed:
                     "bid_quantity": update.bid_quantity if update else None,
                     "ask_quantity": update.ask_quantity if update else None,
                     "depth_buy_levels": (
-                        len(update.market_depth.buy_levels)
-                        if update and update.market_depth
-                        else 0
+                        len(update.market_depth.buy_levels) if update and update.market_depth else 0
                     ),
                     "depth_sell_levels": (
                         len(update.market_depth.sell_levels)
@@ -300,9 +296,7 @@ class UpstoxV3RuntimeFeed:
                     ),
                     "volume": update.volume if update else None,
                     "open_interest": update.open_interest if update else None,
-                    "implied_volatility": (
-                        update.implied_volatility if update else None
-                    ),
+                    "implied_volatility": (update.implied_volatility if update else None),
                     "delta": update.delta if update else None,
                     "gamma": update.gamma if update else None,
                     "theta": update.theta if update else None,

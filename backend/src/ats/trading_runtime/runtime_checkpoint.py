@@ -68,9 +68,18 @@ def serialize_position(position: MonitoredPosition) -> dict[str, Any]:
 
 def deserialize_position(payload: dict[str, Any]) -> MonitoredPosition:
     decimal_fields = {
-        "entry_price", "current_mark", "quantity", "realized_pnl", "unrealized_pnl",
-        "peak_pnl", "current_stop", "trailing_stop", "capital_at_risk",
-        "capital_committed", "risk_budget", "maximum_loss_per_unit",
+        "entry_price",
+        "current_mark",
+        "quantity",
+        "realized_pnl",
+        "unrealized_pnl",
+        "peak_pnl",
+        "current_stop",
+        "trailing_stop",
+        "capital_at_risk",
+        "capital_committed",
+        "risk_budget",
+        "maximum_loss_per_unit",
     }
     values = dict(payload)
     for key in decimal_fields:
@@ -86,6 +95,9 @@ def deserialize_position(payload: dict[str, Any]) -> MonitoredPosition:
 
 
 __all__ = [
-    "JsonRuntimeCheckpointStore", "MemoryRuntimeCheckpointStore", "RuntimeCheckpointStore",
-    "deserialize_position", "serialize_position",
+    "JsonRuntimeCheckpointStore",
+    "MemoryRuntimeCheckpointStore",
+    "RuntimeCheckpointStore",
+    "deserialize_position",
+    "serialize_position",
 ]

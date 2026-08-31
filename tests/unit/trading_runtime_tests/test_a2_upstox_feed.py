@@ -8,6 +8,7 @@ deterministic replay source. No live session, no real orders.
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from ats.market.derivatives.option_universe import (
@@ -49,14 +50,24 @@ def _universe():
 
     as_of = SystemClock().now()
     nifty = fixture_contract_master(
-        underlying="NIFTY", spot=Decimal("25000"), expiry="2026-09-24",
-        strike_step=Decimal("50"), lot_size=25, tick_size=Decimal("0.05"),
-        half_width_strikes=10, as_of=as_of,
+        underlying="NIFTY",
+        spot=Decimal("25000"),
+        expiry="2026-09-24",
+        strike_step=Decimal("50"),
+        lot_size=25,
+        tick_size=Decimal("0.05"),
+        half_width_strikes=10,
+        as_of=as_of,
     )
     bank = fixture_contract_master(
-        underlying="BANKNIFTY", spot=Decimal("57000"), expiry="2026-09-24",
-        strike_step=Decimal("100"), lot_size=15, tick_size=Decimal("0.05"),
-        half_width_strikes=10, as_of=as_of,
+        underlying="BANKNIFTY",
+        spot=Decimal("57000"),
+        expiry="2026-09-24",
+        strike_step=Decimal("100"),
+        lot_size=15,
+        tick_size=Decimal("0.05"),
+        half_width_strikes=10,
+        as_of=as_of,
     )
     return build_dynamic_option_universe(
         contracts=nifty + bank,
@@ -77,7 +88,9 @@ def _frame(quotes, ts_ms):
 
 
 def test_c1_feed_attached_to_a2_runtime():
-    controller = A2PaperSessionController(config=A2PaperSessionConfig())
+    controller = A2PaperSessionController(
+        config=A2PaperSessionConfig(require_live_instrument_evidence=True)
+    )
     assert controller.start(require_token=False) is True
 
     universe = _universe()
@@ -85,14 +98,29 @@ def test_c1_feed_attached_to_a2_runtime():
     feed.register_universe(universe)
     feed.connect_replay()
     controller.attach_upstox_runtime_feed(feed)
+    assert controller.market_open_data_ready() is False
 
     now_ms = int(time.time() * 1000)
+    frame_time = datetime.fromtimestamp(now_ms / 1000, UTC)
     quotes = {
         "NSE_INDEX|Nifty 50": 25012.5,
         "NSE_INDEX|Nifty Bank": 57103.25,
         universe[2].instrument_key: 120.5,
     }
-    feed.ingest_frame(_frame(quotes, now_ms))
+    feed.ingest_frame(_frame(quotes, now_ms), received_at=frame_time)
+    assert controller.market_open_data_ready() is False
+
+    # Stage 2 becomes ready only when every key in the 22-key universe is fresh.
+    complete_quotes = {item.instrument_key: Decimal("100") for item in universe}
+    complete_quotes.update(
+        {
+            "NSE_INDEX|Nifty 50": Decimal("25012.5"),
+            "NSE_INDEX|Nifty Bank": Decimal("57103.25"),
+            universe[2].instrument_key: Decimal("120.5"),
+        }
+    )
+    feed.ingest_frame(_frame(complete_quotes, now_ms), received_at=frame_time)
+    assert controller.market_open_data_ready(now=frame_time) is True
 
     # Marks reached the A2 runtime feed adapter keyed by provider instrument key.
     assert controller.market_feed.latest_mark("NSE_INDEX|Nifty 50") == Decimal("25012.5")
@@ -101,8 +129,8 @@ def test_c1_feed_attached_to_a2_runtime():
 
     # Telemetry truthfully reflects the decoded frames.
     tel = feed.telemetry()
-    assert tel["upstox_raw_messages"] == 1
-    assert tel["normalized_updates"] == 3
+    assert tel["upstox_raw_messages"] == 2
+    assert tel["normalized_updates"] == 22
     assert tel["subscription_count"] == 22
 
     # Bridge captured the index updates under canonical identities.
@@ -114,5 +142,5 @@ def test_c1_feed_attached_to_a2_runtime():
         telemetry = client.get("/v1/pipeline/counters").json()
     assert telemetry["subscription_count"] == 22
     assert telemetry["connection_state"] == "LIVE"
-    assert telemetry["upstox_raw_messages"] == 1
-    assert telemetry["normalized_messages"] == 3
+    assert telemetry["upstox_raw_messages"] == 2
+    assert telemetry["normalized_messages"] == 22

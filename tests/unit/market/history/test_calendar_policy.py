@@ -61,9 +61,7 @@ def test_overnight_gap_requires_next_session_preopen_close() -> None:
         make_bar_observation(sequence=1, event_time=_ist_close(DAY_ONE, 15, 30)),
         make_bar_observation(sequence=2, event_time=_ist_close(DAY_TWO, 9, 15)),
     )
-    with_calendar = validate_market_history(
-        records, policy=_policy(_calendar(DAY_ONE, DAY_TWO))
-    )
+    with_calendar = validate_market_history(records, policy=_policy(_calendar(DAY_ONE, DAY_TWO)))
     without_calendar = validate_market_history(records, policy=_policy(None))
     assert any(
         finding.code is HistoricalTruthErrorCode.MISSING_INTERVAL
@@ -86,8 +84,7 @@ def test_fully_halted_window_excuses_every_intermediate_close() -> None:
         market_open=time(9, 15),
         market_close=time(15, 30),
         overrides=tuple(
-            SessionOverride(timestamp=halted, state=SessionState.HALTED)
-            for halted in halted_times
+            SessionOverride(timestamp=halted, state=SessionState.HALTED) for halted in halted_times
         ),
     )
     records = (
@@ -96,8 +93,7 @@ def test_fully_halted_window_excuses_every_intermediate_close() -> None:
     )
     report = validate_market_history(records, policy=_policy(calendar))
     assert not any(
-        finding.code is HistoricalTruthErrorCode.MISSING_INTERVAL
-        for finding in report.findings
+        finding.code is HistoricalTruthErrorCode.MISSING_INTERVAL for finding in report.findings
     )
 
 
@@ -108,8 +104,7 @@ def test_naive_policy_still_flags_simple_gap() -> None:
     )
     report = validate_market_history(records, policy=HistoryValidationPolicy())
     assert any(
-        finding.code is HistoricalTruthErrorCode.MISSING_INTERVAL
-        for finding in report.findings
+        finding.code is HistoricalTruthErrorCode.MISSING_INTERVAL for finding in report.findings
     )
 
 

@@ -11,13 +11,7 @@ from ats.market.replay import ReplayConfiguration
 
 ROOT = Path(__file__).parents[4]
 FIXTURE = (
-    ROOT
-    / "backend"
-    / "src"
-    / "ats"
-    / "market"
-    / "fixtures"
-    / "nse_cash_reliance_5m_v1.bars.json"
+    ROOT / "backend" / "src" / "ats" / "market" / "fixtures" / "nse_cash_reliance_5m_v1.bars.json"
 )
 GOLDEN = Path(__file__).with_name("golden_feature_bundle.json")
 EXPECTED_FIXTURE_SHA = "182078ad14a46c8c2a92e7cf6838a62c838789820568f25b8c45c6063f62aaba"
@@ -51,9 +45,10 @@ def test_b01_replay_to_feature_bundle_matches_committed_golden() -> None:
     assert hashlib.sha256(FIXTURE.read_bytes()).hexdigest() == EXPECTED_FIXTURE_SHA
     assert tuple(snapshot.sequence for snapshot in snapshots) == (1, 2, 3, 4)
     assert tuple(snapshot.payload_hash for snapshot in snapshots) == EXPECTED_SNAPSHOT_HASHES
-    assert bundle.model_dump_json() == FeatureBundle.model_validate_json(
-        GOLDEN.read_bytes()
-    ).model_dump_json()
+    assert (
+        bundle.model_dump_json()
+        == FeatureBundle.model_validate_json(GOLDEN.read_bytes()).model_dump_json()
+    )
 
 
 def test_complete_pipeline_is_deterministic() -> None:

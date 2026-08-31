@@ -22,9 +22,7 @@ def test_ltpc_binary_frame_normalizes_exact_prices_and_timestamps() -> None:
     frame.feeds[INDEX_KEY].ltpc.ltp = 24207.75
     frame.feeds[INDEX_KEY].ltpc.cp = 24100.5
     frame.feeds[INDEX_KEY].ltpc.ltt = NOW_MS - 20
-    (update,) = UpstoxV3ProtobufDecoder().decode(
-        frame.SerializeToString(), received_at=NOW
-    )
+    (update,) = UpstoxV3ProtobufDecoder().decode(frame.SerializeToString(), received_at=NOW)
     assert update.instrument_key == INDEX_KEY
     assert update.last_traded_price == Decimal("24207.75")
     assert update.close_price == Decimal("24100.5")
@@ -52,9 +50,7 @@ def test_full_option_frame_carries_depth_oi_iv_and_all_provider_greeks() -> None
     feed.optionGreeks.theta = -5.0
     feed.optionGreeks.vega = 8.0
     feed.optionGreeks.rho = 2.0
-    (update,) = UpstoxV3ProtobufDecoder().decode(
-        frame.SerializeToString(), received_at=NOW
-    )
+    (update,) = UpstoxV3ProtobufDecoder().decode(frame.SerializeToString(), received_at=NOW)
     assert update.bid_price == Decimal("180.55")
     assert update.ask_price == Decimal("181.5")
     assert update.open_interest == 3699605
@@ -81,9 +77,7 @@ def test_market_status_is_retained_without_inventing_instrument_update() -> None
 def test_missing_provider_timestamp_remains_explicitly_unknown() -> None:
     frame = FeedResponse(type=1)
     frame.feeds[INDEX_KEY].ltpc.ltp = 1
-    (update,) = UpstoxV3ProtobufDecoder().decode(
-        frame.SerializeToString(), received_at=NOW
-    )
+    (update,) = UpstoxV3ProtobufDecoder().decode(frame.SerializeToString(), received_at=NOW)
     assert update.exchange_timestamp is None
 
 

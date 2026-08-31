@@ -64,9 +64,7 @@ def test_revision_replaces_original_only_after_its_availability() -> None:
 
 def test_known_expiries_grow_only_at_master_change_availability() -> None:
     v1_row, v2_row = scenario_contract_master_change()
-    dataset = build_test_dataset(
-        (v1_row, v2_row), contract_master_version="NSE_TEST_MASTER_V2"
-    )
+    dataset = build_test_dataset((v1_row, v2_row), contract_master_version="NSE_TEST_MASTER_V2")
     switch_instant = v2_row.times.available_to_strategy_time
     before = dataset.known_expiries_as_of(
         "NIFTY", at_time=switch_instant - timedelta(milliseconds=1)
@@ -78,9 +76,7 @@ def test_known_expiries_grow_only_at_master_change_availability() -> None:
 
 def test_latest_metadata_switches_with_availability_ordering() -> None:
     v1_row, v2_row = scenario_contract_master_change()
-    dataset = build_test_dataset(
-        (v1_row, v2_row), contract_master_version="NSE_TEST_MASTER_V2"
-    )
+    dataset = build_test_dataset((v1_row, v2_row), contract_master_version="NSE_TEST_MASTER_V2")
     symbol_v1 = "NIFTY24JUN24000CE"
     symbol_v2 = "NIFTY24JUN24100CE"
     latest_before = dataset.latest_contract_metadata_as_of(

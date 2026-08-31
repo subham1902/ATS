@@ -38,7 +38,13 @@ headers = {
     "User-Agent": "ATS-Research-Client/1.0",
 }
 
-data_root = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
+repo_root = Path(__file__).resolve().parents[1]
+data_root = Path(
+    os.environ.get(
+        "ATS_SESSION_DATA_ROOT",
+        str(repo_root / "data" / "raw" / "upstox" / "sessions"),
+    )
+)
 
 for s in sessions:
     s_dir = data_root / s
@@ -46,7 +52,8 @@ for s in sessions:
 
     nifty_file = s_dir / "NIFTY_underlying.json"
     if not nifty_file.exists():
-        url = f"https://api.upstox.com/v2/historical-candle/{urllib.parse.quote('NSE_INDEX|Nifty 50')}/1minute/{s}/{s}"
+        key = urllib.parse.quote("NSE_INDEX|Nifty 50")
+        url = f"https://api.upstox.com/v2/historical-candle/{key}/1minute/{s}/{s}"
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as resp:
             nifty_file.write_bytes(resp.read())
@@ -54,7 +61,8 @@ for s in sessions:
 
     bn_file = s_dir / "BANKNIFTY_underlying.json"
     if not bn_file.exists():
-        url = f"https://api.upstox.com/v2/historical-candle/{urllib.parse.quote('NSE_INDEX|Nifty Bank')}/1minute/{s}/{s}"
+        key = urllib.parse.quote("NSE_INDEX|Nifty Bank")
+        url = f"https://api.upstox.com/v2/historical-candle/{key}/1minute/{s}/{s}"
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as resp:
             bn_file.write_bytes(resp.read())

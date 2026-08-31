@@ -80,15 +80,11 @@ def test_visible_window_grows_monotonically_with_decision_time() -> None:
 
 def test_every_admitted_record_satisfies_the_as_of_rule() -> None:
     records = (*scenario_normal_series(4), make_option_quote_observation(event_time=SESSION_START))
-    decision_times = [
-        SESSION_START + timedelta(seconds=offset) for offset in range(0, 1900, 250)
-    ]
+    decision_times = [SESSION_START + timedelta(seconds=offset) for offset in range(0, 1900, 250)]
     for decision_time in decision_times:
         for observation in visible_observations(records, at_time=decision_time):
             assert observation.times.available_to_strategy_time <= decision_time
-            assert (
-                require_available(observation, at_time=decision_time) is observation
-            )
+            assert require_available(observation, at_time=decision_time) is observation
 
 
 def test_revision_resolution_is_deterministic_at_every_instant() -> None:

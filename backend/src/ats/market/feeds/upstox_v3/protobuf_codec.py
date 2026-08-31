@@ -41,13 +41,9 @@ class UpstoxV3ProtobufDecoder:
     def last_current_timestamp(self) -> datetime | None:
         return self._last_current_timestamp
 
-    def decode(
-        self, payload: bytes, *, received_at: datetime
-    ) -> tuple[NormalizedFeedUpdate, ...]:
+    def decode(self, payload: bytes, *, received_at: datetime) -> tuple[NormalizedFeedUpdate, ...]:
         if not payload:
-            raise UpstoxFeedError(
-                UpstoxFeedErrorCode.MALFORMED_FRAME, "protobuf frame is empty"
-            )
+            raise UpstoxFeedError(UpstoxFeedErrorCode.MALFORMED_FRAME, "protobuf frame is empty")
         response = FeedResponse()
         try:
             response.ParseFromString(payload)

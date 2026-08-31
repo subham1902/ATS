@@ -17,9 +17,7 @@ from .errors import UpstoxFeedError, UpstoxFeedErrorCode
 from .instrument_keys import validate_feed_key
 
 
-def subscribe_frame(
-    *, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]
-) -> str:
+def subscribe_frame(*, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]) -> str:
     return _control_frame(guid=guid, method="sub", mode=mode, instrument_keys=instrument_keys)
 
 
@@ -33,9 +31,7 @@ def unsubscribe_frame(*, guid: str, instrument_keys: tuple[str, ...]) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def change_mode_frame(
-    *, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]
-) -> str:
+def change_mode_frame(*, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]) -> str:
     if not instrument_keys:
         raise UpstoxFeedError(
             UpstoxFeedErrorCode.EMPTY_SUBSCRIPTION,

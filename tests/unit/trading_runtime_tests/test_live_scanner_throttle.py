@@ -23,9 +23,7 @@ def test_live_scanner_is_bounded_to_configured_loop_interval() -> None:
     market_feed = UpstoxMarketFeedAdapter()
     controller = A2PaperSessionController(market_feed=market_feed)
     runtime_feed = UpstoxV3RuntimeFeed(
-        authorization=UpstoxFeedAuthorization(
-            bearer_token=SecretStr("REPLAY_PLACEHOLDER")
-        ),
+        authorization=UpstoxFeedAuthorization(bearer_token=SecretStr("REPLAY_PLACEHOLDER")),
         configuration=UpstoxFeedConfiguration(
             wire_format=WireFormat.PROTOBUF_BINARY,
             client_guid="scanner-throttle-test",
@@ -43,14 +41,10 @@ def test_live_scanner_is_bounded_to_configured_loop_interval() -> None:
     controller.process_tick("BANKNIFTY", Decimal("57000"), at=now)
     assert controller.pipeline_counters().scanner_observations == 1
 
-    controller.process_tick(
-        "NIFTY", Decimal("24501"), at=now + timedelta(milliseconds=100)
-    )
+    controller.process_tick("NIFTY", Decimal("24501"), at=now + timedelta(milliseconds=100))
     assert controller.pipeline_counters().scanner_observations == 1
 
-    controller.process_tick(
-        "NIFTY", Decimal("24502"), at=now + timedelta(milliseconds=1100)
-    )
+    controller.process_tick("NIFTY", Decimal("24502"), at=now + timedelta(milliseconds=1100))
     assert controller.pipeline_counters().scanner_observations == 2
     controller.stop()
 

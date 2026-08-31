@@ -10,19 +10,32 @@ from ats.contracts.governance import GOVERNANCE_CONTRACTS
 from ats.contracts.governance import types as governance_types
 from ats.contracts.intelligence import INTELLIGENCE_CONTRACTS
 from ats.contracts.intelligence import types as intelligence_types
+
 from tests.unit.contracts.intelligence.fixtures import make_contracts
 
 HERE = Path(__file__).parent
 ALL_CONTRACTS = INTELLIGENCE_CONTRACTS + GOVERNANCE_CONTRACTS
 EXPECTED_COUNTS = {
-    "InstrumentSpec": 29, "MarketContext": 19, "RegimeEvidence": 19,
-    "AnalogueEvidence": 22, "EnsembleForecast": 18,
-    "CalibratedOutcomeDistribution": 27, "MarketThesis": 26,
-    "AnalystAssessment": 15, "TradingCampaign": 34, "CampaignState": 19,
-    "OpportunityCandidate": 30, "PositionThesis": 24, "GovernanceContext": 30,
-    "StrategyDefinition": 23, "FormulaDefinition": 19, "StrategyExperiment": 28,
-    "StrategyScorecard": 28, "PromotionDecision": 17,
-    "PerformanceAttribution": 18, "ExplanationEvidence": 16,
+    "InstrumentSpec": 29,
+    "MarketContext": 19,
+    "RegimeEvidence": 19,
+    "AnalogueEvidence": 22,
+    "EnsembleForecast": 18,
+    "CalibratedOutcomeDistribution": 27,
+    "MarketThesis": 26,
+    "AnalystAssessment": 15,
+    "TradingCampaign": 34,
+    "CampaignState": 19,
+    "OpportunityCandidate": 30,
+    "PositionThesis": 24,
+    "GovernanceContext": 30,
+    "StrategyDefinition": 23,
+    "FormulaDefinition": 19,
+    "StrategyExperiment": 28,
+    "StrategyScorecard": 28,
+    "PromotionDecision": 17,
+    "PerformanceAttribution": 18,
+    "ExplanationEvidence": 16,
 }
 
 
@@ -51,7 +64,9 @@ def test_field_coverage_manifest_matches_annotations_and_requiredness() -> None:
 
 
 def test_registry_is_complete_and_matches_frozen_classes() -> None:
-    registry = json.loads((HERE / "iba_contract_registry.json").read_text(encoding="utf-8"))["contracts"]
+    registry = json.loads((HERE / "iba_contract_registry.json").read_text(encoding="utf-8"))[
+        "contracts"
+    ]
     assert set(registry) == set(EXPECTED_COUNTS)
     assert registry["FormulaDefinition"]["producer"] == "Strategy Lab"
     assert registry["GovernanceContext"]["authority"] == "KERNEL_INPUT"
@@ -65,8 +80,11 @@ def test_all_top_level_and_support_schemas_export() -> None:
     support = []
     for module in (intelligence_types, governance_types):
         support.extend(
-            cls for _, cls in inspect.getmembers(module, inspect.isclass)
-            if issubclass(cls, ATSBaseModel) and cls is not ATSBaseModel and cls.__module__ == module.__name__
+            cls
+            for _, cls in inspect.getmembers(module, inspect.isclass)
+            if issubclass(cls, ATSBaseModel)
+            and cls is not ATSBaseModel
+            and cls.__module__ == module.__name__
         )
     assert len(support) == 18
     for model in support:
@@ -78,7 +96,9 @@ def test_representative_hash_goldens() -> None:
         "InstrumentSpec": "4e184915a4dff573a09eccf5a96d68bf113093ae3f84fb9449c1f7fc86a13072",
         "MarketContext": "141ecf843615780adde7580fb8963a7bac3068047f897f7192cb99af312a35b3",
         "AnalogueEvidence": "8dab41df8816c4b58b64a0a5c2dc481e59e7ab11634f4e97639cf8a3120c7145",
-        "CalibratedOutcomeDistribution": "b77645e8c26b35c7ff8019f48cf70f94ae895d79645fa653442d40914ea3c707",
+        "CalibratedOutcomeDistribution": (
+            "b77645e8c26b35c7ff8019f48cf70f94ae895d79645fa653442d40914ea3c707"
+        ),
         "MarketThesis": "25615142705be754ecabecc353804a31f67bdbd4e176472be87af160d6463a28",
         "TradingCampaign": "af543c84946c82aa94cd5ce8a1c309a68d8ea6d67e8f4faaf6a25941e9e2166d",
         "OpportunityCandidate": "d7669c8532c901652cf723cc2946b9ac5b47c4829b505e28cf97576efd413f7e",

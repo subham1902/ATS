@@ -39,9 +39,7 @@ def _bars_by_instrument(ds):
     meta: dict[str, ContractMetadataPayload] = {}
     for obs in ds.observations:
         if isinstance(obs.payload, MarketBarPayload):
-            bars.setdefault(obs.instrument, []).append(
-                (obs.times.event_time, obs.payload)
-            )
+            bars.setdefault(obs.instrument, []).append((obs.times.event_time, obs.payload))
         elif isinstance(obs.payload, ContractMetadataPayload):
             meta[obs.instrument] = obs.payload
     for inst in bars:
@@ -55,11 +53,13 @@ def run_baseline() -> dict:
 
     und = bars[UNDERLYING_ID]
     ce_id = next(
-        i for i, m in meta.items()
+        i
+        for i, m in meta.items()
         if m.strike == ATM_STRIKE and m.expiry_date == ATM_EXPIRY and m.option_type.value == "CE"
     )
     pe_id = next(
-        i for i, m in meta.items()
+        i
+        for i, m in meta.items()
         if m.strike == ATM_STRIKE and m.expiry_date == ATM_EXPIRY and m.option_type.value == "PE"
     )
     lot = Decimal(str(meta[ce_id].lot_size))

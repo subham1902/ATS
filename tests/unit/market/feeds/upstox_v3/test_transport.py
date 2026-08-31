@@ -101,9 +101,7 @@ def test_connect_subscribe_receive_close_and_reconnect_are_bounded() -> None:
 
 
 def test_operations_without_connection_fail_closed() -> None:
-    transport = UpstoxV3Transport(
-        configuration=configuration(), authorizer=FakeAuthorizer()
-    )
+    transport = UpstoxV3Transport(configuration=configuration(), authorizer=FakeAuthorizer())
     with pytest.raises(UpstoxFeedError) as error:
         transport.receive()
     assert error.value.code is UpstoxFeedErrorCode.NOT_CONNECTED

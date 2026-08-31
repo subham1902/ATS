@@ -245,9 +245,7 @@ def _receive_until_complete(
         received = datetime.now(UTC)
         outcome = adapter.handle_frame(payload, received_at=received)
         decode_finished = time.perf_counter_ns()
-        metrics.transport_receive_wait_ms.append(
-            (receive_finished - receive_started) / 1_000_000
-        )
+        metrics.transport_receive_wait_ms.append((receive_finished - receive_started) / 1_000_000)
         metrics.decode_normalize_ms.append((decode_finished - receive_finished) / 1_000_000)
         if decoder.last_current_timestamp is not None:
             metrics.network_receive_delay_ms.append(
@@ -384,9 +382,7 @@ def run_live(timeout_seconds: float) -> tuple[dict[str, object], int]:
         )
         evidence_time = datetime.now(UTC)
         initial_freshness = board.evaluate(evidence_time)
-        session_outcome = _classify_session_evidence(
-            initial_freshness, decoder.last_market_status
-        )
+        session_outcome = _classify_session_evidence(initial_freshness, decoder.last_market_status)
         if session_outcome is not None:
             evidence, code = session_outcome
             evidence["token_presence"] = "PRESENT"

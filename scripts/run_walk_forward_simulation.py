@@ -8,6 +8,7 @@ calibration accumulation without lookahead bias.
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -40,10 +41,24 @@ SESSIONS = [
     "2026-08-25",
 ]
 
-DATA_ROOT = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
-CALIBRATION_STORE_PATH = Path(r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_ROOT = Path(
+    os.environ.get(
+        "ATS_SESSION_DATA_ROOT",
+        str(REPO_ROOT / "data" / "raw" / "upstox" / "sessions"),
+    )
+)
+CALIBRATION_STORE_PATH = Path(
+    os.environ.get(
+        "ATS_CHAMPION_CALIBRATION_STORE",
+        str(REPO_ROOT / "data" / "historical" / "calibration_store_v1.json"),
+    )
+)
 WALK_FORWARD_OUTPUT_DIR = Path(
-    r"D:\Projects\ATS\ats\data\replays\walk_forward_2026-08-04_to_2026-08-25"
+    os.environ.get(
+        "ATS_WALK_FORWARD_OUTPUT_DIR",
+        str(REPO_ROOT / "data" / "replays" / "walk_forward_2026-08-04_to_2026-08-25"),
+    )
 )
 
 
@@ -75,22 +90,26 @@ def run_walk_forward_simulation(
         controller.start(require_token=False)
 
         # As-of calibration: strictly prior to session start
-        session_start_utc = datetime(
-            s_date.year, s_date.month, s_date.day, 3, 45, tzinfo=UTC
-        )
+        session_start_utc = datetime(s_date.year, s_date.month, s_date.day, 3, 45, tzinfo=UTC)
         visible_cal = tuple(
             o for o in all_cal_obs if o.available_to_strategy_time <= session_start_utc
         )
-        controller.set_calibration_observations_provider(
-            lambda cal=visible_cal: cal
-        )
+        controller.set_calibration_observations_provider(lambda cal=visible_cal: cal)
 
-        nifty_raw = json.loads(
-            (DATA_ROOT / s_date_str / "NIFTY_underlying.json").read_text(encoding="utf-8")
-        ).get("data", {}).get("candles", [])
-        bn_raw = json.loads(
-            (DATA_ROOT / s_date_str / "BANKNIFTY_underlying.json").read_text(encoding="utf-8")
-        ).get("data", {}).get("candles", [])
+        nifty_raw = (
+            json.loads(
+                (DATA_ROOT / s_date_str / "NIFTY_underlying.json").read_text(encoding="utf-8")
+            )
+            .get("data", {})
+            .get("candles", [])
+        )
+        bn_raw = (
+            json.loads(
+                (DATA_ROOT / s_date_str / "BANKNIFTY_underlying.json").read_text(encoding="utf-8")
+            )
+            .get("data", {})
+            .get("candles", [])
+        )
 
         candles_by_time: dict[datetime, dict[str, Decimal]] = {}
         for row in reversed(nifty_raw):

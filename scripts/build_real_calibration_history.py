@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -14,8 +15,19 @@ from ats.contracts.domain.types import DataQualityState, SessionState
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.market.features.engine import compute_feature_bundle
 
-DATA_ROOT = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
-CALIBRATION_STORE_PATH = Path(r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_ROOT = Path(
+    os.environ.get(
+        "ATS_SESSION_DATA_ROOT",
+        str(REPO_ROOT / "data" / "raw" / "upstox" / "sessions"),
+    )
+)
+CALIBRATION_STORE_PATH = Path(
+    os.environ.get(
+        "ATS_CHAMPION_CALIBRATION_STORE",
+        str(REPO_ROOT / "data" / "historical" / "calibration_store_v1.json"),
+    )
+)
 
 PRIOR_SESSIONS = [
     "2026-08-04",
@@ -62,9 +74,7 @@ def _load_session_candles(session_date: str, instrument: str) -> list[CandleTupl
     return parsed
 
 
-def _build_5m_snapshots_for_session(
-    session_date: str, instrument_id: str
-) -> list[MarketSnapshot]:
+def _build_5m_snapshots_for_session(session_date: str, instrument_id: str) -> list[MarketSnapshot]:
     candles_1m = _load_session_candles(session_date, instrument_id)
     snapshots: list[MarketSnapshot] = []
     current_5m: list[CandleTuple] = []
@@ -103,9 +113,7 @@ def _build_5m_snapshots_for_session(
                 session_state=SessionState.OPEN,
                 payload_hash="0" * 64,
             )
-            snapshots.append(
-                snap.model_copy(update={"payload_hash": compute_payload_hash(snap)})
-            )
+            snapshots.append(snap.model_copy(update={"payload_hash": compute_payload_hash(snap)}))
             current_5m = []
     return snapshots
 
@@ -118,9 +126,7 @@ def build_real_calibration_history() -> list[CalibrationObservation]:
             snaps = _build_5m_snapshots_for_session(session_date, und)
             for i in range(4, len(snaps) - 3):
                 visible_snaps = tuple(snaps[: i + 1])
-                bundle = compute_feature_bundle(
-                    visible_snaps, cutoff_sequence=len(visible_snaps)
-                )
+                bundle = compute_feature_bundle(visible_snaps, cutoff_sequence=len(visible_snaps))
 
                 roc = bundle.features.get("roc_3_fraction", 0.0)
                 prob_up = Decimal(str(round(min(0.95, max(0.05, 0.50 + roc * 5.0)), 4)))
@@ -159,9 +165,7 @@ def build_real_calibration_history() -> list[CalibrationObservation]:
 
 
 def main() -> None:
-    print(
-        f"Building real calibration history from {len(PRIOR_SESSIONS)} completed sessions..."
-    )
+    print(f"Building real calibration history from {len(PRIOR_SESSIONS)} completed sessions...")
     obs = build_real_calibration_history()
     print(f"Generated {len(obs)} genuine CalibrationObservation records.")
 

@@ -5,6 +5,7 @@ existing components and never creates candidates, orders, or risk decisions.
 The local JSONL mirror is append-only and is suitable for recovery/export when
 the operational database is unavailable.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -87,6 +88,7 @@ class SessionIdentity(ATSBaseModel):
 
 class EvidencePayload(ATSBaseModel):
     """Closed vocabulary for common evidence fields; absent means unavailable."""
+
     candidate_id: UUID | None = None
     instrument_id: str | None = None
     underlying: str | None = None
@@ -138,16 +140,34 @@ class SessionEvidenceEvent(ATSBaseModel):
     payload: EvidencePayload
 
     @classmethod
-    def build(cls, *, event_type: EvidenceEventType, session_id: UUID, sequence_number: int,
-              payload: EvidencePayload, producer: str, event_time: datetime | None = None,
-              previous_event_hash: str | None = None, **kwargs: Any) -> SessionEvidenceEvent:
+    def build(
+        cls,
+        *,
+        event_type: EvidenceEventType,
+        session_id: UUID,
+        sequence_number: int,
+        payload: EvidencePayload,
+        producer: str,
+        event_time: datetime | None = None,
+        previous_event_hash: str | None = None,
+        **kwargs: Any,
+    ) -> SessionEvidenceEvent:
         now = datetime.now(UTC)
         occurred = event_time or now
-        return cls(event_id=uuid4(), event_type=event_type, session_id=session_id,
-                   sequence_number=sequence_number, event_time=occurred,
-                   ingest_time=now, recorded_at=now, payload_hash=canonical_sha256(payload),
-                   previous_event_hash=previous_event_hash, producer=producer,
-                   payload=payload, **kwargs)
+        return cls(
+            event_id=uuid4(),
+            event_type=event_type,
+            session_id=session_id,
+            sequence_number=sequence_number,
+            event_time=occurred,
+            ingest_time=now,
+            recorded_at=now,
+            payload_hash=canonical_sha256(payload),
+            previous_event_hash=previous_event_hash,
+            producer=producer,
+            payload=payload,
+            **kwargs,
+        )
 
     def event_hash(self) -> str:
         return canonical_sha256(self)
@@ -155,6 +175,7 @@ class SessionEvidenceEvent(ATSBaseModel):
 
 class EvidenceManifest(ATSBaseModel):
     session_id: UUID
+    identity: SessionIdentity | None = None
     event_count: int = Field(ge=0)
     first_event_hash: str | None = None
     last_event_hash: str | None = None
@@ -164,6 +185,7 @@ class EvidenceManifest(ATSBaseModel):
 
 class SessionEvidenceRecorder:
     """Synchronous crash-safe recorder for a single session mirror."""
+
     def __init__(
         self, identity: SessionIdentity, root: Path | str = "data/runtime/sessions"
     ) -> None:
@@ -213,22 +235,40 @@ class SessionEvidenceRecorder:
         self._events.append(event)
         return event
 
-    def record(self, event_type: EvidenceEventType, payload: EvidencePayload, *, producer: str,
-               event_time: datetime | None = None) -> SessionEvidenceEvent:
+    def record(
+        self,
+        event_type: EvidenceEventType,
+        payload: EvidencePayload,
+        *,
+        producer: str,
+        event_time: datetime | None = None,
+    ) -> SessionEvidenceEvent:
         previous = self._events[-1].event_hash() if self._events else None
-        return self.append(SessionEvidenceEvent.build(event_type=event_type,
-            session_id=self.identity.session_id, sequence_number=len(self._events) + 1,
-            payload=payload, producer=producer, event_time=event_time,
-            previous_event_hash=previous))
+        return self.append(
+            SessionEvidenceEvent.build(
+                event_type=event_type,
+                session_id=self.identity.session_id,
+                sequence_number=len(self._events) + 1,
+                payload=payload,
+                producer=producer,
+                event_time=event_time,
+                previous_event_hash=previous,
+            )
+        )
 
     def finalize(self) -> EvidenceManifest:
         self.verify(self._events)
         hashes = [event.event_hash() for event in self._events]
         digest = hashlib.sha256("".join(hashes).encode("ascii")).hexdigest()
-        manifest = EvidenceManifest(session_id=self.identity.session_id, event_count=len(hashes),
+        manifest = EvidenceManifest(
+            session_id=self.identity.session_id,
+            identity=self.identity,
+            event_count=len(hashes),
             first_event_hash=hashes[0] if hashes else None,
             last_event_hash=hashes[-1] if hashes else None,
-            session_digest=digest, finalized_at=datetime.now(UTC))
+            session_digest=digest,
+            finalized_at=datetime.now(UTC),
+        )
         self.manifest_path.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
         return manifest
 
@@ -237,6 +277,10 @@ class SessionEvidenceRecorder:
 
 
 __all__ = [
-    "EvidenceEventType", "EvidenceManifest", "EvidencePayload",
-    "SessionEvidenceEvent", "SessionEvidenceRecorder", "SessionIdentity",
+    "EvidenceEventType",
+    "EvidenceManifest",
+    "EvidencePayload",
+    "SessionEvidenceEvent",
+    "SessionEvidenceRecorder",
+    "SessionIdentity",
 ]

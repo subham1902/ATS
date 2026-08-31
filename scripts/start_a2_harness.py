@@ -32,9 +32,7 @@ def main() -> int:
     parser.add_argument("--check-config", action="store_true")
     args = parser.parse_args()
 
-    integration = build_a2_harness_integration(
-        node_exe=args.node, harness_root=args.harness_root
-    )
+    integration = build_a2_harness_integration(node_exe=args.node, harness_root=args.harness_root)
 
     if args.check_config:
         print("HARNESS_CONFIG_VALID version=0.1.1-rc.2 authority=ADVISORY_ONLY")

@@ -12,6 +12,7 @@ failure_path = REPO / "data" / "raw" / "upstox" / "provider_failure_report.json"
 # Verify the hardening note file exists (added by fetcher fix)
 note_path = REPO / "scripts" / "fetch_option_truth_data.py"
 
+
 # Direct assertions wrapped in a single test
 def test_fetch_hardening_constants():
     assert note_path.exists()
@@ -19,5 +20,6 @@ def test_fetch_hardening_constants():
     assert "single-day" in content or "NOT historical availability" in content
     if state_path.exists():
         import json
+
         data = json.loads(state_path.read_text())
         assert "records" in data

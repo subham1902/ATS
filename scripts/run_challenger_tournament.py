@@ -9,20 +9,11 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
-
-from ats.intelligence.calibration.models import CalibrationObservation
-from ats.trading_runtime.a2_runner import (
-    A2PaperSessionConfig,
-    A2PaperSessionController,
-    default_a2_session_calendar,
-)
-from ats.trading_runtime.modes import TradingMode
 
 SESSIONS = [
     "2026-08-04",
@@ -47,12 +38,12 @@ TRAIN_SESSIONS = SESSIONS[:10]
 VAL_SESSIONS = SESSIONS[10:13]
 HOLDOUT_SESSIONS = SESSIONS[13:]
 
-DATA_ROOT = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 CALIBRATION_STORE_PATH = Path(
-    r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
-)
-CALIBRATION_STORES_DIR = Path(
-    r"D:\Projects\ATS\ats\data\historical\calibration_stores"
+    os.environ.get(
+        "ATS_CHAMPION_CALIBRATION_STORE",
+        str(REPO_ROOT / "data" / "historical" / "calibration_store_v1.json"),
+    )
 )
 
 
@@ -164,6 +155,7 @@ def fit_train_parameters(train_records: list[dict[str, Any]]) -> dict[str, float
     best_beta = 0.5
     best_brier = float("inf")
     for beta_cand in [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0]:
+
         def eval_logistic(r: dict[str, Any], b: float = beta_cand) -> float:
             return 1.0 / (1.0 + math.exp(-max(-10, min(10, (r["roc"] / r["vol"]) * b))))
 
@@ -175,6 +167,7 @@ def fit_train_parameters(train_records: list[dict[str, Any]]) -> dict[str, float
     best_gamma = 0.2
     best_brier_tanh = float("inf")
     for gamma_cand in [0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8]:
+
         def eval_tanh(r: dict[str, Any], g: float = gamma_cand) -> float:
             return 0.50 + 0.50 * math.tanh(max(-5, min(5, (r["roc"] / r["vol"]) * g)))
 
@@ -231,25 +224,19 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
             "C1",
             f"Challenger C1 (Fitted Logistic beta={c1_beta})",
             "Train-fitted vol-normalized logistic",
-            lambda r: 1.0
-            / (
-                1.0
-                + math.exp(-max(-10, min(10, (r["roc"] / r["vol"]) * c1_beta)))
-            ),
+            lambda r: 1.0 / (1.0 + math.exp(-max(-10, min(10, (r["roc"] / r["vol"]) * c1_beta)))),
         ),
         ChallengerDefinition(
             "C2",
             f"Challenger C2 (Fitted Tanh gamma={c2_gamma})",
             "Train-fitted vol-normalized tanh",
-            lambda r: 0.50
-            + 0.50 * math.tanh(max(-5, min(5, (r["roc"] / r["vol"]) * c2_gamma))),
+            lambda r: 0.50 + 0.50 * math.tanh(max(-5, min(5, (r["roc"] / r["vol"]) * c2_gamma))),
         ),
         ChallengerDefinition(
             "C3",
             "Challenger C3 (Multi-Horizon Score)",
             "Multi-horizon momentum blend",
-            lambda r: 0.50
-            + (r["roc"] * 12.0) * (1.0 / (1.0 + r["vol"] * 50.0)),
+            lambda r: 0.50 + (r["roc"] * 12.0) * (1.0 / (1.0 + r["vol"] * 50.0)),
         ),
         ChallengerDefinition(
             "C4",
@@ -272,109 +259,7 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
         holdout_m = compute_forecast_metrics(holdout_records, ch.probability_fn)
         full_m = compute_forecast_metrics(records, ch.probability_fn)
 
-        model_cal_file = (
-            CALIBRATION_STORES_DIR / f"{ch.model_id}_calibration_store.json"
-        )
-        if model_cal_file.exists():
-            model_cal_obs = tuple(
-                CalibrationObservation.model_validate_json(json.dumps(d))
-                for d in json.loads(model_cal_file.read_text(encoding="utf-8"))
-            )
-        else:
-            model_cal_obs = ()
-
-        current_equity = Decimal("100000")
-        peak_equity = Decimal("100000")
-        max_drawdown = Decimal("0")
-
-        total_orders = 0
-        total_fills = 0
-        all_closed_trades = []
-
         activations = full_m["count_ge_055"] + full_m["count_le_045"]
-
-        for s_date_str in SESSIONS:
-            s_date = datetime.strptime(s_date_str, "%Y-%m-%d").date()
-            cal = default_a2_session_calendar(trading_dates=(s_date,))
-            config = A2PaperSessionConfig(
-                capital_budget=current_equity,
-                underlyings=("NIFTY", "BANKNIFTY"),
-                mode=TradingMode.NORMAL,
-            )
-            controller = A2PaperSessionController(config=config, calendar=cal)
-            controller.start(require_token=False)
-
-            session_start_utc = datetime(
-                s_date.year, s_date.month, s_date.day, 3, 45, tzinfo=UTC
-            )
-            visible_cal = tuple(
-                o
-                for o in model_cal_obs
-                if o.available_to_strategy_time <= session_start_utc
-            )
-            controller.set_calibration_observations_provider(
-                lambda cal_v=visible_cal: cal_v
-            )
-
-            nifty_path = DATA_ROOT / s_date_str / "NIFTY_underlying.json"
-            bn_path = DATA_ROOT / s_date_str / "BANKNIFTY_underlying.json"
-            nifty_raw = json.loads(nifty_path.read_text(encoding="utf-8")).get(
-                "data", {}
-            ).get("candles", [])
-            bn_raw = json.loads(bn_path.read_text(encoding="utf-8")).get(
-                "data", {}
-            ).get("candles", [])
-
-            candles_by_time: dict[datetime, dict[str, Decimal]] = {}
-            for row in reversed(nifty_raw):
-                t = datetime.fromisoformat(row[0]).astimezone(UTC)
-                candles_by_time.setdefault(t, {})["NIFTY"] = Decimal(str(row[4]))
-            for row in reversed(bn_raw):
-                t = datetime.fromisoformat(row[0]).astimezone(UTC)
-                candles_by_time.setdefault(t, {})["BANKNIFTY"] = Decimal(
-                    str(row[4])
-                )
-
-            for t in sorted(candles_by_time.keys()):
-                if "NIFTY" in candles_by_time[t]:
-                    controller.process_tick(
-                        "NIFTY", candles_by_time[t]["NIFTY"], at=t
-                    )
-                if "BANKNIFTY" in candles_by_time[t]:
-                    controller.process_tick(
-                        "BANKNIFTY", candles_by_time[t]["BANKNIFTY"], at=t
-                    )
-
-            counters = controller.pipeline_counters()
-            total_orders += counters.paper_orders
-            total_fills += counters.paper_fills
-
-            # Harvest closed positions from engine
-            if controller.engine is not None:
-                closed = list(controller.engine.state.closed_positions)
-                all_closed_trades.extend(closed)
-                current_equity = controller.engine.state.current_equity
-                if current_equity > peak_equity:
-                    peak_equity = current_equity
-                dd = peak_equity - current_equity
-                if dd > max_drawdown:
-                    max_drawdown = dd
-
-            controller.stop()
-
-        net_pnl = current_equity - Decimal("100000")
-        return_pct = (net_pnl / Decimal("100000")) * 100
-        max_dd_pct = (max_drawdown / peak_equity) * 100 if peak_equity > 0 else Decimal("0")
-
-        wins = [t for t in all_closed_trades if t["net_pnl"] > 0]
-        losses = [t for t in all_closed_trades if t["net_pnl"] < 0]
-        gross_wins = sum(t["gross_pnl"] for t in wins) if wins else Decimal("0")
-        gross_losses = abs(sum(t["gross_pnl"] for t in losses)) if losses else Decimal("0")
-        pf_str = (
-            f"{float(gross_wins / gross_losses):.2f}"
-            if gross_losses > 0
-            else ("N/A" if not wins else "Inf")
-        )
 
         tournament_results.append(
             {
@@ -389,16 +274,17 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
                 "prob_std": full_m["std"],
                 "prob_range": f"[{full_m['min']:.4f}, {full_m['max']:.4f}]",
                 "activations": activations,
-                "candidates_qualified": len(all_closed_trades),
-                "trades": len(all_closed_trades),
-                "wins": len(wins),
-                "losses": len(losses),
-                "ending_equity": str(round(current_equity, 2)),
-                "net_pnl": str(round(net_pnl, 2)),
-                "return_pct": f"{return_pct:+.2f}%",
-                "max_dd": f"{max_dd_pct:.2f}%",
-                "profit_factor": pf_str,
-                "cost_stress_2x": str(round(current_equity - Decimal("20.00"), 2)),
+                "candidates_qualified": None,
+                "trades": None,
+                "wins": None,
+                "losses": None,
+                "ending_equity": None,
+                "net_pnl": None,
+                "return_pct": None,
+                "max_dd": None,
+                "profit_factor": None,
+                "cost_stress_2x": None,
+                "economic_attribution": "NOT_AVAILABLE_MODEL_NOT_INJECTED_IN_EXECUTION_PATH",
                 "promotion_status": "HOLD_AS_CHALLENGER"
                 if ch.model_id != "C0"
                 else "CHAMPION_ACTIVE",
@@ -417,7 +303,12 @@ def run_challenger_trading_tournament() -> dict[str, Any]:
 def main() -> None:
     print("Executing ATS Challenger Trading Tournament & Validation Suite...")
     results = run_challenger_trading_tournament()
-    output_dir = Path(r"D:\Projects\ATS\ats\data\replays\challenger_tournament_v1")
+    output_dir = Path(
+        os.environ.get(
+            "ATS_CHALLENGER_TOURNAMENT_OUTPUT_DIR",
+            str(REPO_ROOT / "data" / "replays" / "challenger_tournament_v1"),
+        )
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     out_file = output_dir / "tournament_summary.json"
     out_file.write_text(json.dumps(results, indent=2), encoding="utf-8")

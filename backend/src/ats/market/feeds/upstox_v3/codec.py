@@ -125,9 +125,7 @@ class JsonFeedPayloadDecoder(BaseModel):
             ask = self._price(market_data.get("ask"), "ask", key)
             volume = self._count(market_data.get("vol"), "vol", key)
             open_interest = self._count(market_data.get("oi"), "oi", key)
-            open_interest_change = self._signed(
-                market_data.get("change_oi"), "change_oi", key
-            )
+            open_interest_change = self._signed(market_data.get("change_oi"), "change_oi", key)
             bid_quantity = self._count(market_data.get("bid_qty"), "bid_qty", key)
             ask_quantity = self._count(market_data.get("ask_qty"), "ask_qty", key)
             depth = market_data.get("depth")
@@ -248,9 +246,9 @@ class JsonFeedPayloadDecoder(BaseModel):
         for item in side:
             if not isinstance(item, dict):
                 raise UpstoxFeedError(
-                UpstoxFeedErrorCode.MALFORMED_FRAME,
-                f"depth level for {key!r} must be an object",
-            )
+                    UpstoxFeedErrorCode.MALFORMED_FRAME,
+                    f"depth level for {key!r} must be an object",
+                )
             price = self._price(item.get("price"), f"depth.{field}.price", key)
             quantity = self._count(item.get("quantity"), f"depth.{field}.quantity", key)
             orders = self._count(item.get("orders"), f"depth.{field}.orders", key)
@@ -295,12 +293,12 @@ def _strict_json(payload: bytes | str) -> dict[str, Any]:
         )
     except (UnicodeDecodeError, json.JSONDecodeError, InvalidOperation) as exc:
         raise UpstoxFeedError(
-                UpstoxFeedErrorCode.MALFORMED_FRAME, "feed frame is not valid JSON"
-            ) from exc
+            UpstoxFeedErrorCode.MALFORMED_FRAME, "feed frame is not valid JSON"
+        ) from exc
     if not isinstance(document, dict):
         raise UpstoxFeedError(
-                UpstoxFeedErrorCode.MALFORMED_FRAME, "feed frame must be a JSON object"
-            )
+            UpstoxFeedErrorCode.MALFORMED_FRAME, "feed frame must be a JSON object"
+        )
     return document
 
 

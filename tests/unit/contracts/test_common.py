@@ -8,8 +8,6 @@ from enum import auto
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts import (
     ATSBaseModel,
     ATSStringEnum,
@@ -25,6 +23,7 @@ from ats.contracts import (
     fixture_id,
     new_opaque_id,
 )
+from pydantic import ValidationError
 
 
 class CommonFixture(ATSBaseModel):
@@ -82,7 +81,9 @@ def test_utc_datetime_accepts_utc_and_normalizes_aware_offset() -> None:
     assert fixture.timestamp.tzinfo is UTC
 
     payload = fixture.model_dump()
-    payload["timestamp"] = datetime(2026, 1, 2, 8, 34, 5, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+    payload["timestamp"] = datetime(
+        2026, 1, 2, 8, 34, 5, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
     normalized = CommonFixture.model_validate(payload)
     assert normalized.timestamp == datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     assert normalized.timestamp.tzinfo is UTC
@@ -171,9 +172,7 @@ def test_json_decimal_requires_canonical_string_encoding() -> None:
     serialized = valid_fixture().model_dump_json()
     assert CommonFixture.model_validate_json(serialized) == valid_fixture()
     with pytest.raises(ValidationError):
-        CommonFixture.model_validate_json(
-            serialized.replace('"amount":"12.50"', '"amount":12.50')
-        )
+        CommonFixture.model_validate_json(serialized.replace('"amount":"12.50"', '"amount":12.50'))
 
 
 def test_fixture_id_is_stable_and_namespaced() -> None:

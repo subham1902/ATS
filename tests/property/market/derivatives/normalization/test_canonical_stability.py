@@ -125,11 +125,15 @@ class TestCanonicalIdentityStability:
             provider = _provider(key="NSE_FO|A", token="1")
             provider = provider.model_copy(update={"expiry": expiry})
             reference = _reference().model_copy(update={"expiry": expiry})
-            return normalize_contracts(
-                provider_records=(provider,),
-                reference_records=(reference,),
-                aliases=(alias,),
-            ).contracts[0].instrument_id
+            return (
+                normalize_contracts(
+                    provider_records=(provider,),
+                    reference_records=(reference,),
+                    aliases=(alias,),
+                )
+                .contracts[0]
+                .instrument_id
+            )
 
         base = instrument_id_for("2026-08-27")
         other = instrument_id_for("2026-09-24")

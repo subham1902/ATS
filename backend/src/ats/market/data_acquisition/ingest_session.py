@@ -154,11 +154,11 @@ def _build_option_observations(
                     payload=MarketBarPayload(
                         payload_kind=ObservationKind.MARKET_BAR,
                         timeframe="1m",
-                    open=Decimal(str(row[1])),
-                    high=Decimal(str(row[2])),
-                    low=Decimal(str(row[3])),
-                    close=Decimal(str(row[4])),
-                    volume=Decimal(str(row[5])),
+                        open=Decimal(str(row[1])),
+                        high=Decimal(str(row[2])),
+                        low=Decimal(str(row[3])),
+                        close=Decimal(str(row[4])),
+                        volume=Decimal(str(row[5])),
                     ),
                     provenance=RawRecordReference(
                         source_id=SOURCE,

@@ -60,10 +60,13 @@ describe("api-client contract", () => {
     }
   });
 
-  it("exposes only the bounded A2 runtime command route", () => {
+  it("exposes only bounded A2 runtime mutation routes", () => {
     const all = Object.values(ROUTES).join(" ");
     expect(ROUTES.runtimeCommand).toBe("/v1/runtime/command");
-    expect(all).not.toMatch(/order/i);
+    expect(ROUTES.operatorOrders).toBe("/v1/runtime/operator-orders");
+    expect(Object.values(ROUTES).filter((route) => route.toString().match(/order/i))).toEqual([
+      "/v1/runtime/operator-orders",
+    ]);
     expect(all).not.toMatch(/trade/i);
     expect(all).not.toMatch(/enable.live/i);
   });

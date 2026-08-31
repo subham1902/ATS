@@ -262,9 +262,7 @@ class TestDisconnectReconnectResync:
             return tuple(
                 NormalizedFeedUpdate(
                     instrument_key=key,
-                    kind=UpdateKind.INDEX
-                    if key.startswith("NSE_INDEX|")
-                    else UpdateKind.OPTION,
+                    kind=UpdateKind.INDEX if key.startswith("NSE_INDEX|") else UpdateKind.OPTION,
                     received_at=stamp,
                     exchange_timestamp=exchange,
                     last_traded_price=Decimal("101"),

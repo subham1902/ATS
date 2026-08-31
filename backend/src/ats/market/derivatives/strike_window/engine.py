@@ -116,9 +116,7 @@ def build_strike_window(
     atm_index = paired.index(atm_strike)
     selected = tuple(paired[atm_index - policy.window_size : atm_index + policy.window_size + 1])
     calendar_trading_day = (
-        None
-        if calendar is None
-        else _as_date(policy.expiry) in frozenset(calendar.trading_dates)
+        None if calendar is None else _as_date(policy.expiry) in frozenset(calendar.trading_dates)
     )
     values: dict[str, object] = {
         "schema_version": "1.0",

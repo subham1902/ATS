@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -16,8 +17,19 @@ from ats.contracts.domain.types import DataQualityState, SessionState
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.market.features.engine import compute_feature_bundle
 
-DATA_ROOT = Path(r"D:\Projects\ATS\ats\data\raw\upstox\sessions")
-CALIBRATION_STORES_DIR = Path(r"D:\Projects\ATS\ats\data\historical\calibration_stores")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_ROOT = Path(
+    os.environ.get(
+        "ATS_SESSION_DATA_ROOT",
+        str(REPO_ROOT / "data" / "raw" / "upstox" / "sessions"),
+    )
+)
+CALIBRATION_STORES_DIR = Path(
+    os.environ.get(
+        "ATS_CHALLENGER_CALIBRATION_DIR",
+        str(REPO_ROOT / "data" / "historical" / "calibration_stores"),
+    )
+)
 
 PRIOR_SESSIONS = [
     "2026-08-04",
@@ -64,9 +76,7 @@ def _load_session_candles(session_date: str, instrument: str) -> list[CandleTupl
     return parsed
 
 
-def _build_5m_snapshots_for_session(
-    session_date: str, instrument_id: str
-) -> list[MarketSnapshot]:
+def _build_5m_snapshots_for_session(session_date: str, instrument_id: str) -> list[MarketSnapshot]:
     candles_1m = _load_session_candles(session_date, instrument_id)
     snapshots: list[MarketSnapshot] = []
     current_5m: list[CandleTuple] = []
@@ -105,15 +115,13 @@ def _build_5m_snapshots_for_session(
                 session_state=SessionState.OPEN,
                 payload_hash="0" * 64,
             )
-            snapshots.append(
-                snap.model_copy(update={"payload_hash": compute_payload_hash(snap)})
-            )
+            snapshots.append(snap.model_copy(update={"payload_hash": compute_payload_hash(snap)}))
             current_5m = []
     return snapshots
 
 
 def build_model_calibration_history(
-    prob_fn: Callable[[float, float], float]
+    prob_fn: Callable[[float, float], float],
 ) -> list[CalibrationObservation]:
     observations: list[CalibrationObservation] = []
 
@@ -122,9 +130,7 @@ def build_model_calibration_history(
             snaps = _build_5m_snapshots_for_session(session_date, und)
             for i in range(4, len(snaps) - 3):
                 visible_snaps = tuple(snaps[: i + 1])
-                bundle = compute_feature_bundle(
-                    visible_snaps, cutoff_sequence=len(visible_snaps)
-                )
+                bundle = compute_feature_bundle(visible_snaps, cutoff_sequence=len(visible_snaps))
 
                 roc = bundle.features.get("roc_3_fraction", 0.0)
                 vol_feat = bundle.features.get("realized_volatility_3_population", 0.001)
@@ -177,17 +183,11 @@ def main() -> None:
         "A4": lambda roc, vol: 0.50 + roc * 25.0,
         "C1": (
             lambda roc, vol: 1.0
-            / (
-                1.0
-                + math.exp(
-                    -max(-10, min(10, (roc / max(0.0001, vol)) * 0.05))
-                )
-            )
+            / (1.0 + math.exp(-max(-10, min(10, (roc / max(0.0001, vol)) * 0.05))))
         ),
         "C2": (
             lambda roc, vol: 0.50
-            + 0.50
-            * math.tanh(max(-5, min(5, (roc / max(0.0001, vol)) * 0.02)))
+            + 0.50 * math.tanh(max(-5, min(5, (roc / max(0.0001, vol)) * 0.02)))
         ),
         "C3": lambda roc, vol: 0.50 + (roc * 12.0) * (1.0 / (1.0 + vol * 50.0)),
         "C4": lambda roc, vol: 1.0 / (1.0 + math.exp(-max(-5, min(5, roc * 18.0)))),

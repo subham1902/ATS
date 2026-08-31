@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import pytest
+from ats.contracts.domain.hashing import compute_payload_hash
 from pydantic import ValidationError
 
-from ats.contracts.domain.hashing import compute_payload_hash
 from tests.unit.contracts.intelligence.fixtures import make_contracts
 
-NAMES = ("TradingCampaign", "CampaignState", "OpportunityCandidate", "PositionThesis", "GovernanceContext")
+NAMES = (
+    "TradingCampaign",
+    "CampaignState",
+    "OpportunityCandidate",
+    "PositionThesis",
+    "GovernanceContext",
+)
 
 
 @pytest.mark.parametrize("name", NAMES)

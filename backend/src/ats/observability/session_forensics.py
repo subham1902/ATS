@@ -7,6 +7,7 @@ Provides:
 - EvidenceIntegrityReport, WhyNoTradeExplanation
 - SessionFinalizer (auto-finalizes on session closed)
 """
+
 from __future__ import annotations
 
 import csv
@@ -14,16 +15,16 @@ import hashlib
 import json
 import statistics
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .session_evidence import (
     EvidenceEventType,
     SessionEvidenceEvent,
     SessionEvidenceRecorder,
 )
-
 
 # ============================================================================
 # Integrity Verification
@@ -265,9 +266,7 @@ def build_session_summary(
                 }
             )
     # P&L snapshot (last)
-    pnl_snapshots = [
-        ev for ev in events if ev.event_type == EvidenceEventType.PNL_SNAPSHOT
-    ]
+    pnl_snapshots = [ev for ev in events if ev.event_type == EvidenceEventType.PNL_SNAPSHOT]
     last_pnl = pnl_snapshots[-1].payload if pnl_snapshots else None
     return {
         "session_id": str(identity.session_id),
@@ -297,7 +296,9 @@ def build_session_summary(
         "positions_opened": counts["positions_opened"],
         "positions_closed": counts["positions_closed"],
         "exits": counts["exits"],
-        "realized_pnl": str(last_pnl.net_pnl) if last_pnl and last_pnl.net_pnl is not None else "0.00",
+        "realized_pnl": str(last_pnl.net_pnl)
+        if last_pnl and last_pnl.net_pnl is not None
+        else "0.00",
         "mode_history": mode_history,
         "health_transitions": health_transitions,
         "last_pnl_snapshot": (
@@ -343,7 +344,8 @@ def analyze_rejections(events: Sequence[SessionEvidenceEvent]) -> dict[str, Any]
     rejection_events = [
         ev
         for ev in events
-        if ev.event_type in (
+        if ev.event_type
+        in (
             EvidenceEventType.THESIS_REJECTED,
             EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED,
         )
@@ -393,10 +395,8 @@ def analyze_rejections(events: Sequence[SessionEvidenceEvent]) -> dict[str, Any]
                     entry["last_occurrence"] = ev.event_time.isoformat()
     # Add canonical taxonomy entries with 0 count
     for code in REJECTION_TAXONOMY:
-        by_reason.setdefault(
-            code, {"count": 0, "first_occurrence": None, "last_occurrence": None}
-        )
-    for r, entry in by_reason.items():
+        by_reason.setdefault(code, {"count": 0, "first_occurrence": None, "last_occurrence": None})
+    for entry in by_reason.values():
         entry["percentage_of_reached"] = (
             round(100.0 * entry["count"] / total_predictions, 2) if total_predictions else 0.0
         )
@@ -450,7 +450,10 @@ def audit_gates(events: Sequence[SessionEvidenceEvent]) -> dict[str, Any]:
         elif ev.event_type == EvidenceEventType.SESSION_CLOSED:
             session_state = "CLOSED"
     # paper broker
-    if c["paper_orders_submitted"] > 0 and c["paper_orders_acknowledged"] == c["paper_orders_submitted"]:
+    if (
+        c["paper_orders_submitted"] > 0
+        and c["paper_orders_acknowledged"] == c["paper_orders_submitted"]
+    ):
         paper_broker = "ALLOW"
     elif c["paper_orders_submitted"] > 0:
         paper_broker = "DEGRADED"
@@ -459,11 +462,7 @@ def audit_gates(events: Sequence[SessionEvidenceEvent]) -> dict[str, Any]:
     else:
         paper_broker = "NOT_REACHED"
     # calibration
-    cal_evs = [
-        ev
-        for ev in events
-        if ev.event_type == EvidenceEventType.CALIBRATION_EVALUATED
-    ]
+    cal_evs = [ev for ev in events if ev.event_type == EvidenceEventType.CALIBRATION_EVALUATED]
     calibration = "ALLOW" if cal_evs else "NOT_REACHED"
     # risk
     risk = "ALLOW" if has_a04 else "NOT_REACHED"
@@ -477,14 +476,16 @@ def audit_gates(events: Sequence[SessionEvidenceEvent]) -> dict[str, Any]:
     liquidity_denied = any(
         any(r in liquidity_reasons for r in ev.payload.reason_codes)
         for ev in events
-        if ev.event_type in (EvidenceEventType.THESIS_REJECTED, EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED)
+        if ev.event_type
+        in (EvidenceEventType.THESIS_REJECTED, EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED)
     )
     liquidity = "DENY" if liquidity_denied else ("ALLOW" if has_cand else "NOT_REACHED")
     spread_reasons = ["SPREAD_TOO_WIDE", "SPREAD_UNAVAILABLE"]
     spread_denied = any(
         any(r in spread_reasons for r in ev.payload.reason_codes)
         for ev in events
-        if ev.event_type in (EvidenceEventType.THESIS_REJECTED, EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED)
+        if ev.event_type
+        in (EvidenceEventType.THESIS_REJECTED, EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED)
     )
     spread = "DENY" if spread_denied else ("ALLOW" if has_cand else "NOT_REACHED")
     # portfolio
@@ -549,7 +550,7 @@ THRESHOLDS = [0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.57, 0.60, 0.65, 0.70]
 def compute_model_probability_distribution(
     events: Sequence[SessionEvidenceEvent],
 ) -> dict[str, Any]:
-    """Compute per-model probability distribution (min, percentiles, mean, std, threshold counts)."""
+    """Compute probability distribution and threshold counts for each model."""
     by_model: dict[str, list[float]] = defaultdict(list)
     for ev in events:
         if ev.event_type != EvidenceEventType.MODEL_PREDICTION:
@@ -568,9 +569,11 @@ def compute_model_probability_distribution(
             continue
         sorted_p = sorted(probs)
         n = len(sorted_p)
-        def pct(p: float) -> float:
-            idx = max(0, min(n - 1, int(round(p * (n - 1)))))
-            return round(sorted_p[idx], 6)
+
+        def pct(p: float, values: list[float] = sorted_p, count: int = n) -> float:
+            idx = max(0, min(count - 1, int(round(p * (count - 1)))))
+            return round(values[idx], 6)
+
         threshold_counts = {str(t): sum(1 for v in probs if v >= t) for t in THRESHOLDS}
         result[model_id] = {
             "count": n,
@@ -883,9 +886,7 @@ def finalize_session(
     )
     # 5. gate_audit.json
     audit = audit_gates(events)
-    (root_path / "gate_audit.json").write_text(
-        json.dumps(audit, indent=2) + "\n", encoding="utf-8"
-    )
+    (root_path / "gate_audit.json").write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
     # 6. model_probability_distribution.json
     prob_dist = compute_model_probability_distribution(events)
     (root_path / "model_probability_distribution.json").write_text(
@@ -900,14 +901,15 @@ def finalize_session(
     rejection_evs = [
         ev
         for ev in events
-        if ev.event_type in (
+        if ev.event_type
+        in (
             EvidenceEventType.THESIS_REJECTED,
             EvidenceEventType.OPPORTUNITY_CANDIDATE_REJECTED,
         )
     ]
     with (root_path / "rejection_history.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
+        rejection_writer = csv.writer(f)
+        rejection_writer.writerow(
             [
                 "event_id",
                 "sequence_number",
@@ -919,7 +921,7 @@ def finalize_session(
             ]
         )
         for ev in rejection_evs:
-            writer.writerow(
+            rejection_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -943,8 +945,8 @@ def finalize_session(
         )
     ]
     with (root_path / "orders.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
+        order_writer = csv.writer(f)
+        order_writer.writerow(
             [
                 "event_id",
                 "sequence_number",
@@ -955,7 +957,7 @@ def finalize_session(
             ]
         )
         for ev in order_evs:
-            writer.writerow(
+            order_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -968,8 +970,8 @@ def finalize_session(
     # 10. fills.csv
     fill_evs = [ev for ev in events if ev.event_type == EvidenceEventType.FILL_CREATED]
     with (root_path / "fills.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
+        fill_writer = csv.writer(f)
+        fill_writer.writerow(
             [
                 "event_id",
                 "sequence_number",
@@ -980,7 +982,7 @@ def finalize_session(
             ]
         )
         for ev in fill_evs:
-            writer.writerow(
+            fill_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -1003,8 +1005,8 @@ def finalize_session(
         )
     ]
     with (root_path / "positions.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
+        position_writer = csv.writer(f)
+        position_writer.writerow(
             [
                 "event_id",
                 "sequence_number",
@@ -1015,7 +1017,7 @@ def finalize_session(
             ]
         )
         for ev in pos_evs:
-            writer.writerow(
+            position_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -1028,10 +1030,10 @@ def finalize_session(
     # 12. pnl_series.csv
     pnl_evs = [ev for ev in events if ev.event_type == EvidenceEventType.PNL_SNAPSHOT]
     with (root_path / "pnl_series.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["event_id", "sequence_number", "event_time_utc", "state", "net_pnl"])
+        pnl_writer = csv.writer(f)
+        pnl_writer.writerow(["event_id", "sequence_number", "event_time_utc", "state", "net_pnl"])
         for ev in pnl_evs:
-            writer.writerow(
+            pnl_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -1043,8 +1045,8 @@ def finalize_session(
     # 13. prediction_history.csv
     pred_evs = [ev for ev in events if ev.event_type == EvidenceEventType.MODEL_PREDICTION]
     with (root_path / "prediction_history.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
+        prediction_writer = csv.writer(f)
+        prediction_writer.writerow(
             [
                 "event_id",
                 "sequence_number",
@@ -1057,7 +1059,7 @@ def finalize_session(
             ]
         )
         for ev in pred_evs:
-            writer.writerow(
+            prediction_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -1083,12 +1085,19 @@ def finalize_session(
         )
     ]
     with (root_path / "decision_history.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
-            ["event_id", "sequence_number", "event_time_utc", "event_type", "decision", "reason_code"]
+        decision_writer = csv.writer(f)
+        decision_writer.writerow(
+            [
+                "event_id",
+                "sequence_number",
+                "event_time_utc",
+                "event_type",
+                "decision",
+                "reason_code",
+            ]
         )
         for ev in decision_evs:
-            writer.writerow(
+            decision_writer.writerow(
                 [
                     str(ev.event_id),
                     ev.sequence_number,
@@ -1100,9 +1109,7 @@ def finalize_session(
             )
     # 15. why_no_trade.json
     why = explain_why_no_trade(events)
-    (root_path / "why_no_trade.json").write_text(
-        json.dumps(why, indent=2) + "\n", encoding="utf-8"
-    )
+    (root_path / "why_no_trade.json").write_text(json.dumps(why, indent=2) + "\n", encoding="utf-8")
     return {
         "root": str(root_path),
         "session_manifest": str(root_path / "session_manifest.json"),
@@ -1142,7 +1149,7 @@ def discover_sessions(root: Path | str) -> list[dict[str, Any]]:
             if not session_dir.is_dir():
                 continue
             events_path = session_dir / "events.jsonl"
-            manifest_path = session_dir / "session_manifest.json"
+            manifest_path = session_dir / "manifest.json"
             if events_path.exists():
                 out.append(
                     {

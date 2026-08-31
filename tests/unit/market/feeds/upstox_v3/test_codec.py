@@ -54,9 +54,7 @@ class TestJsonDecoding:
         assert update.greeks_method_version == "UPSTOX-V3-FEED"
 
     def test_entry_without_greeks_is_unavailable(self) -> None:
-        frame = fix.ltpc_frame(
-            instrument_key=fix.OPTION_KEY, ltp=100, cp=90, ltt_ms=1, ts_ms=1
-        )
+        frame = fix.ltpc_frame(instrument_key=fix.OPTION_KEY, ltp=100, cp=90, ltt_ms=1, ts_ms=1)
         (update,) = fix.decoder().decode(frame, received_at=RECEIVED_AT)
         assert update.greeks_method == "UNAVAILABLE"
         assert update.greeks_method_version is None
@@ -114,9 +112,7 @@ class TestMalformedFrames:
             fix.decoder().decode(frame, received_at=RECEIVED_AT)
 
     def test_fractional_quantity_rejected(self) -> None:
-        frame = (
-            f'{{"feeds": {{"{fix.INDEX_KEY}": {{"market_data": {{"vol": 12.34}}}}}}, "ts": 1}}'
-        )
+        frame = f'{{"feeds": {{"{fix.INDEX_KEY}": {{"market_data": {{"vol": 12.34}}}}}}, "ts": 1}}'
         with pytest.raises(UpstoxFeedError):
             fix.decoder().decode(frame, received_at=RECEIVED_AT)
 

@@ -118,9 +118,7 @@ def validate_market_history(
     findings.extend(_time_semantics_findings(observations, active_policy))
     findings.extend(_payload_findings(observations))
     findings.extend(_duplicate_identity_findings(observations))
-    findings.extend(
-        _revision_and_conflict_findings(observations)
-    )
+    findings.extend(_revision_and_conflict_findings(observations))
     findings.extend(_missing_interval_findings(observations, active_policy))
     findings.extend(_contract_universe_findings(observations, active_policy))
     ordered = tuple(sorted(findings, key=finding_sort_key))
@@ -142,8 +140,7 @@ def compute_effective_states(
     """Map observation id to its declared state degraded by induced findings."""
 
     states = {
-        str(observation.observation_id): observation.quality_state
-        for observation in observations
+        str(observation.observation_id): observation.quality_state for observation in observations
     }
     for finding in findings:
         if finding.observation_id is None:
@@ -476,9 +473,7 @@ def _missing_interval_findings(
     for (_instrument, _timeframe), group in bars.items():
         ordered_bars = sorted(group, key=lambda item: item.times.event_time)
         for earlier, later in zip(ordered_bars, ordered_bars[1:], strict=False):
-            gap_ms = milliseconds_between(
-                earlier.times.event_time, later.times.event_time
-            )
+            gap_ms = milliseconds_between(earlier.times.event_time, later.times.event_time)
             interval = policy.expected_bar_interval_ms
             if gap_ms <= 0:
                 continue

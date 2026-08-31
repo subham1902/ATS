@@ -209,14 +209,11 @@ def test_worst_state_ranking() -> None:
     from ats.market.history.validation import worst_state
 
     assert (
-        worst_state(DataQualityState.GOOD, DataQualityState.DEGRADED)
-        is DataQualityState.DEGRADED
+        worst_state(DataQualityState.GOOD, DataQualityState.DEGRADED) is DataQualityState.DEGRADED
     )
     assert (
-        worst_state(DataQualityState.DEGRADED, DataQualityState.UNKNOWN)
-        is DataQualityState.UNKNOWN
+        worst_state(DataQualityState.DEGRADED, DataQualityState.UNKNOWN) is DataQualityState.UNKNOWN
     )
     assert (
-        worst_state(DataQualityState.UNKNOWN, DataQualityState.INVALID)
-        is DataQualityState.INVALID
+        worst_state(DataQualityState.UNKNOWN, DataQualityState.INVALID) is DataQualityState.INVALID
     )

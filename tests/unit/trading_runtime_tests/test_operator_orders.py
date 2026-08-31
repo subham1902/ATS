@@ -10,6 +10,7 @@ from ats.market.derivatives.contract_master import (
 )
 from ats.market.derivatives.normalization import NormalizedDerivativeContract
 from ats.market.derivatives.reference_authority import InstrumentReferenceAuthority
+from ats.trading_runtime.a2_runner import A2PaperSessionConfig, A2PaperSessionController
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
 from ats.trading_runtime.lot_size import LotSizeRegistry
@@ -249,3 +250,19 @@ def test_manual_and_autonomous_positions_restore_without_order_replay() -> None:
         position.capital_committed for position in recovered.state.open_positions.values()
     ) == Decimal("10000")
     assert broker.query_open_orders() == ()
+
+
+def test_a2_autonomous_controller_registers_lot_truth_without_manual_order_seam() -> None:
+    controller = A2PaperSessionController(config=A2PaperSessionConfig())
+    assert controller.start(require_token=False)
+    references = InstrumentReferenceAuthority(
+        contracts=(_contract(),),
+        retrieved_at=NOW,
+        maximum_age=timedelta(minutes=30),
+    )
+    controller.attach_operator_reference_authority(references)
+    assert controller.operator_order_service is None
+    registry = controller.broker._lot_size_registry
+    assert registry is not None
+    assert registry.lot_size_for(KEY) == 50
+    controller.stop()

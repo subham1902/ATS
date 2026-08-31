@@ -33,8 +33,7 @@ class TestReadinessPlan:
     def test_items_are_unique(self) -> None:
         items = derivatives_readiness_plan().items
         identities = [
-            (item.objective, item.underlying, item.instrument_key, item.expiry)
-            for item in items
+            (item.objective, item.underlying, item.instrument_key, item.expiry) for item in items
         ]
         assert len(set(identities)) == len(identities)
 

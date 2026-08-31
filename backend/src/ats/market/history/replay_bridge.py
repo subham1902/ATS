@@ -98,9 +98,7 @@ def historical_bar_observations(
         source_time = event_time + timedelta(
             milliseconds=active_semantics.source_publication_delay_ms
         )
-        ingest_time = source_time + timedelta(
-            milliseconds=active_semantics.ingestion_delay_ms
-        )
+        ingest_time = source_time + timedelta(milliseconds=active_semantics.ingestion_delay_ms)
         available_to_strategy_time = ingest_time + timedelta(
             milliseconds=active_semantics.strategy_visibility_delay_ms
         )
@@ -139,9 +137,7 @@ def _times_from_lags(
     *,
     semantics: HistoryTimeSemantics,
 ) -> ObservationTimes:
-    source_time = event_time + timedelta(
-        milliseconds=semantics.source_publication_delay_ms
-    )
+    source_time = event_time + timedelta(milliseconds=semantics.source_publication_delay_ms)
     ingest_time = source_time + timedelta(milliseconds=semantics.ingestion_delay_ms)
     return ObservationTimes(
         event_time=event_time,

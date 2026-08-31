@@ -153,9 +153,7 @@ def make_contracts() -> dict[str, object]:
             support_count=100,
             reliability_bin="0.5-0.6",
             brier_score=0.2,
-            confidence_interval=ProbabilityInterval(
-                low=Decimal("0.45"), high=Decimal("0.65")
-            ),
+            confidence_interval=ProbabilityInterval(low=Decimal("0.45"), high=Decimal("0.65")),
             regime_label="normal",
             regime_familiarity=0.8,
             data_quality_state=DataQualityState.GOOD,

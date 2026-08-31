@@ -1,4 +1,5 @@
 """Tests for the forensic subsystem (SYNTHETIC_TEST_ONLY)."""
+
 import shutil
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -69,7 +70,7 @@ def _build_zero_trade_session(root: Path) -> SessionEvidenceRecorder:
         producer="test",
     )
     # 5 predictions all neutral
-    for i in range(5):
+    for _i in range(5):
         rec.record(
             EvidenceEventType.MODEL_PREDICTION,
             EvidencePayload(underlying="NIFTY", model_id="C0", probability=Decimal("0.48")),
@@ -89,7 +90,9 @@ def _build_zero_trade_session(root: Path) -> SessionEvidenceRecorder:
     )
     rec.record(
         EvidenceEventType.THESIS_REJECTED,
-        EvidencePayload(reason_code="BELOW_ACTIVATION_THRESHOLD", reason_codes=("BELOW_ACTIVATION_THRESHOLD",)),
+        EvidencePayload(
+            reason_code="BELOW_ACTIVATION_THRESHOLD", reason_codes=("BELOW_ACTIVATION_THRESHOLD",)
+        ),
         producer="test",
     )
     rec.record(
@@ -120,7 +123,9 @@ def _build_full_trade_session(root: Path) -> SessionEvidenceRecorder:
     )
     rec.record(
         EvidenceEventType.PORTFOLIO_DECISION,
-        EvidencePayload(candidate_id=cand_id, decision="ALLOW", reason_codes=("PORTFOLIO_ALLOCATION_PERMITTED",)),
+        EvidencePayload(
+            candidate_id=cand_id, decision="ALLOW", reason_codes=("PORTFOLIO_ALLOCATION_PERMITTED",)
+        ),
         producer="test",
     )
     rec.record(
@@ -130,7 +135,9 @@ def _build_full_trade_session(root: Path) -> SessionEvidenceRecorder:
     )
     rec.record(
         EvidenceEventType.AUTONOMY_TOKEN_ISSUED,
-        EvidencePayload(candidate_id=cand_id, token_id=UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")),
+        EvidencePayload(
+            candidate_id=cand_id, token_id=UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+        ),
         producer="test",
     )
     rec.record(
@@ -150,7 +157,9 @@ def _build_full_trade_session(root: Path) -> SessionEvidenceRecorder:
     )
     rec.record(
         EvidenceEventType.FILL_CREATED,
-        EvidencePayload(candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("150.00")),
+        EvidencePayload(
+            candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("150.00")
+        ),
         producer="test",
     )
     rec.record(
@@ -160,7 +169,9 @@ def _build_full_trade_session(root: Path) -> SessionEvidenceRecorder:
     )
     rec.record(
         EvidenceEventType.POSITION_MARKED,
-        EvidencePayload(candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("160.00")),
+        EvidencePayload(
+            candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("160.00")
+        ),
         producer="test",
     )
     rec.record(
@@ -264,6 +275,7 @@ def test_integrity_invalid_after_tamper(forensic_root):
     path.write_text(tampered, encoding="utf-8")
     raw_events = []
     from ats.observability.session_evidence import SessionEvidenceEvent
+
     for line in path.read_text(encoding="utf-8").splitlines():
         if line:
             raw_events.append(SessionEvidenceEvent.model_validate_json(line))

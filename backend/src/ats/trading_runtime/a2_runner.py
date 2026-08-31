@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, time
 from decimal import Decimal
 from enum import StrEnum
@@ -33,6 +33,7 @@ from ats.intelligence.harness.models import MaterialAgentEvent
 from ats.intelligence.instrument_selector.models import InstrumentCandidate
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.providers.models import SourceFreshness
+from ats.market.feeds.upstox_v3.adapter import ConnectionState
 from ats.market.feeds.upstox_v3.instrument_keys import (
     BANKNIFTY_INDEX_FEED_KEY,
     NIFTY_INDEX_FEED_KEY,
@@ -104,15 +105,51 @@ from ats.trading_runtime.runtime_provider import (
 from ats.trading_runtime.session import SessionRuntimeConfig
 from ats.trading_runtime.shadow_championship import ForwardShadowChampionshipEngine
 
+_NSE_FO_2026_HOLIDAYS = frozenset(
+    {
+        date(2026, 1, 26),
+        date(2026, 3, 3),
+        date(2026, 3, 26),
+        date(2026, 3, 31),
+        date(2026, 4, 3),
+        date(2026, 4, 14),
+        date(2026, 5, 1),
+        date(2026, 5, 28),
+        date(2026, 6, 26),
+        date(2026, 9, 14),
+        date(2026, 10, 2),
+        date(2026, 10, 20),
+        date(2026, 11, 10),
+        date(2026, 11, 24),
+        date(2026, 12, 25),
+    }
+)
+
+
+def _is_default_nse_fo_trading_day(day: date) -> bool:
+    return day.weekday() < 5 and day not in _NSE_FO_2026_HOLIDAYS
+
 
 def default_a2_session_calendar(trading_dates: tuple[date, ...] | None = None) -> SessionCalendar:
-    """Return a standard NSE session calendar for A2 Paper runtime including today."""
+    """Return the governed NSE F&O calendar used by A2 paper runtime.
+
+    Explicit dates remain available for deterministic replay. Live/default dates
+    are filtered using the official NSE 2026 F&O holiday circular. The 15:30
+    close is the ATS conservative internal flatten/close policy, not an exchange
+    closing-time claim.
+    """
     today = date.today()
-    dates = trading_dates or (today, date(2024, 6, 3))
+    dates: tuple[date, ...]
+    if trading_dates is None:
+        if not _is_default_nse_fo_trading_day(today):
+            raise RuntimeError(f"NSE_FO_SESSION_CLOSED_{today.isoformat()}")
+        dates = (today,)
+    else:
+        dates = trading_dates
     sorted_dates = tuple(sorted(set(dates)))
     return SessionCalendar(
         calendar_id="NSE_LIVE_SESSION",
-        calendar_version="1.0.0",
+        calendar_version="NSE_FAOP_71777_ATS_EARLY_CLOSE_V1",
         timezone="Asia/Kolkata",
         trading_dates=sorted_dates,
         preopen_start=time(9, 0),
@@ -138,7 +175,7 @@ class A2PaperSessionConfig:
     underlyings: tuple[str, ...] = ("NIFTY", "BANKNIFTY")
     capital_budget: Decimal = Decimal("100000")
     max_positions: int = 4
-    max_quote_age_ms: int = 10000
+    max_quote_age_ms: int = 2000
     loop_interval_sec: float = 1.0
     lot_sizes: dict[str, int] = field(default_factory=dict)
     base_slippage_ticks: int = 1
@@ -148,6 +185,7 @@ class A2PaperSessionConfig:
     runtime_checkpoint_path: str | None = None
     session_id: UUID | None = None
     evidence_root: str | None = None
+    allow_operator_orders: bool = False
 
 
 @dataclass
@@ -164,6 +202,7 @@ class PipelineCounters:
     live_option_chains: int = 0
     live_option_quotes: int = 0
     option_evidence_failures: int = 0
+    scanner_failures: int = 0
     scanner_observations: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
@@ -205,6 +244,7 @@ _REJECTION_TAXONOMY: dict[str, str] = {
     "EVIDENCE_QUALITY_UNACCEPTABLE": "evidence_quality",
     "EXPECTED_NET_PNL_NON_POSITIVE": "negative_net_ev",
     "QUOTE_STALE": "stale",
+    "MARKET_OPEN_DATA_NOT_READY": "stale",
     "SPREAD_TOO_WIDE": "spread",
     "SPREAD_UNAVAILABLE": "spread",
     "INSUFFICIENT_ASK_DEPTH": "liquidity",
@@ -406,7 +446,7 @@ class A2PaperSessionController:
         return self._operator_order_service
 
     def attach_operator_reference_authority(self, references: object) -> None:
-        """Attach provider-derived option references to the governed manual-entry seam."""
+        """Register provider lot truth; expose manual entry only when explicitly enabled."""
         if self._engine is None:
             raise RuntimeError("A2 runtime must be started before operator authority attachment")
         from ats.market.derivatives.reference_authority import InstrumentReferenceAuthority
@@ -436,6 +476,9 @@ class A2PaperSessionController:
             self._broker.register_instrument_spec(
                 contract.provider_instrument_key, contract.lot_size
             )
+        if not self.config.allow_operator_orders:
+            self._operator_order_service = None
+            return
         self._operator_order_service = OperatorOrderService(
             references=references,
             market_feed=self._market_feed,
@@ -537,6 +580,8 @@ class A2PaperSessionController:
             return self.scan_market_for_candidates(calibration_observations=cal_obs, now=eval_now)
         except Exception:
             # Scanner exceptions are isolated and must never crash P0 safety or event loop
+            self._pipeline_counters.scanner_failures += 1
+            self._sync_live_pipeline_bridge()
             return None
         finally:
             self._scan_in_flight = False
@@ -580,6 +625,7 @@ class A2PaperSessionController:
         c.live_option_chains = self._pipeline_counters.live_option_chains
         c.live_option_quotes = self._pipeline_counters.live_option_quotes
         c.option_evidence_failures = self._pipeline_counters.option_evidence_failures
+        c.scanner_failures = self._pipeline_counters.scanner_failures
         c.candidates_considered = self._pipeline_counters.candidates_considered
         c.candidates_rejected = self._pipeline_counters.candidates_rejected
         c.candidates_qualified = self._pipeline_counters.candidates_qualified
@@ -861,6 +907,27 @@ class A2PaperSessionController:
         self._live_pipeline_bridge.board = feed.board
         feed._on_normalized = self._on_normalized_update
 
+    def market_open_data_ready(self, *, now: UTCDateTime | None = None) -> bool:
+        """Return whether every decision-critical live subscription is fresh.
+
+        Replay/unit controllers that do not require live instrument evidence retain
+        deterministic behavior. Production A2 Paper requires a connected V3 feed,
+        the complete dynamic universe, and inclusive freshness for every key.
+        """
+
+        if not self.config.require_live_instrument_evidence:
+            return True
+        feed = self._upstox_feed
+        if feed is None or feed.connection_state is not ConnectionState.LIVE:
+            return False
+        expected_subscriptions = 2 + (10 * len(self.config.underlyings))
+        if len(feed.subscription_specs) != expected_subscriptions:
+            return False
+        freshness = feed.freshness_summary(now=now or SystemClock().now())
+        return len(freshness) == expected_subscriptions and all(
+            state == SourceFreshness.FRESH.value for state in freshness.values()
+        )
+
     def _on_normalized_update(
         self, update: NormalizedFeedUpdate, freshness: SourceFreshness
     ) -> None:
@@ -975,6 +1042,13 @@ class A2PaperSessionController:
         evaluation_time = now or SystemClock().now()
         self._candidates_evaluated += 1
         self._pipeline_counters.candidates_considered += 1
+
+        # Stage 2 is an execution invariant, not an operator-only advisory check.
+        # Shadow evaluation may continue while unsafe data deterministically blocks risk.
+        if not self.market_open_data_ready(now=evaluation_time):
+            self._record_rejection(("MARKET_OPEN_DATA_NOT_READY",))
+            self._runtime_provider.get_state().can_enter = False
+            return {"allowed": False, "reason": "MARKET_OPEN_DATA_NOT_READY"}
 
         # 1. Check max positions limit
         if len(self._engine.state.open_positions) >= self.config.max_positions:
@@ -1270,16 +1344,26 @@ class A2PaperSessionController:
             microseconds=evaluation_time.microsecond,
         )
 
-        pipeline = MarketIntelligencePipeline(config=IntelligencePipelineConfig())
+        pipeline_config = IntelligencePipelineConfig()
+        if self.config.require_live_instrument_evidence:
+            pipeline_config = replace(
+                pipeline_config,
+                selector=pipeline_config.selector.model_copy(
+                    update={"require_observed_option_payoff": True}
+                ),
+            )
+        pipeline = MarketIntelligencePipeline(config=pipeline_config)
         last_reason_codes: tuple[str, ...] = ()
         valid_underlyings_scanned = 0
 
         for und in self.config.underlyings:
             history = self._snapshot_history.setdefault(und, [])
-            mark = self._market_feed.latest_mark(und)
-            if mark is None and self._upstox_feed is not None:
+            upd: NormalizedFeedUpdate | None = None
+            if self._upstox_feed is not None:
                 key = NIFTY_INDEX_FEED_KEY if und == "NIFTY" else BANKNIFTY_INDEX_FEED_KEY
                 upd = self._upstox_feed.latest(key)
+            mark = self._market_feed.latest_mark(und)
+            if mark is None and upd is not None:
                 if upd is not None and upd.last_traded_price is not None:
                     mark = upd.last_traded_price
                     self._market_feed.set_mark(und, mark, evaluation_time)
@@ -1288,6 +1372,27 @@ class A2PaperSessionController:
                 self._market_feed.set_mark(und, mark, evaluation_time)
             if mark is None:
                 continue
+            source_time = (
+                upd.price_source_timestamp or upd.exchange_timestamp if upd is not None else None
+            )
+            source_time = source_time or evaluation_time
+            freshness_ms = max(0, int((evaluation_time - source_time).total_seconds() * 1000))
+            observed_volume = (
+                Decimal(upd.volume) if upd is not None and upd.volume is not None else Decimal(0)
+            )
+            # Direct in-memory/replay marks are valid price-only test evidence.
+            # Production provider updates explicitly mark absent volume and
+            # therefore fail closed before feature-based new risk.
+            quality_flags = (
+                ("VOLUME_UNAVAILABLE",)
+                if self._upstox_feed is not None and (upd is None or upd.volume is None)
+                else ()
+            )
+            quality_state = (
+                DataQualityState.GOOD
+                if freshness_ms <= self.config.max_quote_age_ms and not quality_flags
+                else DataQualityState.DEGRADED
+            )
             if not history or history[-1].bar_timestamp != bar_ts:
                 seq = len(history) + 1
                 snap = MarketSnapshot(
@@ -1304,9 +1409,9 @@ class A2PaperSessionController:
                     high=mark,
                     low=mark,
                     close=mark,
-                    volume=Decimal("1000"),
-                    quality_state=DataQualityState.GOOD,
-                    quality_flags=(),
+                    volume=observed_volume,
+                    quality_state=quality_state,
+                    quality_flags=quality_flags,
                     source="feed",
                     source_version="1.0.0",
                     session_state=SessionState.OPEN,
@@ -1333,7 +1438,10 @@ class A2PaperSessionController:
                         "high": max(cur.high, mark),
                         "low": min(cur.low, mark),
                         "close": mark,
+                        "volume": observed_volume,
                         "received_at": evaluation_time,
+                        "quality_state": quality_state,
+                        "quality_flags": quality_flags,
                     }
                 )
                 updated_cur = updated_cur.model_copy(
@@ -1354,11 +1462,13 @@ class A2PaperSessionController:
                 snapshot_id=latest_snap.snapshot_id,
                 feature_bundle_id=uuid4(),
                 as_of_time=evaluation_time,
-                data_cutoff=evaluation_time,
+                data_cutoff=source_time,
                 session_state=SessionState.OPEN,
-                data_quality_state=DataQualityState.GOOD,
-                freshness_ms=0,
-                liquidity_state=LiquidityState.NORMAL,
+                data_quality_state=quality_state,
+                freshness_ms=freshness_ms,
+                liquidity_state=(
+                    LiquidityState.NORMAL if observed_volume > 0 else LiquidityState.UNKNOWN
+                ),
                 volatility_state=VolatilityState.NORMAL,
                 higher_timeframe_context_refs=(),
                 related_market_context_refs=(),
@@ -1509,19 +1619,18 @@ class A2PaperSessionController:
                     if atm_val is not None and abs(float(q.strike) - float(atm_val)) < 1.0:
                         cand_strike = f"{q.strike} {q.option_type.value}"
                         expiry_str = str(q.expiry) if hasattr(q, "expiry") else None
-                        opt_mark = float(q.mark_price) if q.mark_price is not None else None
+                        opt_mark = float(q.last_price) if q.last_price is not None else None
                         opt_bid = float(q.bid) if q.bid is not None else None
                         opt_ask = float(q.ask) if q.ask is not None else None
                         if opt_bid is not None and opt_ask is not None:
                             opt_spread = round(opt_ask - opt_bid, 2)
-                        if q.greeks is not None:
-                            opt_iv = (
-                                float(q.greeks.implied_volatility)
-                                if q.greeks.implied_volatility
-                                else None
-                            )
-                            opt_delta = float(q.greeks.delta) if q.greeks.delta else None
-                            opt_theta = float(q.greeks.theta) if q.greeks.theta else None
+                        opt_iv = (
+                            float(q.implied_volatility)
+                            if q.implied_volatility is not None
+                            else None
+                        )
+                        opt_delta = float(q.delta) if q.delta is not None else None
+                        opt_theta = float(q.theta) if q.theta is not None else None
                         break
 
             # Canonical Forward Shadow evaluation shares the exact A2 market
@@ -1733,9 +1842,9 @@ class A2PaperSessionController:
                 "iv": opt_iv,
                 "delta": opt_delta,
                 "theta": opt_theta,
-                "estimated_gross_edge": round(abs(roc_3) * 100.0, 2),
-                "estimated_cost": 20.0,
-                "estimated_net_ev": 0.0,
+                "estimated_gross_edge": None,
+                "estimated_cost": None,
+                "estimated_net_ev": None,
                 "decision": decision_label,
                 "reason_code": reason_label,
                 "model_id": "C0_CHAMPION",

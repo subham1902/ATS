@@ -164,9 +164,7 @@ class TestStrikeWindowIntegration:
                 and item.option_type is OptionType.PE
             )
         )
-        plan = window(
-            _master(keep, master_id=uuid5(NAMESPACE_URL, "d08-broken-master"))
-        )
+        plan = window(_master(keep, master_id=uuid5(NAMESPACE_URL, "d08-broken-master")))
         evidence = [(item.strike, item.missing_side) for item in plan.unpaired_evidence]
         assert (Decimal("25100"), "PE") in evidence
 
@@ -177,9 +175,7 @@ class TestFeedAndGreeksPipeline:
     ) -> None:
         plan = window(master)
         registry_keys = [
-            f"NSE_FO|{leg.instrument_id}"
-            for pair in plan.strikes
-            for leg in (pair.ce, pair.pe)
+            f"NSE_FO|{leg.instrument_id}" for pair in plan.strikes for leg in (pair.ce, pair.pe)
         ]
         registry = SubscriptionRegistry()
         board = FeedFreshnessBoard()

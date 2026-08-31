@@ -135,9 +135,7 @@ class TestRefusals:
                     "provider_status": "success",
                     "source_revision": None,
                     "source_class": "REAL_SOURCE",
-                    "upstream_hashes": [
-                        {"artifact_id": "other", "raw_sha256": "f" * 64}
-                    ],
+                    "upstream_hashes": [{"artifact_id": "other", "raw_sha256": "f" * 64}],
                 }
             )
 

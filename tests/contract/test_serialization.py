@@ -9,7 +9,6 @@ from enum import auto
 from uuid import UUID
 
 import pytest
-
 from ats.contracts import (
     ATSBaseModel,
     ATSStringEnum,
@@ -85,7 +84,10 @@ def test_canonical_serialization_matches_committed_golden() -> None:
 
 
 def test_canonical_hash_matches_committed_golden() -> None:
-    assert canonical_sha256(fixture()) == "423053e554f03f7c5232b429a571c45b8eea902ace903b8b008cbbdb5edb36c1"
+    assert (
+        canonical_sha256(fixture())
+        == "423053e554f03f7c5232b429a571c45b8eea902ace903b8b008cbbdb5edb36c1"
+    )
 
 
 def test_mapping_insertion_order_does_not_change_hash() -> None:
@@ -95,9 +97,7 @@ def test_mapping_insertion_order_does_not_change_hash() -> None:
 
 
 def test_material_value_change_changes_hash() -> None:
-    assert canonical_sha256({"value": Decimal("1")}) != canonical_sha256(
-        {"value": Decimal("2")}
-    )
+    assert canonical_sha256({"value": Decimal("1")}) != canonical_sha256({"value": Decimal("2")})
 
 
 def test_decimal_representation_is_stable() -> None:
@@ -169,13 +169,14 @@ def test_mixed_numeric_payload_matches_committed_golden() -> None:
         b'"timestamp":"2026-01-02T03:04:05.000000Z"}'
     )
     assert canonical_json_bytes(value) == expected
-    assert canonical_sha256(value) == "c6bb983577c4a76f8645b9027c0de782a9a61a992cb6c83c55f30ac4806ca39d"
+    assert (
+        canonical_sha256(value)
+        == "c6bb983577c4a76f8645b9027c0de782a9a61a992cb6c83c55f30ac4806ca39d"
+    )
 
 
 def test_feature_compatibility_fixture_validates_and_hashes_repeatably() -> None:
-    value = FeatureCompatibilityFixture(
-        features={"momentum": 0.125, "volatility": 1.75}
-    )
+    value = FeatureCompatibilityFixture(features={"momentum": 0.125, "volatility": 1.75})
     expected = b'{"features":{"momentum":0.125,"volatility":1.75}}'
     assert canonical_json_bytes(value) == expected
     assert FeatureCompatibilityFixture.model_validate_json(value.model_dump_json()) == value

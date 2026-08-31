@@ -49,9 +49,7 @@ class TestStates:
 
     def test_ancient_exchange_timestamp_is_stale_even_if_just_received(self) -> None:
         subject = latch()
-        subject.record(
-            update(exchange=T0 - timedelta(hours=6), received_at=T0)
-        )
+        subject.record(update(exchange=T0 - timedelta(hours=6), received_at=T0))
         assert subject.evaluate(T0) is SourceFreshness.STALE
 
     def test_future_exchange_timestamp_is_unsafe(self) -> None:
@@ -132,9 +130,7 @@ class TestDuplicatesAndRegressions:
             update(exchange=T0 + timedelta(seconds=1), received_at=T0 + timedelta(seconds=1))
         )
         assert decision.regression is True
-        assert subject.evaluate(T0 + timedelta(milliseconds=1)) is (
-            SourceFreshness.RESYNC_REQUIRED
-        )
+        assert subject.evaluate(T0 + timedelta(milliseconds=1)) is (SourceFreshness.RESYNC_REQUIRED)
 
     def test_equal_timestamp_with_changed_content_latches_resync(self) -> None:
         subject = latch()
@@ -190,9 +186,7 @@ class TestReconcile:
     def test_reconcile_with_stale_snapshot_keeps_resync(self) -> None:
         subject = latch()
         subject.mark_resync_required()
-        state = subject.reconcile(
-            update(exchange=T0 - timedelta(hours=6), received_at=T0), now=T0
-        )
+        state = subject.reconcile(update(exchange=T0 - timedelta(hours=6), received_at=T0), now=T0)
         assert state is SourceFreshness.STALE
         assert subject.evaluate(T0) is SourceFreshness.RESYNC_REQUIRED
 

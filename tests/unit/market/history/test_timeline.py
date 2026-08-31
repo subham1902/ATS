@@ -17,9 +17,7 @@ from tests.unit.market.history.fixtures import (
 
 
 def _reference_visible(observations, at_time):
-    visible = [
-        item for item in observations if item.times.available_to_strategy_time <= at_time
-    ]
+    visible = [item for item in observations if item.times.available_to_strategy_time <= at_time]
     visible_ids = {item.observation_id for item in visible}
     superseded = {
         item.supersedes

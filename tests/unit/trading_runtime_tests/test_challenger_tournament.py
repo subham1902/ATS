@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import pytest
+
 from scripts.adversarial_rag_audit import run_adversarial_rag_audit
-from scripts.run_challenger_tournament import load_raw_dataset, run_challenger_trading_tournament
+from scripts.run_challenger_tournament import (
+    CALIBRATION_STORE_PATH,
+    load_raw_dataset,
+    run_challenger_trading_tournament,
+)
+
+requires_calibration_store = pytest.mark.skipif(
+    not CALIBRATION_STORE_PATH.is_file(),
+    reason="governed calibration artifact is not present in this worktree",
+)
 
 
+@requires_calibration_store
 def test_challenger_dataset_integrity_and_no_leakage() -> None:
     records = load_raw_dataset()
     assert len(records) == 2040
@@ -16,6 +28,7 @@ def test_challenger_dataset_integrity_and_no_leakage() -> None:
         assert r["vol"] > 0.0
 
 
+@requires_calibration_store
 def test_challenger_tournament_execution_and_champion_hold() -> None:
     res = run_challenger_trading_tournament()
     results = res["tournament_results"]
@@ -30,6 +43,8 @@ def test_challenger_tournament_execution_and_champion_hold() -> None:
     challengers = [x for x in results if x["model_id"] != "C0"]
     for ch in challengers:
         assert ch["promotion_status"] == "HOLD_AS_CHALLENGER"
+        assert ch["economic_attribution"] == ("NOT_AVAILABLE_MODEL_NOT_INJECTED_IN_EXECUTION_PATH")
+        assert ch["net_pnl"] is None
 
 
 def test_adversarial_rag_audit_performance() -> None:

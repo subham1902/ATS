@@ -86,7 +86,7 @@ def _source():
         rare = _rare(
             index,
             opportunity_class,
-            *(('LIQUIDITY_TOO_LOW', 'SPREAD_TOO_WIDE') if index == 0 else ()),
+            *(("LIQUIDITY_TOO_LOW", "SPREAD_TOO_WIDE") if index == 0 else ()),
         )
         portfolio = _portfolio(
             candidate,

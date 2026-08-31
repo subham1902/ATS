@@ -121,9 +121,7 @@ def test_kind_reflects_discriminated_payload() -> None:
 def test_payload_hash_covers_every_authoritative_field() -> None:
     observation = make_bar_observation(sequence=1)
     assert observation.payload_hash == compute_payload_hash(observation)
-    tampered = observation.model_copy(
-        update={"quality_state": DataQualityState.DEGRADED}
-    )
+    tampered = observation.model_copy(update={"quality_state": DataQualityState.DEGRADED})
     assert tampered.payload_hash != compute_payload_hash(tampered)
 
 

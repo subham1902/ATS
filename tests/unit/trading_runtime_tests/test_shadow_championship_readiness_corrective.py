@@ -30,9 +30,7 @@ def test_readiness_blocks_without_provider_instrument_specs() -> None:
     assert readiness.ready_for_a2_paper is False
     assert "INSTRUMENT_SPEC_UNAVAILABLE" in readiness.blocking_reasons
     assert readiness.instrument_spec_source == "NONE_AVAILABLE"
-    assert (
-        readiness.to_dict()["status_verdict"] == "BLOCKED_INSTRUMENT_SPEC_UNAVAILABLE"
-    )
+    assert readiness.to_dict()["status_verdict"] == "BLOCKED_INSTRUMENT_SPEC_UNAVAILABLE"
 
 
 def test_readiness_capital_mismatch_prevention() -> None:
@@ -56,15 +54,11 @@ def test_readiness_false_positive_prevention_suite() -> None:
     assert "REAL_BROKER_PROHIBITED" in r_broker.blocking_reasons
 
     # Unhealthy feed
-    r_feed = check_pre_market_readiness(
-        synthetic_mode=True, market_feed_healthy=False
-    )
+    r_feed = check_pre_market_readiness(synthetic_mode=True, market_feed_healthy=False)
     assert "MARKET_FEED_UNHEALTHY" in r_feed.blocking_reasons
 
     # Stale quotes
-    r_stale = check_pre_market_readiness(
-        synthetic_mode=False, live_instrument_quotes_fresh=False
-    )
+    r_stale = check_pre_market_readiness(synthetic_mode=False, live_instrument_quotes_fresh=False)
     assert "REQUIRED_INSTRUMENT_STALE" in r_stale.blocking_reasons
 
 
@@ -104,10 +98,7 @@ def test_all_11_models_loaded_with_identities() -> None:
     for m in identities:
         assert m.shadow_status == "SHADOW_ONLY"
         assert len(m.config_hash) == 64
-        assert (
-            m.calibration_store_identity
-            == "data/historical/calibration_store_v1.json"
-        )
+        assert m.calibration_store_identity == "data/historical/calibration_store_v1.json"
 
 
 def test_shared_market_state_identity_invariant() -> None:
@@ -309,8 +300,5 @@ def test_counterfactual_trade_identity_is_deterministic() -> None:
             contemporaneous_option_quotes={"LONG_CE": quote},
         )
 
-    ids = [
-        engine._active_shadow_positions["C0:NIFTY"]["shadow_trade_id"]
-        for engine in engines
-    ]
+    ids = [engine._active_shadow_positions["C0:NIFTY"]["shadow_trade_id"] for engine in engines]
     assert ids[0] == ids[1]

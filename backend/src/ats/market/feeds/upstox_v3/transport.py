@@ -147,9 +147,7 @@ class UpstoxV3Transport:
         self._connection = UpstoxV3WebSocketConnection(socket)
         return self._connection
 
-    def subscribe(
-        self, *, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]
-    ) -> None:
+    def subscribe(self, *, guid: str, mode: FeedMode, instrument_keys: tuple[str, ...]) -> None:
         self._require_connection().send_text(
             subscribe_frame(guid=guid, mode=mode, instrument_keys=instrument_keys)
         )
@@ -174,9 +172,7 @@ class UpstoxV3Transport:
 
     def _require_connection(self) -> UpstoxV3WebSocketConnection:
         if self._connection is None:
-            raise UpstoxFeedError(
-                UpstoxFeedErrorCode.NOT_CONNECTED, "transport is not connected"
-            )
+            raise UpstoxFeedError(UpstoxFeedErrorCode.NOT_CONNECTED, "transport is not connected")
         return self._connection
 
 

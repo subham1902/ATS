@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import winreg
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN", "").strip()
@@ -23,20 +23,27 @@ if not token:
         token = winreg.QueryValueEx(k, "ATS_UPSTOX_ACCESS_TOKEN")[0]
     except Exception:
         token = ""
+
+
 # Sanitizer: never leak token anywhere
 def redact(msg: str) -> str:
     return msg.replace(token, "<REDACTED>") if token else msg
 
+
 BASE = "https://api.upstox.com/v2"
 # One minimal request: underlying historical candle, single day, small payload.
-url = f"{BASE}/historical-candle/{urllib.parse.quote('NSE_INDEX|Nifty 50')}/1minute/2026-08-25/2026-08-25"
-req = urllib.request.Request(url, headers={
-    "Authorization": f"Bearer {token}",
-    "Accept": "application/json",
-    "User-Agent": "ATS-Research-Client/1.0",
-})
+instrument = urllib.parse.quote("NSE_INDEX|Nifty 50")
+url = f"{BASE}/historical-candle/{instrument}/1minute/2026-08-25/2026-08-25"
+req = urllib.request.Request(
+    url,
+    headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "User-Agent": "ATS-Research-Client/1.0",
+    },
+)
 
-ts = datetime.now(timezone.utc).isoformat()
+ts = datetime.now(UTC).isoformat()
 classification = "UNKNOWN_403"
 status = None
 headers_out = {}
@@ -46,9 +53,19 @@ try:
         status = resp.status
         raw = resp.read().decode("utf-8")
         data = json.loads(raw)
-        headers_out = {k: v for k, v in resp.headers.items() if k.lower() in {
-            "retry-after", "x-ratelimit-limit", "x-ratelimit-remaining",
-            "x-ratelimit-reset", "x-ratelimit-reset-epoch", "date"}}
+        headers_out = {
+            k: v
+            for k, v in resp.headers.items()
+            if k.lower()
+            in {
+                "retry-after",
+                "x-ratelimit-limit",
+                "x-ratelimit-remaining",
+                "x-ratelimit-reset",
+                "x-ratelimit-reset-epoch",
+                "date",
+            }
+        }
         body_fields = {k: v for k, v in data.items() if k != "data"}
         classification = "OK"
 except urllib.error.HTTPError as e:
@@ -58,9 +75,19 @@ except urllib.error.HTTPError as e:
         data = json.loads(raw)
     except Exception:
         data = {"raw": raw[:300]}
-    headers_out = {k: v for k, v in e.headers.items() if k.lower() in {
-        "retry-after", "x-ratelimit-limit", "x-ratelimit-remaining",
-        "x-ratelimit-reset", "x-ratelimit-reset-epoch", "date"}}
+    headers_out = {
+        k: v
+        for k, v in e.headers.items()
+        if k.lower()
+        in {
+            "retry-after",
+            "x-ratelimit-limit",
+            "x-ratelimit-remaining",
+            "x-ratelimit-reset",
+            "x-ratelimit-reset-epoch",
+            "date",
+        }
+    }
     body_fields = {k: v for k, v in data.items() if k != "data"}
     if status == 403:
         # Refine classification from error envelope if present
@@ -95,7 +122,9 @@ report = {
     "http_status": status,
     "classification": classification,
     "response_headers": headers_out,
-    "error_body_fields": redact(json.dumps(body_fields)) if isinstance(body_fields, str) else {k: redact(str(v)) for k, v in body_fields.items()},
+    "error_body_fields": redact(json.dumps(body_fields))
+    if isinstance(body_fields, str)
+    else {k: redact(str(v)) for k, v in body_fields.items()},
 }
 out = Path("data/raw/upstox/provider_failure_report.json")
 out.parent.mkdir(parents=True, exist_ok=True)

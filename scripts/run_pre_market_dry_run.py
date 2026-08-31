@@ -11,14 +11,15 @@ Executes a complete synthetic end-to-end dry run:
 from __future__ import annotations
 
 import json
-from decimal import Decimal
 from datetime import UTC, datetime
+
+from ats.trading_runtime.modes import TradingMode
 from ats.trading_runtime.readiness import check_pre_market_readiness
 from ats.trading_runtime.shadow_championship import (
     ForwardShadowChampionshipEngine,
     MarketObservationContext,
 )
-from ats.trading_runtime.modes import TradingMode
+
 
 def main() -> None:
     print("=" * 75)
@@ -69,7 +70,11 @@ def main() -> None:
     preds_nifty = shadow_engine.evaluate_observation(ctx_nifty)
     print(f"\nEvaluated NIFTY Shadow Ensemble (Evaluated: {len(preds_nifty)}):")
     for p in preds_nifty:
-        print(f"  [{p.shadow_status}] {p.model_id}: P(UP)={p.bullish_probability:.4f}, Dir={p.predicted_direction}, Expression={p.preferred_expression}, Act={p.would_activate}")
+        print(
+            f"  [{p.shadow_status}] {p.model_id}: "
+            f"P(UP)={p.bullish_probability:.4f}, Dir={p.predicted_direction}, "
+            f"Expression={p.preferred_expression}, Act={p.would_activate}"
+        )
 
     # 3. Simulate tick step forward and exit settlement
     now_later = datetime.fromtimestamp(now.timestamp() + 300, tz=UTC)
@@ -101,6 +106,7 @@ def main() -> None:
     print("\n" + "=" * 75)
     print("SYNTHETIC DRY RUN VERDICT: SYNTHETIC_FORWARD_SHADOW_TEST_PASS")
     print("=" * 75)
+
 
 if __name__ == "__main__":
     main()

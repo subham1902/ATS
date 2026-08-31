@@ -49,6 +49,7 @@ class InstrumentSelectionConfiguration(ATSBaseModel):
     near_expiry_penalty_fraction: NonNegativeDecimal
     bar_duration_minutes: PositiveInt
     theta_semantics: Literal[ThetaSemantics.PER_CALENDAR_DAY]
+    require_observed_option_payoff: bool = False
 
     @model_validator(mode="after")
     def validate_fractions(self) -> InstrumentSelectionConfiguration:

@@ -20,7 +20,7 @@ def postgres_dsn() -> str:
     return dsn
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def migrated_database(postgres_dsn: str) -> None:
     psycopg = pytest.importorskip("psycopg")
     connection = psycopg.connect(postgres_dsn)

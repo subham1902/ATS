@@ -77,9 +77,7 @@ class TestControlAcknowledgements:
             (b'{"method":"mode","status":"error"}', ("mode", "error")),
         ],
     )
-    def test_valid_acknowledgement(
-        self, payload: object, expected: tuple[str, str]
-    ) -> None:
+    def test_valid_acknowledgement(self, payload: object, expected: tuple[str, str]) -> None:
         assert parse_control_acknowledgement(payload) == expected  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(

@@ -22,16 +22,16 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-
+from ats.market.data_acquisition.ingest_session import (
+    ONE_MINUTE_POLICY,
+    build_session_datasets,
+)
 from ats.market.history import (
+    HistoricalTruthError,
     HistoryValidationPolicy,
     MarketBarPayload,
     RawRecordReference,
     load_historical_dataset,
-)
-from ats.market.data_acquisition.ingest_session import (
-    ONE_MINUTE_POLICY,
-    build_session_datasets,
 )
 
 HISTORY_DIR = Path(r"D:\Projects\ATS\ats\data\historical")
@@ -96,7 +96,11 @@ def test_bar_coverage_and_interval(datasets):
             if isinstance(obs.payload, MarketBarPayload):
                 by_instrument.setdefault(obs.instrument, []).append(obs)
         for inst, bars in by_instrument.items():
-            expected = EXPECTED_BAR_COUNTS["underlying"] if inst in UNDERLYING_IDS else EXPECTED_BAR_COUNTS["option"]
+            expected = (
+                EXPECTED_BAR_COUNTS["underlying"]
+                if inst in UNDERLYING_IDS
+                else EXPECTED_BAR_COUNTS["option"]
+            )
             assert len(bars) == expected, inst
             times = [b.times.event_time for b in bars]
             assert times == sorted(times)
@@ -132,7 +136,7 @@ def test_tamper_records_file_fails_closed(tmp_path):
     first["payload"]["close"] = str(float(first["payload"]["close"]) + 1.0)
     lines[0] = json.dumps(first)
     records.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(HistoricalTruthError):
         load_historical_dataset(work)
 
 
@@ -144,5 +148,5 @@ def test_tamper_manifest_fails_closed(tmp_path):
     data = json.loads(manifest.read_bytes())
     data["dataset_id"] = "00000000-0000-0000-0000-000000000000"
     manifest.write_text(json.dumps(data), encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(HistoricalTruthError):
         load_historical_dataset(work)

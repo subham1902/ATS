@@ -39,6 +39,7 @@ def select_derivative_instruments(
     distribution: CalibratedOutcomeDistribution,
     evaluation_time: UTCDateTime,
     configuration: InstrumentSelectionConfiguration,
+    expected_option_payoff_per_unit: Decimal | None = None,
 ) -> InstrumentSelectionResult:
     """Rank one-lot long options and suppress equivalent thesis expressions."""
 
@@ -53,6 +54,8 @@ def select_derivative_instruments(
     option_type = _option_type(thesis, distribution)
     if option_type is None:
         return _empty("THESIS_NOT_DIRECTIONALLY_ACTIONABLE")
+    if configuration.require_observed_option_payoff and expected_option_payoff_per_unit is None:
+        return _empty("ECONOMIC_PAYOFF_EVIDENCE_UNAVAILABLE")
 
     instruments = {
         item.instrument_id: item
@@ -89,6 +92,7 @@ def select_derivative_instruments(
             thesis=thesis,
             distribution=distribution,
             configuration=configuration,
+            expected_option_payoff_per_unit=expected_option_payoff_per_unit,
         )
         if candidate.premium_required > configuration.maximum_premium_per_candidate:
             rejections.append(_rejection(quote.instrument_id, "PREMIUM_BUDGET_EXCEEDED"))
@@ -224,6 +228,7 @@ def _candidate(
     thesis: MarketThesis,
     distribution: CalibratedOutcomeDistribution,
     configuration: InstrumentSelectionConfiguration,
+    expected_option_payoff_per_unit: Decimal | None,
 ) -> InstrumentCandidate:
     assert instrument.strike is not None and instrument.option_type is not None
     assert quote.ask is not None and quote.spread is not None
@@ -232,21 +237,24 @@ def _candidate(
     quantity = instrument.lot_size
     quantity_decimal = Decimal(quantity)
     premium = quote.ask * quantity_decimal
-    expected_move = abs(
-        chain.underlying_price * Decimal(str(distribution.expected_return_fraction))
-    )
-    gross = expected_move * Decimal(str(abs(quote.delta))) * quantity_decimal
+    if expected_option_payoff_per_unit is None:
+        # Replay/research compatibility only. Production live-paper configuration
+        # requires an explicitly observed option-payoff estimate and never reaches
+        # this delta proxy.
+        expected_move = abs(
+            chain.underlying_price * Decimal(str(distribution.expected_return_fraction))
+        )
+        gross = expected_move * Decimal(str(abs(quote.delta))) * quantity_decimal
+    else:
+        gross = expected_option_payoff_per_unit * quantity_decimal
     spread = quote.spread * quantity_decimal
     slippage = premium * configuration.slippage_fraction
     transaction = premium * configuration.transaction_cost_fraction
-    theta_days = (
-        Decimal(distribution.horizon_bars * configuration.bar_duration_minutes)
-        / Decimal(24 * 60)
+    theta_days = Decimal(distribution.horizon_bars * configuration.bar_duration_minutes) / Decimal(
+        24 * 60
     )
     theta = Decimal(str(abs(quote.theta))) * theta_days * quantity_decimal
-    iv_penalty = (
-        premium * Decimal(str(quote.implied_volatility)) * configuration.iv_penalty_factor
-    )
+    iv_penalty = premium * Decimal(str(quote.implied_volatility)) * configuration.iv_penalty_factor
     liquidity = (
         premium * configuration.degraded_liquidity_penalty_fraction
         if quote.quality_state is DataQualityState.DEGRADED

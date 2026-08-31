@@ -18,6 +18,7 @@ HEADER = (
     b"strike,option_type,lot_size,tick_size,quantity_freeze_limit,tradable,contract_version\n"
 )
 
+
 def opt_row(
     strike: str,
     option_type: str,

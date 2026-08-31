@@ -12,8 +12,7 @@ GOLDEN_RAG_QUESTIONS: list[dict[str, Any]] = [
         "query": "What is the role of A04 in the ATS trading authority pipeline?",
         "expected_doc": "docs/architecture/a04_authority.md",
         "expected_fact": (
-            "A04 is the final financial and regulatory gatekeeper "
-            "enforcing immutable risk limits."
+            "A04 is the final financial and regulatory gatekeeper enforcing immutable risk limits."
         ),
     },
     {

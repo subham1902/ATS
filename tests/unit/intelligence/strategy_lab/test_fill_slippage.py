@@ -151,27 +151,17 @@ def _config(dataset, entry, exit_f, slippage_model) -> BacktestConfiguration:
 
 
 def test_buy_is_degraded_up_and_sell_down() -> None:
-    model = FixedBpsSlippageModel(
-        slippage_model_version="slip-v1", slippage_bps=Decimal("5")
-    )
+    model = FixedBpsSlippageModel(slippage_model_version="slip-v1", slippage_bps=Decimal("5"))
     price = Decimal("100")
-    assert model.applied_price(price=price, quantity=Decimal("1"), side="BUY") == Decimal(
-        "100.05"
-    )
-    assert model.applied_price(price=price, quantity=Decimal("1"), side="SELL") == Decimal(
-        "99.95"
-    )
+    assert model.applied_price(price=price, quantity=Decimal("1"), side="BUY") == Decimal("100.05")
+    assert model.applied_price(price=price, quantity=Decimal("1"), side="SELL") == Decimal("99.95")
 
 
 def test_invalid_inputs_are_rejected() -> None:
-    model = FixedBpsSlippageModel(
-        slippage_model_version="slip-v1", slippage_bps=Decimal("1")
-    )
+    model = FixedBpsSlippageModel(slippage_model_version="slip-v1", slippage_bps=Decimal("1"))
     with pytest.raises(ValueError):
         model.applied_price(price=Decimal("100"), quantity=Decimal("1"), side="HOLD")
-    negative = FixedBpsSlippageModel(
-        slippage_model_version="slip-v1", slippage_bps=Decimal("-1")
-    )
+    negative = FixedBpsSlippageModel(slippage_model_version="slip-v1", slippage_bps=Decimal("-1"))
     with pytest.raises(ValueError):
         negative.applied_price(price=Decimal("100"), quantity=Decimal("1"), side="BUY")
     zero = ZeroSlippageModel()

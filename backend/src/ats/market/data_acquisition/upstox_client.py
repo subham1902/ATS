@@ -74,9 +74,7 @@ class UpstoxReadOnlyClient:
         if unit not in {"minutes", "hours", "days"} or interval <= 0:
             raise ValueError("invalid intraday candle unit or interval")
         key = urllib.parse.quote(instrument_key, safe="")
-        return self._get(
-            f"/v3/historical-candle/intraday/{key}/{unit}/{interval}"
-        )
+        return self._get(f"/v3/historical-candle/intraday/{key}/{unit}/{interval}")
 
     def option_chain(self, instrument_key: str) -> dict[str, Any]:
         return self._get("/v2/option/contract", {"instrument_key": instrument_key})

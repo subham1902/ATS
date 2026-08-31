@@ -12,6 +12,7 @@ from ats.trading_runtime.a2_runner import (
     A2PaperSessionController,
     A2SessionState,
     UpstoxMarketFeedAdapter,
+    _is_default_nse_fo_trading_day,
     create_a2_paper_app,
 )
 from ats.trading_runtime.candidate_factory import build_opportunity_candidate
@@ -73,8 +74,51 @@ def test_live_money_guard() -> None:
         create_a2_paper_app(controller)
 
 
+def test_production_execution_fails_closed_before_market_open_data_ready() -> None:
+    controller = A2PaperSessionController(
+        config=A2PaperSessionConfig(require_live_instrument_evidence=True)
+    )
+    assert controller.start(require_token=False) is True
+    now = SystemClock().now()
+    candidate = build_opportunity_candidate(
+        instrument_id="NIFTY_CE",
+        campaign_id=uuid4(),
+        campaign_version=1,
+        strategy_id=uuid4(),
+        strategy_version=1,
+        market_context_id=uuid4(),
+        thesis_id=uuid4(),
+        thesis_version=1,
+        distribution_id=uuid4(),
+        created_at=now,
+        expires_at=now + timedelta(hours=1),
+    )
+
+    result = controller.evaluate_and_execute_candidate(candidate, now=now)
+
+    assert result == {"allowed": False, "reason": "MARKET_OPEN_DATA_NOT_READY"}
+    assert controller.status().paper_orders_submitted == 0
+    assert controller.status().real_orders_placed == 0
+
+
+def test_a2_freshness_default_matches_market_day_charter() -> None:
+    assert A2PaperSessionConfig().max_quote_age_ms == 2_000
+
+
+def test_default_calendar_filters_weekends_and_official_2026_fo_holidays() -> None:
+    from datetime import date
+
+    assert _is_default_nse_fo_trading_day(date(2026, 9, 1))
+    assert not _is_default_nse_fo_trading_day(date(2026, 9, 14))
+    assert not _is_default_nse_fo_trading_day(date(2026, 9, 5))
+
+
+def test_operator_orders_are_disabled_by_default() -> None:
+    assert A2PaperSessionConfig().allow_operator_orders is False
+
+
 def test_paper_broker_execution_only() -> None:
-    controller = A2PaperSessionController()
+    controller = A2PaperSessionController(config=A2PaperSessionConfig(lot_sizes={"NIFTY_CE": 1}))
     controller.start(require_token=False)
     now = SystemClock().now()
 
@@ -147,7 +191,7 @@ def test_api_runtime_command_lifecycle() -> None:
 
 
 def test_stop_flattens_open_paper_positions() -> None:
-    controller = A2PaperSessionController()
+    controller = A2PaperSessionController(config=A2PaperSessionConfig(lot_sizes={"NIFTY_CE": 1}))
     controller.start(require_token=False)
     now = SystemClock().now()
 
@@ -180,7 +224,10 @@ def test_stop_flattens_open_paper_positions() -> None:
 
 
 def test_multi_position_paper_flow() -> None:
-    config = A2PaperSessionConfig(max_positions=2)
+    config = A2PaperSessionConfig(
+        max_positions=2,
+        lot_sizes={"NIFTY_CE": 1, "BANKNIFTY_CE": 1},
+    )
     controller = A2PaperSessionController(config=config)
     controller.start(require_token=False)
     now = SystemClock().now()

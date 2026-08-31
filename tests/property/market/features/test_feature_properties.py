@@ -30,9 +30,7 @@ def test_future_suffix_is_structurally_unread() -> None:
     prefix = four_bars()
     suffix_a = (snapshot(5, close="105", high="108"),)
     unsafe_suffix_b = (
-        snapshot(5).model_copy(
-            update={"instrument_id": "TCS", "close": Decimal("NaN")}
-        ),
+        snapshot(5).model_copy(update={"instrument_id": "TCS", "close": Decimal("NaN")}),
         object(),
     )
     expected = compute_feature_bundle(prefix, cutoff_sequence=4)

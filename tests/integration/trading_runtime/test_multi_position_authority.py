@@ -9,14 +9,24 @@ import pytest
 
 
 def test_multi_position_shared_authority_no_oversub() -> None:
-    from tests.unit.portfolio.runtime.helpers import NOW, PORTFOLIO_ID, FakeTransactionManager, command, policy
     from ats.portfolio.runtime import PortfolioRecoveryEvidence, SerializedPortfolioAuthority
+
+    from tests.unit.portfolio.runtime.helpers import (
+        NOW,
+        PORTFOLIO_ID,
+        FakeTransactionManager,
+        command,
+        policy,
+    )
 
     tm = FakeTransactionManager()
     authority = SerializedPortfolioAuthority(transaction_manager=tm, policy=policy(maximum=3))
     authority.recover(
         PortfolioRecoveryEvidence(
-            portfolio_id=PORTFOLIO_ID, reconciled_at=NOW, active_commands=(), reconciliation_complete=True
+            portfolio_id=PORTFOLIO_ID,
+            reconciled_at=NOW,
+            active_commands=(),
+            reconciliation_complete=True,
         )
     )
     r1 = authority.reserve(command(1, market="NIFTY", amount="150000"))
@@ -40,6 +50,7 @@ def test_unique_tokens_per_position() -> None:
 
     from ats.kernel.autonomy import construct_autonomy_token, validate_token_eligibility
     from ats.kernel.types import AutonomyTokenPolicy, KernelOutcome
+
     from tests.unit.contracts.intelligence.fixtures import T0
     from tests.unit.kernel.fixtures import make_kernel_fixture, uid
 
@@ -146,7 +157,9 @@ def test_independent_positions_one_exits_one_remains() -> None:
     )
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
     rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
     rt.handle_fill("BANKNIFTY:1", Decimal("200"), Decimal("15"), now)
@@ -160,7 +173,12 @@ def test_session_flat_invariants() -> None:
 
     from ats.market.calendar.models import SessionCalendar
     from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
-    from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
+    from ats.trading_runtime.engine import (
+        RuntimeConfig,
+        RuntimeEvent,
+        RuntimeEventKind,
+        TradingRuntime,
+    )
 
     cal = SessionCalendar(
         calendar_id="T",
@@ -181,7 +199,9 @@ def test_session_flat_invariants() -> None:
     assert len(rt.state.open_positions) == 1
     flatten_time = datetime(2024, 6, 3, 9, 58, tzinfo=UTC)
     feed.set_mark("NIFTY", Decimal("100"), flatten_time)
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=flatten_time))
+    result = rt.process_event(
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=flatten_time)
+    )
     assert result["session_phase"] == "FLATTENING"
     assert "exits" in result
     for exit_req in result["exits"]:
@@ -189,6 +209,8 @@ def test_session_flat_invariants() -> None:
     assert len(rt.state.open_positions) == 0
     closed_time = datetime(2024, 6, 3, 10, 30, tzinfo=UTC)
     feed.set_mark("NIFTY", Decimal("100"), closed_time)
-    closed_result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=closed_time))
+    closed_result = rt.process_event(
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=closed_time)
+    )
     assert closed_result["session_phase"] == "CLOSED"
     assert len(rt.state.open_positions) == 0

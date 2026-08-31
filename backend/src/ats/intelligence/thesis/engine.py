@@ -219,9 +219,7 @@ def _stance(
     )
     contradiction = (
         probabilistic is ThesisStance.BULLISH and regime_direction is RegimeDirection.DOWN
-    ) or (
-        probabilistic is ThesisStance.BEARISH and regime_direction is RegimeDirection.UP
-    )
+    ) or (probabilistic is ThesisStance.BEARISH and regime_direction is RegimeDirection.UP)
     return ThesisStance.MIXED if contradiction else probabilistic
 
 

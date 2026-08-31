@@ -3,16 +3,27 @@ from __future__ import annotations
 from dataclasses import FrozenInstanceError
 
 import pytest
+from ats.contracts.domain.hashing import compute_payload_hash
 from pydantic import ValidationError
 
-from ats.contracts.domain.hashing import compute_payload_hash
 from tests.unit.contracts.intelligence.fixtures import make_contracts
 
 NAMES = (
-    "InstrumentSpec", "MarketContext", "RegimeEvidence", "AnalogueEvidence",
-    "EnsembleForecast", "CalibratedOutcomeDistribution", "MarketThesis",
-    "AnalystAssessment", "StrategyDefinition", "FormulaDefinition", "StrategyExperiment",
-    "StrategyScorecard", "PromotionDecision", "PerformanceAttribution", "ExplanationEvidence",
+    "InstrumentSpec",
+    "MarketContext",
+    "RegimeEvidence",
+    "AnalogueEvidence",
+    "EnsembleForecast",
+    "CalibratedOutcomeDistribution",
+    "MarketThesis",
+    "AnalystAssessment",
+    "StrategyDefinition",
+    "FormulaDefinition",
+    "StrategyExperiment",
+    "StrategyScorecard",
+    "PromotionDecision",
+    "PerformanceAttribution",
+    "ExplanationEvidence",
 )
 
 

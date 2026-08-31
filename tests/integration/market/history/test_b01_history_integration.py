@@ -64,9 +64,7 @@ def _golden_history_dataset() -> HistoricalDataset:
         source_version="1.0.0",
         data_classification=DatasetSourceClass.RECORDED_PROVIDER_SHAPE,
         contract_master_version="CASH_ONLY_NO_DERIVATIVES",
-        file_hashes=(
-            FileHashEntry(file_name="bars.json", content_sha256=manifest.content_sha256),
-        ),
+        file_hashes=(FileHashEntry(file_name="bars.json", content_sha256=manifest.content_sha256),),
         transform_lineage=(
             TransformStep(
                 step_index=0,

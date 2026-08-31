@@ -41,7 +41,10 @@ def _candidate(instrument_id: str):
 
 
 def test_c2_nifty_ce_and_banknifty_pe_with_exit_pnl():
-    config = A2PaperSessionConfig(max_positions=4)
+    config = A2PaperSessionConfig(
+        max_positions=4,
+        lot_sizes={"NIFTY_CE": 1, "BANKNIFTY_PE": 1},
+    )
     controller = A2PaperSessionController(config=config)
     controller.start(require_token=False)
     now = SystemClock().now()
@@ -100,7 +103,11 @@ def test_c2_nifty_ce_and_banknifty_pe_with_exit_pnl():
 
 
 def test_c2_same_direction_correlated_no_double_spend():
-    config = A2PaperSessionConfig(max_positions=4, capital_budget=Decimal("150000"))
+    config = A2PaperSessionConfig(
+        max_positions=4,
+        capital_budget=Decimal("150000"),
+        lot_sizes={"NIFTY_CE": 1, "BANKNIFTY_CE": 1},
+    )
     controller = A2PaperSessionController(config=config)
     controller.start(require_token=False)
     now = SystemClock().now()

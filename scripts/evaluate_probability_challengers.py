@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any
 
-CALIBRATION_STORE_PATH = Path(r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CALIBRATION_STORE_PATH = Path(
+    os.environ.get(
+        "ATS_CHAMPION_CALIBRATION_STORE",
+        str(REPO_ROOT / "data" / "historical" / "calibration_store_v1.json"),
+    )
+)
 
 
 def evaluate_challenger_models() -> list[dict[str, Any]]:

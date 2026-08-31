@@ -15,6 +15,7 @@ import winreg
 from pathlib import Path
 
 token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN", "").strip()
+banknifty_key = urllib.parse.quote("NSE_INDEX|Nifty Bank")
 if not token:
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
@@ -83,7 +84,7 @@ print("INST 69824:", json.dumps(inst_69824)[:600])
 # 3. Option chain for BANKNIFTY with a plausible expiry (will fix after seeing expiries)
 chain = try_endpoint(
     "option_chain_2026-08-27",
-    f"{BASE}/option/option-chain?instrument_key={urllib.parse.quote('NSE_INDEX|Nifty Bank')}&expiry_date=2026-08-27",
+    f"{BASE}/option/option-chain?instrument_key={banknifty_key}&expiry_date=2026-08-27",
 )
 print("CHAIN 0827:", json.dumps(chain)[:600])
 

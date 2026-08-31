@@ -11,13 +11,12 @@ Verifies:
 
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 repo_root = Path(__file__).resolve().parents[3]
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
-
-from typing import Any
 
 from scripts.run_market_open_a2_acceptance import Check, MarketOpenAcceptanceGate  # noqa: E402
 

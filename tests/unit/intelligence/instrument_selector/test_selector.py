@@ -77,6 +77,20 @@ def test_candidate_economics_use_exact_decimal_arithmetic() -> None:
     assert candidate.payload_hash == compute_payload_hash(candidate)
 
 
+def test_live_policy_requires_observed_option_payoff_evidence() -> None:
+    strict = configuration().model_copy(update={"require_observed_option_payoff": True})
+    unavailable = select(configuration=strict)
+    assert unavailable.status is InstrumentSelectionStatus.NO_ELIGIBLE_INSTRUMENT
+    assert unavailable.reason_codes == ("ECONOMIC_PAYOFF_EVIDENCE_UNAVAILABLE",)
+
+    observed = select(
+        configuration=strict,
+        expected_option_payoff_per_unit=Decimal("10"),
+    )
+    assert observed.status is InstrumentSelectionStatus.CANDIDATES_AVAILABLE
+    assert observed.candidates[0].expected_gross_pnl == Decimal("650")
+
+
 def test_adjacent_equivalent_strikes_are_suppressed() -> None:
     result = select()
     assert len(result.candidates) == 1

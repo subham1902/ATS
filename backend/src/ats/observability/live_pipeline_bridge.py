@@ -50,6 +50,7 @@ class LivePipelineCounters:
     live_option_chains: int = 0
     live_option_quotes: int = 0
     option_evidence_failures: int = 0
+    scanner_failures: int = 0
     candidates_considered: int = 0
     candidates_rejected: int = 0
     candidates_qualified: int = 0

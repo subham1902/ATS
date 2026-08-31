@@ -651,7 +651,11 @@ class TradingRuntime:
                     str(checkpoint.get("peak_equity", self.state.peak_equity))
                 )
                 self.state.cumulative_realized_pnl = Decimal(
-                    str(checkpoint.get("cumulative_realized_pnl", self.state.cumulative_realized_pnl))
+                    str(
+                        checkpoint.get(
+                            "cumulative_realized_pnl", self.state.cumulative_realized_pnl
+                        )
+                    )
                 )
         if self.durable_positions is not None:
             for record in self.durable_positions.recover_open():

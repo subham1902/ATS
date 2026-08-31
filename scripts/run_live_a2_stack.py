@@ -1,4 +1,6 @@
-"""Live A2 paper stack — backend + harness (local Ollama) + autonomous paper loop + pipeline telemetry.
+"""Live A2 paper stack.
+
+Backend + harness (local Ollama) + autonomous paper loop + pipeline telemetry.
 
 Starts the FastAPI app with:
   - A2PaperSessionController (PAPER, DISABLED)
@@ -22,8 +24,7 @@ except ImportError:
 from ats.api.app import create_app
 from ats.api.harness_bridge import HarnessBridge
 from ats.intelligence.inference.advisory_llm_bridge import AdvisoryLlmBridge
-from ats.intelligence.inference.ollama import OllamaConfiguration
-from ats.intelligence.inference.ollama import OllamaInferenceProvider
+from ats.intelligence.inference.ollama import OllamaConfiguration, OllamaInferenceProvider
 from ats.intelligence.inference.ollama_transport import OllamaHttpTransport
 from ats.observability.live_pipeline_bridge import LivePipelineBridge
 from ats.observability.operator_provider import OperatorIntelligenceProvider
@@ -31,7 +32,6 @@ from ats.trading_runtime.a2_runner import (
     A2PaperSessionConfig,
     A2PaperSessionController,
     UpstoxMarketFeedAdapter,
-    create_a2_paper_app,
 )
 
 
@@ -62,8 +62,9 @@ def build_live_app(*, require_token: bool = False):
 
     now = SystemClock().now()
     initial_input = live_bridge.build_projection_input(as_of=now)
-    from ats.api.models import StreamEvent
     from uuid import uuid4
+
+    from ats.api.models import StreamEvent
 
     try:
         operator_provider.observe(
@@ -110,8 +111,8 @@ def main() -> None:
     args = parser.parse_args()
     app, controller, hb, lb, _ = build_live_app(require_token=args.require_token)
     print(f"Starting live A2 paper stack on {args.host}:{args.port} — PAPER/DISABLED/ADVISORY_ONLY")
-    print(f"Harness LLM: LOCAL_OLLAMA qwen3:14b (fallback qwen2.5:14b) @ http://127.0.0.1:11434")
-    print(f"Pipeline: NIFTY + BANKNIFTY Universe hydrated — scanner will show LIVE fresh counts")
+    print("Harness LLM: LOCAL_OLLAMA qwen3:14b (fallback qwen2.5:14b) @ http://127.0.0.1:11434")
+    print("Pipeline: NIFTY + BANKNIFTY Universe hydrated — scanner will show LIVE fresh counts")
     if uvicorn is None:
         raise RuntimeError("uvicorn not installed")
     uvicorn.run(app, host=args.host, port=args.port)

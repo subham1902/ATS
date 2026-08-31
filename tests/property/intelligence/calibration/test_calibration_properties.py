@@ -38,8 +38,7 @@ def test_set_like_input_order_does_not_change_result() -> None:
 @pytest.mark.parametrize("probability", ["0", "0.0001", "0.5", "0.9999", "1"])
 def test_probability_boundaries_remain_finite(probability: str) -> None:
     items = tuple(
-        observation(index, index % 2 == 0, probability=probability)
-        for index in range(1, 4)
+        observation(index, index % 2 == 0, probability=probability) for index in range(1, 4)
     )
     config = calibration_config().model_copy(update={"bin_count": 1})
     assert run(items, config=config).distribution is not None

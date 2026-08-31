@@ -17,6 +17,7 @@ GET /v1/sessions/{session_id}/integrity
 GET /v1/session-evidence/status
 No mutations. No real broker orders.
 """
+
 from __future__ import annotations
 
 from typing import Any

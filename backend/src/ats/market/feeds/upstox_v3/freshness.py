@@ -173,9 +173,7 @@ class FeedFreshnessBoard:
 def _same_content(first: NormalizedFeedUpdate, second: NormalizedFeedUpdate) -> bool:
     """Provider content identity ignores local receipt metadata."""
 
-    return first.model_dump(exclude={"received_at"}) == second.model_dump(
-        exclude={"received_at"}
-    )
+    return first.model_dump(exclude={"received_at"}) == second.model_dump(exclude={"received_at"})
 
 
 __all__ = ["FeedFreshnessBoard", "KeyFreshnessLatch", "LatchDecision"]

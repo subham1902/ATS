@@ -184,10 +184,7 @@ class MarketEventPayload(ATSBaseModel):
 
 
 ObservationPayload = Annotated[
-    MarketBarPayload
-    | OptionChainQuotePayload
-    | ContractMetadataPayload
-    | MarketEventPayload,
+    MarketBarPayload | OptionChainQuotePayload | ContractMetadataPayload | MarketEventPayload,
     Field(discriminator="payload_kind"),
 ]
 
@@ -311,13 +308,11 @@ class HistoryValidationPolicy(ATSBaseModel):
         if tuple(sorted(self.contract_universe)) != self.contract_universe:
             raise ValueError("contract_universe must be sorted and unique")
         keys = tuple(
-            (override.instrument, override.timeframe)
-            for override in self.instrument_overrides
+            (override.instrument, override.timeframe) for override in self.instrument_overrides
         )
         if tuple(sorted(keys)) != keys or len(set(keys)) != len(keys):
             raise ValueError(
-                "instrument_overrides must be sorted and unique by "
-                "(instrument, timeframe)"
+                "instrument_overrides must be sorted and unique by (instrument, timeframe)"
             )
         return self
 
@@ -357,9 +352,7 @@ AS_OF_INFORMATION_MODEL = AsOfInformationModel(
     model_id="AS_OF_INFORMATION_MODEL_V1",
     availability_field="times.available_to_strategy_time",
     admission_rule="observation.times.available_to_strategy_time <= decision_time",
-    time_order_rule=(
-        "event_time <= source_time <= ingest_time <= available_to_strategy_time"
-    ),
+    time_order_rule=("event_time <= source_time <= ingest_time <= available_to_strategy_time"),
 )
 
 

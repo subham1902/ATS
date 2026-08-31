@@ -26,10 +26,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import winreg
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 CACHE_DIR = REPO / "data" / "raw" / "upstox" / "instrument_cache"
@@ -40,10 +38,25 @@ FAILURE_FILE = REPO / "data" / "raw" / "upstox" / "provider_failure_report.json"
 BASE = "https://api.upstox.com/v2"
 
 ALL_SESSIONS = [
-    "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10",
-    "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17",
-    "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24",
-    "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28",
+    "2026-08-04",
+    "2026-08-05",
+    "2026-08-06",
+    "2026-08-07",
+    "2026-08-10",
+    "2026-08-11",
+    "2026-08-12",
+    "2026-08-13",
+    "2026-08-14",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
 ]
 
 # Reference ATM underlying levels for strike-band selection (from Aug-25 evidence).
@@ -52,7 +65,7 @@ REF_PRICE = {"NIFTY": 25000.0, "BANKNIFTY": 55000.0}
 PLAN = [
     ("BANKNIFTY", "2026-09-29", ALL_SESSIONS),  # monthly, listed long ago -> all 19
     ("NIFTY", "2026-09-01", [s for s in ALL_SESSIONS if s >= "2026-08-11"]),  # weekly
-    ("NIFTY", "2026-09-29", [s for s in ALL_SESSIONS if s < "2026-08-11"]),   # monthly early
+    ("NIFTY", "2026-09-29", [s for s in ALL_SESSIONS if s < "2026-08-11"]),  # monthly early
 ]
 STRIKES_PER_SIDE = 1  # ATM +/-1 -> 3 strikes total
 
@@ -96,6 +109,7 @@ def load_cache() -> dict[tuple[str, str, float, str], dict]:
             continue
         for c in json.loads(f.read_text())["contracts"]:
             import re
+
             m = re.search(r"(\d+) (CE|PE)", c.get("sym", ""))
             if not m:
                 continue
@@ -123,19 +137,21 @@ def plan_acquisitions(cache: dict) -> list[dict]:
                 c = cache.get(key)
                 if not c:
                     continue
-                jobs.append({
-                    "underlying": underlying,
-                    "expiry": expiry,
-                    "strike": strike,
-                    "option_type": otype,
-                    "instrument_key": c["ik"],
-                    "trading_symbol": c["sym"],
-                    "lot_size": int(c["lot"]),
-                    "tick_size": float(c["tick"]),
-                    "sessions": sessions,
-                    "date_from": min(sessions),
-                    "date_to": max(sessions),
-                })
+                jobs.append(
+                    {
+                        "underlying": underlying,
+                        "expiry": expiry,
+                        "strike": strike,
+                        "option_type": otype,
+                        "instrument_key": c["ik"],
+                        "trading_symbol": c["sym"],
+                        "lot_size": int(c["lot"]),
+                        "tick_size": float(c["tick"]),
+                        "sessions": sessions,
+                        "date_from": min(sessions),
+                        "date_to": max(sessions),
+                    }
+                )
     return jobs
 
 
@@ -209,11 +225,14 @@ def classify(status: int, body: dict, headers: dict) -> tuple[str, bool]:
 
 def fetch_candles(ik: str, date_from: str, date_to: str, tok: str):
     url = f"{BASE}/historical-candle/{urllib.parse.quote(ik)}/1minute/{date_from}/{date_to}"
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {tok}",
-        "Accept": "application/json",
-        "User-Agent": "ATS-Research-Client/1.0",
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {tok}",
+            "Accept": "application/json",
+            "User-Agent": "ATS-Research-Client/1.0",
+        },
+    )
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.status, json.loads(resp.read().decode("utf-8")), dict(resp.headers)
 
@@ -257,16 +276,29 @@ def run(resume: bool) -> None:
                     job["instrument_key"], job["date_from"], job["date_to"], tok
                 )
                 requests_made += 1
-                body = {k: v for k, v in data.items() if k != "data"} if isinstance(data, dict) else {}
+                body = (
+                    {k: v for k, v in data.items() if k != "data"} if isinstance(data, dict) else {}
+                )
                 classification, retryable = classify(status, body, headers)
-                now = datetime.now(timezone.utc).isoformat()
+                now = datetime.now(UTC).isoformat()
                 if status == 200 and isinstance(data, dict) and data.get("status") == "success":
                     candles = data.get("data", {}).get("candles", [])
                     if not candles:
-                        rec.update(status="NO_DATA", attempts=attempts + 1,
-                                   classification=classification, last_attempt=now)
-                        log_failure({"ts": now, "ik": rec_id, "status": status,
-                                     "classification": "NO_DATA", "note": "empty candles"})
+                        rec.update(
+                            status="NO_DATA",
+                            attempts=attempts + 1,
+                            classification=classification,
+                            last_attempt=now,
+                        )
+                        log_failure(
+                            {
+                                "ts": now,
+                                "ik": rec_id,
+                                "status": status,
+                                "classification": "NO_DATA",
+                                "note": "empty candles",
+                            }
+                        )
                         ok = True  # nothing to fetch; terminal
                         last_success = now
                         break
@@ -287,15 +319,21 @@ def run(resume: bool) -> None:
                             "source_retrieval_time": now,
                             "ingest_time": now,
                             "available_to_strategy_time": candles[-1][0] if candles else None,
-                            "note": "retrieval_time is provider fetch time, NOT historical availability",
+                            "note": (
+                                "retrieval_time is provider fetch time, NOT historical availability"
+                            ),
                         },
                     }
                     (OUT_DIR / job["underlying"]).mkdir(exist_ok=True)
                     outf = OUT_DIR / job["underlying"] / f"{rec_id}.json"
                     outf.write_text(json.dumps(out), encoding="utf-8")
-                    rec.update(status="FETCHED", attempts=attempts + 1,
-                               classification="OK", last_attempt=now,
-                               output_hash=secrets.token_hex(4))
+                    rec.update(
+                        status="FETCHED",
+                        attempts=attempts + 1,
+                        classification="OK",
+                        last_attempt=now,
+                        output_hash=secrets.token_hex(4),
+                    )
                     ok = True
                     last_success = now
                     consecutive_403 = 0
@@ -303,23 +341,37 @@ def run(resume: bool) -> None:
                     break
                 else:
                     # non-200
-                    rec.update(status="RETRYABLE" if retryable else "PERMANENTLY_UNAVAILABLE",
-                               attempts=attempts + 1, classification=classification,
-                               last_attempt=now)
-                    log_failure({"ts": now, "ik": rec_id, "status": status,
-                                 "classification": classification,
-                                 "body": redact(json.dumps(body)[:200], tok)})
+                    rec.update(
+                        status="RETRYABLE" if retryable else "PERMANENTLY_UNAVAILABLE",
+                        attempts=attempts + 1,
+                        classification=classification,
+                        last_attempt=now,
+                    )
+                    log_failure(
+                        {
+                            "ts": now,
+                            "ik": rec_id,
+                            "status": status,
+                            "classification": classification,
+                            "body": redact(json.dumps(body)[:200], tok),
+                        }
+                    )
                     last_failure = now
                     if classification == "UNKNOWN_403" or classification in (
-                        "RATE_LIMIT", "DAILY_QUOTA", "TOKEN_PERMISSION", "TOKEN_EXPIRED",
-                        "ACCOUNT_ENTITLEMENT", "STATIC_IP_REQUIREMENT"):
+                        "RATE_LIMIT",
+                        "DAILY_QUOTA",
+                        "TOKEN_PERMISSION",
+                        "TOKEN_EXPIRED",
+                        "ACCOUNT_ENTITLEMENT",
+                        "STATIC_IP_REQUIREMENT",
+                    ):
                         consecutive_403 += 1
                     if classification == "RATE_LIMIT" or status == 429:
                         consecutive_429 += 1
                     if not retryable:
                         break
                     # backoff
-                    delay = CONFIG["base_backoff"] * (2 ** attempt) + random.uniform(0, 1)
+                    delay = CONFIG["base_backoff"] * (2**attempt) + random.uniform(0, 1)
                     time.sleep(min(delay, 30))
             except urllib.error.HTTPError as e:
                 requests_made += 1
@@ -329,28 +381,50 @@ def run(resume: bool) -> None:
                 except Exception:
                     body = {"raw": raw[:200]}
                 classification, retryable = classify(e.code, body, dict(e.headers))
-                now = datetime.now(timezone.utc).isoformat()
-                rec.update(status="RETRYABLE" if retryable else "PERMANENTLY_UNAVAILABLE",
-                           attempts=attempts + 1, classification=classification,
-                           last_attempt=now)
-                log_failure({"ts": now, "ik": rec_id, "status": e.code,
-                             "classification": classification,
-                             "body": redact(json.dumps({k: v for k, v in body.items() if k != "data"})[:200], tok)})
+                now = datetime.now(UTC).isoformat()
+                rec.update(
+                    status="RETRYABLE" if retryable else "PERMANENTLY_UNAVAILABLE",
+                    attempts=attempts + 1,
+                    classification=classification,
+                    last_attempt=now,
+                )
+                log_failure(
+                    {
+                        "ts": now,
+                        "ik": rec_id,
+                        "status": e.code,
+                        "classification": classification,
+                        "body": redact(
+                            json.dumps({k: v for k, v in body.items() if k != "data"})[:200], tok
+                        ),
+                    }
+                )
                 last_failure = now
-                if classification in ("UNKNOWN_403", "RATE_LIMIT", "DAILY_QUOTA", "TOKEN_PERMISSION",
-                                     "TOKEN_EXPIRED", "ACCOUNT_ENTITLEMENT", "STATIC_IP_REQUIREMENT"):
+                if classification in (
+                    "UNKNOWN_403",
+                    "RATE_LIMIT",
+                    "DAILY_QUOTA",
+                    "TOKEN_PERMISSION",
+                    "TOKEN_EXPIRED",
+                    "ACCOUNT_ENTITLEMENT",
+                    "STATIC_IP_REQUIREMENT",
+                ):
                     consecutive_403 += 1
                 if consecutive_403 >= CONFIG["max_403_before_abort"]:
                     break
                 if retryable:
-                    delay = CONFIG["base_backoff"] * (2 ** attempt) + random.uniform(0, 1)
+                    delay = CONFIG["base_backoff"] * (2**attempt) + random.uniform(0, 1)
                     time.sleep(min(delay, 30))
                 else:
                     break
             except Exception as e:  # noqa: BLE001
-                now = datetime.now(timezone.utc).isoformat()
-                rec.update(status="RETRYABLE", attempts=attempts + 1,
-                           classification="UNKNOWN", last_attempt=now)
+                now = datetime.now(UTC).isoformat()
+                rec.update(
+                    status="RETRYABLE",
+                    attempts=attempts + 1,
+                    classification="UNKNOWN",
+                    last_attempt=now,
+                )
                 log_failure({"ts": now, "ik": rec_id, "error": redact(str(e)[:200], tok)})
                 break
         state["records"][rec_id] = rec
@@ -359,8 +433,10 @@ def run(resume: bool) -> None:
             pass
         time.sleep(CONFIG["min_inter_request_delay"])
 
-    print(f"Run complete. requests_made={requests_made}, "
-          f"last_success={last_success}, last_failure={last_failure}")
+    print(
+        f"Run complete. requests_made={requests_made}, "
+        f"last_success={last_success}, last_failure={last_failure}"
+    )
     # summary
     by_status = {}
     for r in state["records"].values():
@@ -373,4 +449,6 @@ if __name__ == "__main__":
     ap.add_argument("--resume", action="store_true", help="skip already-fetched contracts")
     args = ap.parse_args()
     run(resume=args.resume)
-# NOTE: After 2026-08-28 audit, option historical-candle endpoint requires single-day /s/s format (not ranges). Range calls returned UDAPI1015. Fixed in classify() (400 format = RETRYABLE). The fetch loop should be changed to loop job["sessions"] with from==to. Currently range-based; will be corrected when quota clears.
+# NOTE: The historical-candle endpoint requires single-day /s/s requests.
+# Range requests returned UDAPI1015. The fetch loop must iterate job sessions
+# with matching from/to dates; never treat range failure as missing evidence.

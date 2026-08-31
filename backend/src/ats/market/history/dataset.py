@@ -40,14 +40,10 @@ class HistoricalDataset(ATSBaseModel):
 
         return self.timeline.visible(at_time)
 
-    def known_expiries_as_of(
-        self, underlying: str, at_time: UTCDateTime
-    ) -> tuple[str, ...]:
+    def known_expiries_as_of(self, underlying: str, at_time: UTCDateTime) -> tuple[str, ...]:
         """Return expiries genuinely known for ``underlying`` at ``at_time``."""
 
-        return known_expiries_as_of(
-            self.observations, underlying=underlying, at_time=at_time
-        )
+        return known_expiries_as_of(self.observations, underlying=underlying, at_time=at_time)
 
     def latest_contract_metadata_as_of(
         self, trading_symbol: str, at_time: UTCDateTime

@@ -124,9 +124,7 @@ def _compute_rolling_features(prefix: tuple[MarketSnapshot, ...]) -> dict[str, f
             values["rolling_price_position_3"] = (
                 0.5
                 if price_range == 0
-                else _finite_float(
-                    context.divide(window[-1].close - trailing_low, price_range)
-                )
+                else _finite_float(context.divide(window[-1].close - trailing_low, price_range))
             )
         if len(prefix) >= 4:
             true_ranges: list[Decimal] = []
@@ -155,9 +153,7 @@ def _compute_rolling_features(prefix: tuple[MarketSnapshot, ...]) -> dict[str, f
                 for value in returns
             )
             variance = context.divide(sum(squared_deviations, Decimal(0)), Decimal(3))
-            values["realized_volatility_3_population"] = _finite_float(
-                context.sqrt(variance)
-            )
+            values["realized_volatility_3_population"] = _finite_float(context.sqrt(variance))
             values["roc_3_fraction"] = _finite_float(
                 context.subtract(context.divide(prefix[-1].close, prefix[-4].close), Decimal(1))
             )

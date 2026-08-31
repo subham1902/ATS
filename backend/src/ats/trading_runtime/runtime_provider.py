@@ -100,7 +100,7 @@ class TradingRuntimeProvider:
                         from ats.trading_runtime.position_monitor import evaluate_position
 
                         decision = evaluate_position(
-                            config=engine.config.position_monitor,
+                            config=engine.config.position_monitor,  # type: ignore[attr-defined]
                             position=pos,
                             hwm=getattr(st, "hwm_state", None),
                             evaluation_time=SystemClock().now(),

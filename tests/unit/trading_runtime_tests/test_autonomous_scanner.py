@@ -2,25 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-import pytest
-from ats.contracts.common import SystemClock, UTCDateTime
+from ats.contracts.common import SystemClock
 from ats.contracts.domain import MarketSnapshot
 from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.types import (
     DataQualityState,
     SessionState,
 )
-from ats.contracts.intelligence.models import MarketContext
-from ats.contracts.intelligence.types import LiquidityState, VolatilityState
 from ats.intelligence.agent_governance.governor import RuntimeChangeGovernor
 from ats.intelligence.calibration.models import CalibrationObservation
 from ats.intelligence.harness.harness_integration import A2HarnessIntegration
-from ats.intelligence.harness.models import HarnessAgentType, MaterialAgentEvent
 from ats.intelligence.harness.runtime import HarnessRuntimeAdapter
 from ats.trading_runtime.a2_runner import (
     A2PaperSessionConfig,
@@ -58,7 +54,9 @@ class _MockSidecar:
         pass
 
 
-def _sample_snapshots(base_time: datetime, instrument_id: str = "NIFTY") -> tuple[MarketSnapshot, ...]:
+def _sample_snapshots(
+    base_time: datetime, instrument_id: str = "NIFTY"
+) -> tuple[MarketSnapshot, ...]:
     snapshots = []
     offset = base_time.minute % 5
     aligned_base = base_time - timedelta(
@@ -233,7 +231,11 @@ def test_scanner_exception_isolated_from_p0_p1() -> None:
 
 def test_automatic_qualifying_candidate_paper_broker_pipeline() -> None:
     feed = UpstoxMarketFeedAdapter()
-    config = A2PaperSessionConfig(execution_target="PAPER", live_money="DISABLED")
+    config = A2PaperSessionConfig(
+        execution_target="PAPER",
+        live_money="DISABLED",
+        lot_sizes={"NIFTY_CE": 1, "NIFTY_PE": 1},
+    )
     controller = A2PaperSessionController(config=config, market_feed=feed)
     controller.start(require_token=False)
 
@@ -242,9 +244,7 @@ def test_automatic_qualifying_candidate_paper_broker_pipeline() -> None:
     snaps = _sample_snapshots(now - timedelta(minutes=25), instrument_id="NIFTY")
     controller.seed_snapshot_history("NIFTY", snaps)
 
-    controller.set_calibration_observations_provider(
-        lambda: _sample_calibration_observations(now)
-    )
+    controller.set_calibration_observations_provider(lambda: _sample_calibration_observations(now))
 
     # Ingest decision-ready tick matching the last bar
     controller.process_tick("NIFTY", Decimal("107.00"), at=now)
@@ -270,7 +270,9 @@ def test_automatic_qualifying_candidate_paper_broker_pipeline() -> None:
     # Process mark move that triggers monitor exit
     exit_time = now + timedelta(seconds=1)
     controller.process_tick(pos.instrument_id, entry_price + Decimal("50.00"), at=exit_time)
-    controller.engine.request_exit(pos_id, exit_time, reason_codes=("PROFIT_TARGET",), source="MONITOR")
+    controller.engine.request_exit(
+        pos_id, exit_time, reason_codes=("PROFIT_TARGET",), source="MONITOR"
+    )
     controller.engine.handle_exit_fill(pos_id, exit_time)
     controller.runtime_provider.update_from_engine(controller.engine)
 
@@ -294,7 +296,9 @@ def test_harness_material_event_routing() -> None:
 
     now = SystemClock().now()
     controller.notify_material_event("REGIME_CHANGE", "Regime changed to TREND", now=now)
-    controller.notify_material_event("OPPORTUNITY_QUALIFIED", "Candidate qualified on NIFTY_CE", now=now)
+    controller.notify_material_event(
+        "OPPORTUNITY_QUALIFIED", "Candidate qualified on NIFTY_CE", now=now
+    )
     controller.notify_material_event("POSITION_DETERIORATION", "Position stop hit", now=now)
 
     assert len(sidecar.prompts) >= 3  # Routed through adapter to sidecar
@@ -312,9 +316,7 @@ def test_portfolio_brain_and_a04_deny_remain_safe() -> None:
     snaps = _sample_snapshots(now - timedelta(minutes=25), instrument_id="NIFTY")
     controller.seed_snapshot_history("NIFTY", snaps)
 
-    controller.set_calibration_observations_provider(
-        lambda: _sample_calibration_observations(now)
-    )
+    controller.set_calibration_observations_provider(lambda: _sample_calibration_observations(now))
 
     controller.process_tick("NIFTY", Decimal("107.00"), at=now)
     controller.process_tick("BANKNIFTY", Decimal("52800.00"), at=now)

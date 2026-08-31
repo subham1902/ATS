@@ -58,6 +58,7 @@ def run_shadow_session_replay(
     cal = default_a2_session_calendar(trading_dates=(replay_date,))
 
     from ats.trading_runtime.modes import TradingMode
+
     trading_mode = TradingMode.NORMAL
     if mode == "SAFE":
         trading_mode = TradingMode.SAFE

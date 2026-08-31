@@ -41,9 +41,7 @@ class AsOfTimeline:
             )
         )
         self._records = records
-        self._availability = [
-            item.times.available_to_strategy_time for item in records
-        ]
+        self._availability = [item.times.available_to_strategy_time for item in records]
         identity_set = {item.observation_id for item in records}
         hidden_from: dict[UUID, UTCDateTime] = {}
         for item in records:
@@ -75,9 +73,7 @@ def is_admissible_as_of(observation: MarketObservation, *, at_time: UTCDateTime)
     return observation.times.available_to_strategy_time <= at_time
 
 
-def require_available(
-    observation: MarketObservation, *, at_time: UTCDateTime
-) -> MarketObservation:
+def require_available(observation: MarketObservation, *, at_time: UTCDateTime) -> MarketObservation:
     """Return the observation, or raise if it is not available at ``at_time``."""
 
     if not is_admissible_as_of(observation, at_time=at_time):

@@ -42,9 +42,7 @@ def configuration() -> UpstoxFeedConfiguration:
 
 
 def authorization(*, with_token: bool = True) -> UpstoxFeedAuthorization:
-    return UpstoxFeedAuthorization(
-        bearer_token=TEST_ONLY_SECRET if with_token else None
-    )
+    return UpstoxFeedAuthorization(bearer_token=TEST_ONLY_SECRET if with_token else None)
 
 
 def decoder() -> JsonFeedPayloadDecoder:

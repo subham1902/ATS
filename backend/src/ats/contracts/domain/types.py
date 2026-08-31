@@ -47,6 +47,7 @@ SchemaV1 = Literal["1.0"]
 Money = FiniteDecimal
 QualityFlag = NonEmptyStr
 
+
 def _validate_json_safe(value: object) -> object:
     if value is None or isinstance(value, bool | int | str):
         return value

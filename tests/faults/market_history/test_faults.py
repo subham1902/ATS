@@ -140,9 +140,7 @@ def test_future_expiry_knowledge_is_gated_by_master_availability() -> None:
         expiry_date=EXPIRY_WEEKLY,
         event_time=SESSION_START - timedelta(days=1),
     )
-    dataset = build_test_dataset(
-        (v1_row, v2_row), contract_master_version=MASTER_VERSION_V2
-    )
+    dataset = build_test_dataset((v1_row, v2_row), contract_master_version=MASTER_VERSION_V2)
     switch = v2_row.times.available_to_strategy_time
     assert EXPIRY_WEEKLY not in dataset.known_expiries_as_of(
         "NIFTY", at_time=switch - timedelta(milliseconds=1)

@@ -17,8 +17,12 @@ from ats.observability.session_replay import replay
 def identity() -> SessionIdentity:
     return SessionIdentity(
         session_id=UUID("11111111-1111-4111-8111-111111111111"),
-        trading_date="2026-09-01", champion_model_id="C0", champion_model_version="1",
-        policy_version="1", system_version="test", started_at=datetime(2026, 9, 1, tzinfo=UTC),
+        trading_date="2026-09-01",
+        champion_model_id="C0",
+        champion_model_version="1",
+        policy_version="1",
+        system_version="test",
+        started_at=datetime(2026, 9, 1, tzinfo=UTC),
     )
 
 
@@ -33,11 +37,16 @@ def evidence_root():
 
 def test_hash_chain_restart_and_replay(evidence_root):
     recorder = SessionEvidenceRecorder(identity(), evidence_root)
-    recorder.record(EvidenceEventType.MODEL_PREDICTION,
-                    EvidencePayload(underlying="NIFTY", model_id="C0", probability=Decimal("0.50")),
-                    producer="test")
-    recorder.record(EvidenceEventType.THESIS_REJECTED,
-                    EvidencePayload(reason_code="NEUTRAL_THESIS"), producer="test")
+    recorder.record(
+        EvidenceEventType.MODEL_PREDICTION,
+        EvidencePayload(underlying="NIFTY", model_id="C0", probability=Decimal("0.50")),
+        producer="test",
+    )
+    recorder.record(
+        EvidenceEventType.THESIS_REJECTED,
+        EvidencePayload(reason_code="NEUTRAL_THESIS"),
+        producer="test",
+    )
     manifest = recorder.finalize()
 
     resumed = SessionEvidenceRecorder(identity(), evidence_root)

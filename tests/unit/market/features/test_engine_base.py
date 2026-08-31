@@ -54,9 +54,7 @@ def test_returns_use_exact_previous_close_semantics() -> None:
         ((snapshot(1), snapshot(3)), "sequences"),
     ],
 )
-def test_invalid_histories_fail_closed(
-    bars: tuple[object, ...], message: str
-) -> None:
+def test_invalid_histories_fail_closed(bars: tuple[object, ...], message: str) -> None:
     with pytest.raises(FeatureInputError, match=message):
         compute_feature_bundle(bars, cutoff_sequence=bars[-1].sequence)  # type: ignore[attr-defined,arg-type]
 

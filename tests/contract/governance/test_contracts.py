@@ -6,7 +6,11 @@ from ats.contracts.governance.types import ConstraintCode
 
 def test_governance_contract_inventory() -> None:
     assert tuple(contract.__name__ for contract in GOVERNANCE_CONTRACTS) == (
-        "TradingCampaign", "CampaignState", "OpportunityCandidate", "PositionThesis", "GovernanceContext"
+        "TradingCampaign",
+        "CampaignState",
+        "OpportunityCandidate",
+        "PositionThesis",
+        "GovernanceContext",
     )
 
 

@@ -63,8 +63,12 @@ from ats.trading_runtime.session import (
 from pydantic import SecretStr
 from run_d10_live_acceptance import _extract_ltp, _fetch_reference
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHAMPION_CALIBRATION_STORE = Path(
-    r"D:\Projects\ATS\ats\data\historical\calibration_store_v1.json"
+    os.environ.get(
+        "ATS_CHAMPION_CALIBRATION_STORE",
+        str(REPO_ROOT / "data" / "historical" / "calibration_store_v1.json"),
+    )
 )
 _LIVE_BAR_NAMESPACE = UUID("bf0b9b07-5770-5a6a-a750-cb216e8cb094")
 
@@ -222,8 +226,8 @@ class ReadOnlyUpstoxSupervisor:
             wire_format=WireFormat.PROTOBUF_BINARY,
             client_guid=str(uuid4()),
             limits=UpstoxFeedLimits(
-                maximum_silence_ms=5_000,
-                stale_after_ms=10_000,
+                maximum_silence_ms=2_000,
+                stale_after_ms=2_000,
                 maximum_buffered_frames=32,
                 receive_timeout_ms=5_000,
             ),

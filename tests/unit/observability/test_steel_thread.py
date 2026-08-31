@@ -1,4 +1,5 @@
 """Synthetic steel-thread evidence chain tests (SYNTHETIC_TEST_ONLY)."""
+
 import shutil
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -46,22 +47,33 @@ def test_steel_thread_a_rejection_sequence(evidence_root):
     )
     rec.record(
         EvidenceEventType.THESIS_CREATED,
-        EvidencePayload(candidate_id=UUID("33333333-3333-4333-8333-333333333333"), decision="REJECTED"),
+        EvidencePayload(
+            candidate_id=UUID("33333333-3333-4333-8333-333333333333"), decision="REJECTED"
+        ),
         producer="A2_RUNNER",
     )
     rec.record(
         EvidenceEventType.OPPORTUNITY_CANDIDATE_CREATED,
-        EvidencePayload(candidate_id=UUID("33333333-3333-4333-8333-333333333333"), instrument_id="NIFTY_OPT"),
+        EvidencePayload(
+            candidate_id=UUID("33333333-3333-4333-8333-333333333333"), instrument_id="NIFTY_OPT"
+        ),
         producer="A2_RUNNER",
     )
     rec.record(
         EvidenceEventType.PORTFOLIO_DECISION,
-        EvidencePayload(candidate_id=UUID("33333333-3333-4333-8333-333333333333"), decision="DENY", reason_codes=("INSUFFICIENT_RISK_BUDGET",)),
+        EvidencePayload(
+            candidate_id=UUID("33333333-3333-4333-8333-333333333333"),
+            decision="DENY",
+            reason_codes=("INSUFFICIENT_RISK_BUDGET",),
+        ),
         producer="A2_RUNNER",
     )
     rec.record(
         EvidenceEventType.THESIS_REJECTED,
-        EvidencePayload(candidate_id=UUID("33333333-3333-4333-8333-333333333333"), reason_code="INSUFFICIENT_RISK_BUDGET"),
+        EvidencePayload(
+            candidate_id=UUID("33333333-3333-4333-8333-333333333333"),
+            reason_code="INSUFFICIENT_RISK_BUDGET",
+        ),
         producer="A2_RUNNER",
     )
     manifest = rec.finalize()
@@ -92,7 +104,9 @@ def test_steel_thread_b_full_paper_trade(evidence_root):
     # Portfolio ALLOW
     rec.record(
         EvidenceEventType.PORTFOLIO_DECISION,
-        EvidencePayload(candidate_id=cand_id, decision="ALLOW", reason_codes=("PORTFOLIO_ALLOCATION_PERMITTED",)),
+        EvidencePayload(
+            candidate_id=cand_id, decision="ALLOW", reason_codes=("PORTFOLIO_ALLOCATION_PERMITTED",)
+        ),
         producer="A2_RUNNER",
     )
     # A04 ALLOW
@@ -104,7 +118,9 @@ def test_steel_thread_b_full_paper_trade(evidence_root):
     # Token issued (synthetic)
     rec.record(
         EvidenceEventType.AUTONOMY_TOKEN_ISSUED,
-        EvidencePayload(candidate_id=cand_id, token_id=UUID("55555555-5555-5555-8555-555555555555")),
+        EvidencePayload(
+            candidate_id=cand_id, token_id=UUID("55555555-5555-5555-8555-555555555555")
+        ),
         producer="A2_RUNNER",
     )
     # Order intent
@@ -127,11 +143,12 @@ def test_steel_thread_b_full_paper_trade(evidence_root):
     # Fill
     rec.record(
         EvidenceEventType.FILL_CREATED,
-        EvidencePayload(candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("150.00")),
+        EvidencePayload(
+            candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("150.00")
+        ),
         producer="A2_RUNNER",
     )
     # Position opened
-    pos_id = UUID("66666666-6666-6666-8666-666666666666")
     rec.record(
         EvidenceEventType.POSITION_OPENED,
         EvidencePayload(candidate_id=cand_id, instrument_id="BANKNIFTY_OPT"),
@@ -140,7 +157,9 @@ def test_steel_thread_b_full_paper_trade(evidence_root):
     # Mark
     rec.record(
         EvidenceEventType.POSITION_MARKED,
-        EvidencePayload(candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("152.50")),
+        EvidencePayload(
+            candidate_id=cand_id, instrument_id="BANKNIFTY_OPT", price=Decimal("152.50")
+        ),
         producer="A2_RUNNER",
     )
     # Exit intent
@@ -175,7 +194,7 @@ def test_steel_thread_b_full_paper_trade(evidence_root):
 
 
 def test_restart_continuity_and_duplicate_fill_protection(evidence_root):
-    """Restart between POSITION_OPENED and EXIT_INTENT: sequence/hash continues, no duplicate fill."""
+    """Restart preserves sequence/hash continuity and prevents duplicate fills."""
     rec = SessionEvidenceRecorder(identity(), evidence_root)
     rec.record(
         EvidenceEventType.MODEL_PREDICTION,
@@ -188,28 +207,33 @@ def test_restart_continuity_and_duplicate_fill_protection(evidence_root):
         EvidencePayload(candidate_id=UUID("77777777-7777-7777-8777-777777777777")),
         producer="test",
     )
-    manifest = rec.finalize()
+    rec.finalize()
 
     # Restart: resume same session, same identity
     resumed = SessionEvidenceRecorder(identity(), evidence_root)
     # Must continue from previous hash; add mark then exit
-    previous_hash = resumed.events()[-1].event_hash()
     resumed.record(
         EvidenceEventType.POSITION_MARKED,
-        EvidencePayload(candidate_id=UUID("77777777-7777-7777-8777-777777777777"), price=Decimal("21000")),
+        EvidencePayload(
+            candidate_id=UUID("77777777-7777-7777-8777-777777777777"), price=Decimal("21000")
+        ),
         producer="test",
     )
     # Attempt duplicate fill: sequence collision must fail if same event_id reused incorrectly
     # Our recorder uses sequence continuity, not event_id only; duplicate sequence fails
     resumed.record(
         EvidenceEventType.EXIT_INTENT_CREATED,
-        EvidencePayload(candidate_id=UUID("77777777-7777-7777-8777-777777777777"), reason_code="TRAIL"),
+        EvidencePayload(
+            candidate_id=UUID("77777777-7777-7777-8777-777777777777"), reason_code="TRAIL"
+        ),
         producer="test",
     )
     resumed.finalize()
 
     events_after = SessionEvidenceRecorder(identity(), evidence_root).events()
-    assert len(events_after) == 4  # MODEL_PREDICTION + POSITION_OPENED + POSITION_MARKED + EXIT_INTENT
+    assert (
+        len(events_after) == 4
+    )  # MODEL_PREDICTION + POSITION_OPENED + POSITION_MARKED + EXIT_INTENT
     # Verify previous hash continuity
     for i, ev in enumerate(events_after):
         if i == 0:

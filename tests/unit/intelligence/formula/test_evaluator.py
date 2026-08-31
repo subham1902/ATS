@@ -8,7 +8,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
 from ats.contracts.intelligence.models import FormulaDefinition
 from ats.contracts.intelligence.types import (
     FormulaNode,
@@ -247,7 +246,9 @@ def test_gt_wrong_arity() -> None:
 
 
 def test_gt_bad_type_bool() -> None:
-    f = make_formula(op(FormulaOperator.GT, lit_bool(True), lit_bool(False)), "BOOLEAN", "ENTRY_FILTER")
+    f = make_formula(
+        op(FormulaOperator.GT, lit_bool(True), lit_bool(False)), "BOOLEAN", "ENTRY_FILTER"
+    )
     with pytest.raises(TypeError_):
         evaluate(f, ctx_simple())
 
@@ -273,7 +274,9 @@ def test_eq_valid_numeric() -> None:
 
 
 def test_eq_valid_bool() -> None:
-    f = make_formula(op(FormulaOperator.EQ, lit_bool(True), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER")
+    f = make_formula(
+        op(FormulaOperator.EQ, lit_bool(True), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER"
+    )
     assert evaluate(f, ctx_simple()).boolean_value is True
 
 
@@ -285,13 +288,17 @@ def test_eq_bad_mixed_bool_numeric() -> None:
 
 # --- Logical ---
 def test_and_valid() -> None:
-    f = make_formula(op(FormulaOperator.AND, lit_bool(True), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER")
+    f = make_formula(
+        op(FormulaOperator.AND, lit_bool(True), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER"
+    )
     assert evaluate(f, ctx_simple()).boolean_value is True
 
 
 def test_and_variadic() -> None:
     f = make_formula(
-        op(FormulaOperator.AND, lit_bool(True), lit_bool(True), lit_bool(False)), "BOOLEAN", "ENTRY_FILTER"
+        op(FormulaOperator.AND, lit_bool(True), lit_bool(True), lit_bool(False)),
+        "BOOLEAN",
+        "ENTRY_FILTER",
     )
     assert evaluate(f, ctx_simple()).boolean_value is False
 
@@ -309,7 +316,9 @@ def test_and_bad_type() -> None:
 
 
 def test_or_valid() -> None:
-    f = make_formula(op(FormulaOperator.OR, lit_bool(False), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER")
+    f = make_formula(
+        op(FormulaOperator.OR, lit_bool(False), lit_bool(True)), "BOOLEAN", "ENTRY_FILTER"
+    )
     assert evaluate(f, ctx_simple()).boolean_value is True
 
 
@@ -325,7 +334,9 @@ def test_not_valid() -> None:
 
 
 def test_not_wrong_arity() -> None:
-    f = make_formula(op(FormulaOperator.NOT, lit_bool(True), lit_bool(False)), "BOOLEAN", "ENTRY_FILTER")
+    f = make_formula(
+        op(FormulaOperator.NOT, lit_bool(True), lit_bool(False)), "BOOLEAN", "ENTRY_FILTER"
+    )
     with pytest.raises(ArityError):
         evaluate(f, ctx_simple())
 
@@ -376,7 +387,8 @@ def test_ema_bad_window_zero() -> None:
 
 def test_atr_valid() -> None:
     f = make_formula(
-        op(FormulaOperator.ATR, feat("high"), feat("low"), feat("close"), lit_int(3)), "FINITE_FLOAT"
+        op(FormulaOperator.ATR, feat("high"), feat("low"), feat("close"), lit_int(3)),
+        "FINITE_FLOAT",
     )
     r = evaluate(f, ctx_simple())
     assert math.isfinite(r.float_value)  # type: ignore[arg-type]
@@ -414,7 +426,9 @@ def test_rsi_warmup_error() -> None:
 
 
 def test_vwap_valid() -> None:
-    f = make_formula(op(FormulaOperator.VWAP, feat("price"), feat("volume"), lit_int(3)), "FINITE_FLOAT")
+    f = make_formula(
+        op(FormulaOperator.VWAP, feat("price"), feat("volume"), lit_int(3)), "FINITE_FLOAT"
+    )
     r = evaluate(f, ctx_simple())
     assert math.isfinite(r.float_value)  # type: ignore[arg-type]
 
@@ -423,7 +437,9 @@ def test_vwap_zero_volume() -> None:
     ctx = FormulaEvaluationContext(
         evaluation_index=2, series={"price": [1.0, 2.0, 3.0], "volume": [0.0, 0.0, 0.0]}
     )
-    f = make_formula(op(FormulaOperator.VWAP, feat("price"), feat("volume"), lit_int(3)), "FINITE_FLOAT")
+    f = make_formula(
+        op(FormulaOperator.VWAP, feat("price"), feat("volume"), lit_int(3)), "FINITE_FLOAT"
+    )
     with pytest.raises(DivisionByZeroError):
         evaluate(f, ctx)
 
@@ -448,13 +464,17 @@ def test_slope_valid() -> None:
 
 
 def test_percentile_valid() -> None:
-    f = make_formula(op(FormulaOperator.PERCENTILE, feat("close"), lit_int(5), lit_int(50)), "FINITE_FLOAT")
+    f = make_formula(
+        op(FormulaOperator.PERCENTILE, feat("close"), lit_int(5), lit_int(50)), "FINITE_FLOAT"
+    )
     r = evaluate(f, ctx_simple())
     assert r.float_value == pytest.approx(3.0)
 
 
 def test_percentile_invalid_p() -> None:
-    f = make_formula(op(FormulaOperator.PERCENTILE, feat("close"), lit_int(3), lit_float(150.0)), "FINITE_FLOAT")
+    f = make_formula(
+        op(FormulaOperator.PERCENTILE, feat("close"), lit_int(3), lit_float(150.0)), "FINITE_FLOAT"
+    )
     with pytest.raises(InvalidPercentileError):
         evaluate(f, ctx_simple())
 
@@ -478,14 +498,20 @@ def test_rolling_std_zero_var() -> None:
 
 
 def test_rolling_corr_valid() -> None:
-    f = make_formula(op(FormulaOperator.ROLLING_CORR, feat("a"), feat("b"), lit_int(5)), "FINITE_FLOAT")
+    f = make_formula(
+        op(FormulaOperator.ROLLING_CORR, feat("a"), feat("b"), lit_int(5)), "FINITE_FLOAT"
+    )
     r = evaluate(f, ctx_simple())
     assert r.float_value == pytest.approx(-1.0)
 
 
 def test_rolling_corr_zero_std() -> None:
-    ctx = FormulaEvaluationContext(evaluation_index=2, series={"a": [1.0, 1.0, 1.0], "b": [1.0, 2.0, 3.0]})
-    f = make_formula(op(FormulaOperator.ROLLING_CORR, feat("a"), feat("b"), lit_int(3)), "FINITE_FLOAT")
+    ctx = FormulaEvaluationContext(
+        evaluation_index=2, series={"a": [1.0, 1.0, 1.0], "b": [1.0, 2.0, 3.0]}
+    )
+    f = make_formula(
+        op(FormulaOperator.ROLLING_CORR, feat("a"), feat("b"), lit_int(3)), "FINITE_FLOAT"
+    )
     with pytest.raises(DivisionByZeroError):
         evaluate(f, ctx)
 
