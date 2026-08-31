@@ -196,6 +196,10 @@ class UpstoxV3FeedAdapter:
     def latest(self, instrument_key: str) -> NormalizedFeedUpdate | None:
         return self._latest.get(instrument_key)
 
+    def canonical_identity(self, instrument_key: str) -> str:
+        """Return the registered ATS identity; unknown provider keys fail closed."""
+        return self._registry.require(instrument_key).ats_identity
+
     def evaluate_freshness(self, *, now: UTCDateTime | None = None) -> SourceFreshness:
         if self._state is ConnectionState.DISCONNECTED:
             return SourceFreshness.UNKNOWN
