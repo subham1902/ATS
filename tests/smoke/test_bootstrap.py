@@ -45,7 +45,7 @@ def test_repository_metadata_exists() -> None:
         "README.md",
         "uv.lock",
         "pnpm-lock.yaml",
-        ".github/workflows/smoke.yml",
+        ".github/workflows/ci.yml",
     )
     assert all((ROOT / relative_path).is_file() for relative_path in required)
 

@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Ruff
+        run: uv run ruff check backend
+      - name: Mypy
+        run: uv run mypy backend/src
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.9.0"
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Frontend typecheck
+        run: pnpm -r typecheck
+
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Unit tests
+        run: uv run python -m pytest tests/unit -x -q
+      - name: Contract tests
+        run: uv run python -m pytest tests/contract -x -q
+      - name: Integration tests
+        run: uv run python -m pytest tests/integration -x -q
+      - name: Property tests
+        run: uv run python -m pytest tests/property -x -q
+      - name: Faults tests
+        run: uv run python -m pytest tests/faults -x -q
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.9.0"
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: API client tests
+        run: pnpm --filter @ats/api-client test
+      - name: UI tests
+        run: pnpm --filter @ats/ui test
+      - name: Control center tests
+        run: pnpm --filter @ats/control-center test
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --verbose --redact
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

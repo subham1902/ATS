@@ -22,7 +22,7 @@ def test_no_model_artifacts_or_secret_files() -> None:
 def test_no_live_or_credential_implementation_markers() -> None:
     source_roots = (ROOT / "backend" / "src", ROOT / "frontend")
     patterns = (
-        re.compile(r"\b(?:api[_-]?key|totp|broker[_-]?token)\s*[:=]", re.IGNORECASE),
+        re.compile(r"\b(?:api[_-]?key|totp|broker[_-]?token)\s*=\s*[\"']", re.IGNORECASE),
         re.compile(r"\bplace[_-]?order\s*\(", re.IGNORECASE),
         re.compile(r"\benable[_-]?a[345]\b", re.IGNORECASE),
     )

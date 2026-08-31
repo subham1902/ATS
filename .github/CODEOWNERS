@@ -1,0 +1,28 @@
+# Default owner for everything
+* @subham1902
+
+# Stream A: Contracts / Kernel
+/backend/src/ats/contracts/ @subham1902
+/backend/src/ats/kernel/ @subham1902
+
+# Stream B: Data / Forecast / Kronos
+/backend/src/ats/market/ @subham1902
+/backend/src/ats/forecast/ @subham1902
+/backend/src/ats/kronos_worker/ @subham1902
+
+# Stream C: Execution / Portfolio / Events
+/backend/src/ats/execution/ @subham1902
+/backend/src/ats/portfolio/ @subham1902
+/backend/src/ats/events/ @subham1902
+
+# Stream D: Intelligence
+/backend/src/ats/intelligence/ @subham1902
+
+# Stream E: Dashboard
+/frontend/ @subham1902
+/backend/src/ats/api/ @subham1902
+
+# Stream F: QA / Failure
+/tests/ @subham1902
+/benchmarks/ @subham1902
+/backend/src/ats/observability/ @subham1902
