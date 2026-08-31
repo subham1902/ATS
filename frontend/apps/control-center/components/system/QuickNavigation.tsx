@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 export const NAV_GROUPS = [
   { label: "DESK", items: [["/", "Overview", "⌂"], ["/markets", "Markets", "⌁"], ["/trades", "Trade Desk", "⇄"], ["/positions", "Positions", "▤"], ["/candidates", "Opportunities", "◇"]] },
-  { label: "INTELLIGENCE", items: [["/harness", "Agents", "✦"], ["/research", "Research", "⚗"], ["/activity", "Session Review", "↺"]] },
+  { label: "INTELLIGENCE", items: [["/operator-intelligence", "Operator Intel", "◉"], ["/harness", "Agents", "✦"], ["/research", "Research", "⚗"], ["/activity", "Session Review", "↺"]] },
   { label: "SYSTEM", items: [["/settings", "System", "⚙"]] },
 ] as const;
 
