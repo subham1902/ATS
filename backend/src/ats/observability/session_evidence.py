@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import threading
 import time
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -224,6 +225,7 @@ class SessionEvidenceRecorder:
         self.root.mkdir(parents=True, exist_ok=True)
         self.events_path = self.root / "events.jsonl"
         self.manifest_path = self.root / "manifest.json"
+        self._lock = threading.RLock()
         self.write_failures = 0
         self.fsync_failures = 0
         self.dropped_records = 0
@@ -254,33 +256,37 @@ class SessionEvidenceRecorder:
             expected += 1
 
     def append(self, event: SessionEvidenceEvent) -> SessionEvidenceEvent:
-        if event.session_id != self.identity.session_id:
-            raise ValueError("event session_id does not match recorder")
-        expected = len(self._events) + 1
-        if event.sequence_number != expected:
-            raise ValueError("event sequence must continue from durable ledger")
-        if event.previous_event_hash != (self._events[-1].event_hash() if self._events else None):
-            raise ValueError("event previous hash does not continue durable ledger")
-        self.verify((*self._events, event))
-        line = event.model_dump_json() + "\n"
-        started = time.perf_counter()
-        try:
-            with self.events_path.open("ab") as handle:
-                handle.write(line.encode("utf-8"))
-                handle.flush()
-                try:
-                    os.fsync(handle.fileno())
-                except OSError:
-                    self.fsync_failures += 1
-                    raise
-        except OSError:
-            self.write_failures += 1
-            raise
-        finally:
-            self.last_write_latency_ms = (time.perf_counter() - started) * 1000
-            self.max_write_latency_ms = max(self.max_write_latency_ms, self.last_write_latency_ms)
-        self._events.append(event)
-        return event
+        with self._lock:
+            if event.session_id != self.identity.session_id:
+                raise ValueError("event session_id does not match recorder")
+            expected = len(self._events) + 1
+            if event.sequence_number != expected:
+                raise ValueError("event sequence must continue from durable ledger")
+            last_hash = self._events[-1].event_hash() if self._events else None
+            if event.previous_event_hash != last_hash:
+                raise ValueError("event previous hash does not continue durable ledger")
+            self.verify((*self._events, event))
+            line = event.model_dump_json() + "\n"
+            started = time.perf_counter()
+            try:
+                with self.events_path.open("ab") as handle:
+                    handle.write(line.encode("utf-8"))
+                    handle.flush()
+                    try:
+                        os.fsync(handle.fileno())
+                    except OSError:
+                        self.fsync_failures += 1
+                        raise
+            except OSError:
+                self.write_failures += 1
+                raise
+            finally:
+                self.last_write_latency_ms = (time.perf_counter() - started) * 1000
+                self.max_write_latency_ms = max(
+                    self.max_write_latency_ms, self.last_write_latency_ms
+                )
+            self._events.append(event)
+            return event
 
     def record(
         self,
@@ -293,55 +299,60 @@ class SessionEvidenceRecorder:
         available_to_strategy_time: datetime | None = None,
         correlation_id: UUID | None = None,
     ) -> SessionEvidenceEvent:
-        previous = self._events[-1].event_hash() if self._events else None
-        return self.append(
-            SessionEvidenceEvent.build(
-                event_type=event_type,
-                session_id=self.identity.session_id,
-                sequence_number=len(self._events) + 1,
-                payload=payload,
-                producer=producer,
-                event_time=event_time,
-                previous_event_hash=previous,
-                source_time=source_time,
-                available_to_strategy_time=available_to_strategy_time,
-                correlation_id=correlation_id,
+        with self._lock:
+            previous = self._events[-1].event_hash() if self._events else None
+            return self.append(
+                SessionEvidenceEvent.build(
+                    event_type=event_type,
+                    session_id=self.identity.session_id,
+                    sequence_number=len(self._events) + 1,
+                    payload=payload,
+                    producer=producer,
+                    event_time=event_time,
+                    previous_event_hash=previous,
+                    source_time=source_time,
+                    available_to_strategy_time=available_to_strategy_time,
+                    correlation_id=correlation_id,
+                )
             )
-        )
 
     def finalize(self) -> EvidenceManifest:
-        self.verify(self._events)
-        hashes = [event.event_hash() for event in self._events]
-        digest = hashlib.sha256("".join(hashes).encode("ascii")).hexdigest()
-        manifest = EvidenceManifest(
-            session_id=self.identity.session_id,
-            identity=self.identity,
-            event_count=len(hashes),
-            first_event_hash=hashes[0] if hashes else None,
-            last_event_hash=hashes[-1] if hashes else None,
-            session_digest=digest,
-            finalized_at=datetime.now(UTC),
-        )
-        self.manifest_path.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        return manifest
+        with self._lock:
+            self.verify(self._events)
+            hashes = [event.event_hash() for event in self._events]
+            digest = hashlib.sha256("".join(hashes).encode("ascii")).hexdigest()
+            manifest = EvidenceManifest(
+                session_id=self.identity.session_id,
+                identity=self.identity,
+                event_count=len(hashes),
+                first_event_hash=hashes[0] if hashes else None,
+                last_event_hash=hashes[-1] if hashes else None,
+                session_digest=digest,
+                finalized_at=datetime.now(UTC),
+            )
+            manifest_json = manifest.model_dump_json(indent=2) + "\n"
+            self.manifest_path.write_text(manifest_json, encoding="utf-8")
+            return manifest
 
     def health_snapshot(self) -> dict[str, Any]:
         """Return durable-recorder facts without claiming asynchronous capacity."""
-        return {
-            "recorder_path": str(self.root),
-            "sequence_counter": len(self._events),
-            "last_hash": self._events[-1].event_hash() if self._events else None,
-            "write_failures": self.write_failures,
-            "fsync_failures": self.fsync_failures,
-            "dropped_records": self.dropped_records,
-            "queue_depth": 0,
-            "last_write_latency_ms": self.last_write_latency_ms,
-            "max_write_latency_ms": self.max_write_latency_ms,
-            "fsync_mode": "EACH_EVENT",
-        }
+        with self._lock:
+            return {
+                "recorder_path": str(self.root),
+                "sequence_counter": len(self._events),
+                "last_hash": self._events[-1].event_hash() if self._events else None,
+                "write_failures": self.write_failures,
+                "fsync_failures": self.fsync_failures,
+                "dropped_records": self.dropped_records,
+                "queue_depth": 0,
+                "last_write_latency_ms": self.last_write_latency_ms,
+                "max_write_latency_ms": self.max_write_latency_ms,
+                "fsync_mode": "EACH_EVENT",
+            }
 
     def events(self) -> tuple[SessionEvidenceEvent, ...]:
-        return tuple(self._events)
+        with self._lock:
+            return tuple(self._events)
 
 
 __all__ = [
