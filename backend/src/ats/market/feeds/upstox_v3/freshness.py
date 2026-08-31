@@ -119,11 +119,12 @@ class KeyFreshnessLatch:
         if now < self._last_update.received_at:
             return True
         exchange = self._last_update.exchange_timestamp
-        if exchange is not None:
-            if now < exchange:
-                return True
-            if (now - exchange).total_seconds() * 1000 > self._stale_after_ms:
-                return True
+        if exchange is None:
+            return True
+        if now < exchange:
+            return True
+        if (now - exchange).total_seconds() * 1000 > self._stale_after_ms:
+            return True
         if (now - self._last_update.received_at).total_seconds() * 1000 > self._stale_after_ms:
             return True
         return False

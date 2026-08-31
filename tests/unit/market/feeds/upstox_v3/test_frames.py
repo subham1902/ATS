@@ -65,7 +65,7 @@ class TestUnsubscribeAndModeFrames:
             guid="g", mode=FeedMode.OPTION_GREEKS, instrument_keys=(OPTION_KEY,)
         )
         document = json.loads(frame)
-        assert document["method"] == "mode"
+        assert document["method"] == "change_mode"
         assert document["data"]["mode"] == FeedMode.OPTION_GREEKS.value
 
 

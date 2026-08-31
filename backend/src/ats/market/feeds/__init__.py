@@ -17,6 +17,9 @@ from .upstox_v3 import (
     UpstoxFeedError,
     UpstoxFeedErrorCode,
     UpstoxV3FeedAdapter,
+    UpstoxV3FeedAuthorizer,
+    UpstoxV3ProtobufDecoder,
+    UpstoxV3Transport,
     WireFormat,
 )
 
@@ -37,5 +40,8 @@ __all__ = [
     "UpstoxFeedError",
     "UpstoxFeedErrorCode",
     "UpstoxV3FeedAdapter",
+    "UpstoxV3FeedAuthorizer",
+    "UpstoxV3ProtobufDecoder",
+    "UpstoxV3Transport",
     "WireFormat",
 ]

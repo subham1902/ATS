@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Final, Literal
 
-from pydantic import SecretStr, model_validator
+from pydantic import ConfigDict, SecretStr, model_validator
 
 from ats.contracts.common import ATSBaseModel
 from ats.contracts.domain.types import NonEmptyStr, PositiveInt
@@ -19,6 +19,9 @@ from ats.contracts.domain.types import NonEmptyStr, PositiveInt
 MARKET_DATA_FEED_URL: Final[Literal["wss://api.upstox.com/v3/feed/market-data-feed"]] = (
     "wss://api.upstox.com/v3/feed/market-data-feed"
 )
+MARKET_DATA_AUTHORIZE_URL: Final[
+    Literal["https://api.upstox.com/v3/feed/market-data-feed/authorize"]
+] = "https://api.upstox.com/v3/feed/market-data-feed/authorize"
 
 
 class FeedMode(StrEnum):
@@ -36,6 +39,15 @@ class WireFormat(StrEnum):
 
 class UpstoxFeedAuthorization(ATSBaseModel):
     """Bearer credential injected from the environment; absent until approved."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        strict=True,
+        validate_default=True,
+        allow_inf_nan=False,
+        hide_input_in_errors=True,
+    )
 
     bearer_token: SecretStr | None = None
 
@@ -58,6 +70,9 @@ class UpstoxFeedLimits(ATSBaseModel):
 
     maximum_silence_ms: PositiveInt
     stale_after_ms: PositiveInt
+    maximum_buffered_frames: PositiveInt = 32
+    connect_timeout_ms: PositiveInt = 10_000
+    receive_timeout_ms: PositiveInt = 5_000
 
     @model_validator(mode="after")
     def validate_ordering(self) -> UpstoxFeedLimits:
@@ -83,6 +98,7 @@ class UpstoxFeedConfiguration(ATSBaseModel):
 
 __all__ = [
     "FeedMode",
+    "MARKET_DATA_AUTHORIZE_URL",
     "MARKET_DATA_FEED_URL",
     "UpstoxFeedAuthorization",
     "UpstoxFeedConfiguration",

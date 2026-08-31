@@ -17,8 +17,8 @@ from .errors import UpstoxFeedError, UpstoxFeedErrorCode
 
 _KEY_GRAMMAR = re.compile(r"^[A-Z][A-Z0-9_]*\|[^|\s][^|]*$")
 
-NIFTY_INDEX_FEED_KEY = "NSE_INDEX|NIFTY 50"
-BANKNIFTY_INDEX_FEED_KEY = "NSE_INDEX|NIFTY BANK"
+NIFTY_INDEX_FEED_KEY = "NSE_INDEX|Nifty 50"
+BANKNIFTY_INDEX_FEED_KEY = "NSE_INDEX|Nifty Bank"
 
 
 def validate_feed_key(key: str) -> str:

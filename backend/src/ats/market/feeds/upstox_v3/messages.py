@@ -61,13 +61,14 @@ class NormalizedFeedUpdate(ATSBaseModel):
     gamma: NonNegativeFiniteFloat | None = None
     theta: FiniteFloat | None = None
     vega: NonNegativeFiniteFloat | None = None
+    rho: FiniteFloat | None = None
     market_depth: MarketDepth | None = None
     greeks_method: SourceGreeksMethod = "UNAVAILABLE"
     greeks_method_version: NonEmptyStr | None = None
 
     @model_validator(mode="after")
     def validate_greeks_provenance(self) -> NormalizedFeedUpdate:
-        greeks = (self.delta, self.gamma, self.theta, self.vega)
+        greeks = (self.delta, self.gamma, self.theta, self.vega, self.rho)
         if any(value is not None for value in greeks):
             if self.greeks_method != "SOURCE_PROVIDED":
                 raise ValueError("carried Greeks must be labelled SOURCE_PROVIDED")

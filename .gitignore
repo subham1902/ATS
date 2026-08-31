@@ -12,3 +12,28 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# Toolchain / runtime state
+.uv-cache/
+.tool-versions.tmp
+
+# IDE / editor
+.idea/
+.vscode/*.code-workspace
+
+# OS
+Thumbs.db
+
+# Local databases / runtime stores
+*.sqlite
+*.sqlite3
+
+# Collected market-data caches (regenerable from live feeds / brokers)
+data/raw/upstox/sessions/
+data/raw/upstox/banknifty_option_chain.json
+data/raw/upstox/nifty_option_chain.json
+data/raw/upstox/upstox_bod_instruments_master.csv
+data/replays/
+data/historical/*/observations.jsonl
+data/historical/calibration_stores/
+data/historical/calibration_store_v1.json

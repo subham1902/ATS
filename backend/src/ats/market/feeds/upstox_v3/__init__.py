@@ -21,6 +21,7 @@ from .codec import (
     ProtobufDecodingSeam,
 )
 from .config import (
+    MARKET_DATA_AUTHORIZE_URL,
     MARKET_DATA_FEED_URL,
     FeedMode,
     UpstoxFeedAuthorization,
@@ -50,7 +51,14 @@ from .messages import (
     UpdateKind,
     provider_greeks_version,
 )
+from .protobuf_codec import UpstoxV3ProtobufDecoder
 from .subscription import SubscriptionEntry, SubscriptionRegistry
+from .transport import (
+    FeedAuthorizer,
+    UpstoxV3FeedAuthorizer,
+    UpstoxV3Transport,
+    UpstoxV3WebSocketConnection,
+)
 
 __all__ = [
     "BANKNIFTY_INDEX_FEED_KEY",
@@ -60,11 +68,13 @@ __all__ = [
     "FeedDiagnostics",
     "FeedFreshnessBoard",
     "FeedMode",
+    "FeedAuthorizer",
     "FeedPayloadDecoder",
     "FrameOutcome",
     "JsonFeedPayloadDecoder",
     "KeyFreshnessLatch",
     "MARKET_DATA_FEED_URL",
+    "MARKET_DATA_AUTHORIZE_URL",
     "LatchDecision",
     "MarketDepth",
     "MarketDepthLevel",
@@ -81,6 +91,10 @@ __all__ = [
     "UpstoxFeedErrorCode",
     "UpstoxFeedLimits",
     "UpstoxV3FeedAdapter",
+    "UpstoxV3FeedAuthorizer",
+    "UpstoxV3ProtobufDecoder",
+    "UpstoxV3Transport",
+    "UpstoxV3WebSocketConnection",
     "WireFormat",
     "build_handshake_headers",
     "change_mode_frame",
