@@ -53,7 +53,8 @@ META_SOURCE_LAG_MS = 1_000
 META_INGEST_LAG_MS = 1_500
 META_AVAIL_LAG_MS = 2_000
 
-_DATA_ROOT = Path(r"D:\Projects\ATS\ats\data")
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
+_DATA_ROOT = _REPOSITORY_ROOT / "data"
 SESSION_DATE = "2026-08-25"
 SESSION_DIR = _DATA_ROOT / "raw" / "upstox" / "sessions" / SESSION_DATE
 OUTPUT_DIR = _DATA_ROOT / "historical"
