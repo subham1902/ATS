@@ -29,9 +29,14 @@ if ($readinessExit -eq 0) {
         real_broker_authority = $false
     }
     $canonical = $acceptance | ConvertTo-Json -Compress
-    $acceptance['record_sha256'] = [Convert]::ToHexString(
-        [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))
-    ).ToLowerInvariant()
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $acceptance['record_sha256'] = ([BitConverter]::ToString(
+            $sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical))
+        ) -replace '-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
     $acceptance | ConvertTo-Json | Set-Content -LiteralPath $acceptancePath -Encoding utf8
     Write-Host "======================================================================"
     Write-Host "STATUS VERDICT: READY_FOR_A2_PAPER_SESSION"
