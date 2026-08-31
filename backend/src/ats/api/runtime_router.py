@@ -165,11 +165,26 @@ def post_runtime_command(
         )
     if body.command in ("EXIT_POSITION", "FLATTEN_PORTFOLIO"):
         engine = getattr(request.app.state, "trading_runtime_engine", None)
+        # ``create_a2_paper_app`` may be constructed before its controller has
+        # started.  Resolve the live engine again from the controller so a
+        # later-started A2 controller is never mistaken for a runtime engine.
+        controller = getattr(request.app.state, "a2_session_controller", None)
+        controller_engine = getattr(controller, "engine", None)
+        if controller_engine is not None:
+            engine = controller_engine
         if engine is not None:
             flattens = ["FLATTEN_PORTFOLIO"]
             if body.command in flattens:
                 from ats.contracts.common import SystemClock
 
+                # The app state intentionally contains the deterministic runtime
+                # engine (not the session controller).  Calling the engine here
+                # preserves the canonical exit authority and avoids an API 500
+                # during a safety-sensitive manual flatten request.
+                if not hasattr(engine, "request_flatten"):
+                    return RuntimeCommandResult(
+                        accepted=False, reason_codes=("POSITION_ENGINE_UNAVAILABLE",)
+                    )
                 engine.request_flatten(
                     SystemClock().now(),
                     reason_code="DASHBOARD_FLATTEN_REQUESTED",

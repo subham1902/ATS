@@ -326,6 +326,7 @@ def build_operator_snapshot(
     """Build a presentation snapshot exclusively from caller-supplied canonical facts."""
     fresh = sum(item.source_state is SourceState.LIVE for item in source.instruments)
     stale = sum(item.source_state is SourceState.STALE for item in source.instruments)
+    unknown = sum(item.source_state is SourceState.UNKNOWN for item in source.instruments)
     invalid = sum(not item.reference_valid for item in source.instruments)
     classes = [_candidate_class(item) for item in source.candidates]
     portfolio_rejected = sum(
@@ -391,6 +392,7 @@ def build_operator_snapshot(
                 universe_observed=len(source.instruments),
                 fresh=fresh,
                 stale=stale,
+                unknown=unknown,
                 invalid_reference=invalid,
             ),
             rejections=RejectionBreakdown(

@@ -190,6 +190,24 @@ def test_api_runtime_command_lifecycle() -> None:
     assert controller.state == A2SessionState.STOPPED
 
 
+def test_api_flatten_resolves_engine_after_controller_start() -> None:
+    """A dashboard flatten must not call the controller as if it were an engine."""
+    controller = A2PaperSessionController()
+    client = TestClient(create_a2_paper_app(controller))
+
+    assert client.post("/v1/runtime/command", json={"command": "START_A2_PAPER_SESSION"}).json()[
+        "accepted"
+    ]
+    flatten = client.post("/v1/runtime/command", json={"command": "FLATTEN_PORTFOLIO"})
+
+    assert flatten.status_code == 200
+    assert flatten.json() == {
+        "accepted": True,
+        "reason_codes": ["FLATTEN_QUEUED"],
+        "effective_mode": None,
+    }
+
+
 def test_stop_flattens_open_paper_positions() -> None:
     controller = A2PaperSessionController(config=A2PaperSessionConfig(lot_sizes={"NIFTY_CE": 1}))
     controller.start(require_token=False)

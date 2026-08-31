@@ -202,6 +202,19 @@ export function OpportunityScanner({
                 {funnel.invalid_reference}
               </div>
             </div>
+            <div
+              style={{
+                background: (funnel.unknown ?? 0) > 0 ? "#f8fafc" : "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "10px 12px",
+              }}
+            >
+              <div style={{ fontSize: 11, color: "#475569" }}>Unknown</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#334155", marginTop: 2 }}>
+                {funnel.unknown ?? 0}
+              </div>
+            </div>
           </div>
         </div>
 

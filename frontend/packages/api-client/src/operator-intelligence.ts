@@ -83,6 +83,8 @@ export interface FunnelCounts {
   universe_observed: number;
   fresh: number;
   stale: number;
+  /** Inputs with no trustworthy freshness classification; never eligible for risk. */
+  unknown?: number;
   invalid_reference: number;
 }
 

@@ -178,6 +178,7 @@ def test_projection_uses_canonical_truth_for_all_operator_surfaces() -> None:
         "universe_observed": 3,
         "fresh": 1,
         "stale": 1,
+        "unknown": 1,
         "invalid_reference": 1,
     }
     assert snapshot.scanner.candidates_by_class.model_dump() == {

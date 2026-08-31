@@ -91,6 +91,7 @@ class FunnelCounts(BaseModel):
     universe_observed: int = 0
     fresh: int = 0
     stale: int = 0
+    unknown: int = 0
     invalid_reference: int = 0
 
 

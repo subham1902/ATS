@@ -2277,6 +2277,14 @@ class A2PaperSessionController:
             ]
             shadows.append(alpha_shadow)
 
+            calibrated_up = next(
+                (
+                    float(outcome.probability)
+                    for outcome in (result.distribution.outcomes if result.distribution else ())
+                    if outcome.outcome_code == "UP"
+                ),
+                None,
+            )
             prediction_dict = {
                 "underlying": und,
                 "timestamp": evaluation_time.isoformat(),
@@ -2288,7 +2296,11 @@ class A2PaperSessionController:
                 "predicted_direction": pred_dir,
                 "confidence": round(abs(p_champ - 0.50) * 2.0, 4),
                 "raw_model_score": round(roc_3, 6),
-                "calibrated_probability": round(p_champ, 4),
+                # Keep the dashboard/read model honest: the raw C0 score and
+                # the empirical calibrated probability are different facts.
+                "calibrated_probability": (
+                    round(calibrated_up, 4) if calibrated_up is not None else None
+                ),
                 "activation_threshold": threshold,
                 "distance_to_threshold": distance,
                 "preferred_expression": pref_expr,
