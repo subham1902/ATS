@@ -110,7 +110,7 @@ def test_none_provider_contracts_can_never_be_ready() -> None:
     assert not result.ready_for_a2_paper_session
 
 
-def test_market_open_requires_fresh_stage_two_data() -> None:
+def test_market_open_launch_readiness_is_separate_from_stage_two_new_risk() -> None:
     stale = evaluate_connected_readiness(
         probe(
             market_phase="ENTRY_ALLOWED",
@@ -118,7 +118,7 @@ def test_market_open_requires_fresh_stage_two_data() -> None:
             market_data_stage="MARKET_OPEN_DATA_NOT_OBSERVED",
         )
     )
-    assert not stale.ready_for_a2_paper_session
+    assert stale.ready_for_a2_paper_session
     assert not stale.can_enter_new_risk
     fresh = evaluate_connected_readiness(
         probe(

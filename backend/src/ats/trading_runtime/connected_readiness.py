@@ -363,7 +363,12 @@ def evaluate_connected_readiness(probe: ConnectedReadinessInput) -> ConnectedPre
     if probe.context is ReadinessContext.OFFLINE_SYNTHETIC:
         blocks.append("CONNECTED_CONTEXT_REQUIRED")
     stage1 = not [reason for reason in blocks if reason != "MARKET_OPEN_DATA_NOT_READY"]
-    ready = bool(stage1 and (preopen or stage2_ready))
+    # Stage 1 establishes whether it is safe to start a paper runtime.  A
+    # post-open invocation cannot prove streaming freshness before that
+    # runtime owns and subscribes the V3 feed, so Stage 2 is deliberately a
+    # separate new-risk gate.  `can_enter` below remains false until real
+    # per-instrument Stage-2 evidence passes.
+    ready = bool(stage1)
     can_enter = bool(stage1 and stage2_ready and probe.session_can_enter)
     return ConnectedPreMarketReadiness(
         probe.context,
