@@ -643,6 +643,26 @@ class A2PaperSessionController:
         c.rejection_reasons = dict(self._pipeline_counters.rejection_reasons)
         c.rejection_reason_codes = dict(self._pipeline_counters.rejection_reason_codes)
 
+        # The Control Center must reflect canonical Harness lifecycle truth.
+        # These are advisory-only observations; they have no route into
+        # candidate generation, Portfolio, Risk, A04, or execution.
+        if self._harness_integration is not None:
+            from ats.observability.operator_intelligence import AgentStatus
+            from ats.observability.operator_projection import AgentObservation
+
+            sessions = getattr(self._harness_integration, "agent_sessions", {})
+            observed_agents = tuple(
+                AgentObservation(
+                    agent_id=str(session.session_id),
+                    role=str(agent_type),
+                    wake_reason="HARNESS_REGISTERED",
+                    data_cutoff=self._last_event_time,
+                    status=AgentStatus.ACTIVE if session.active else AgentStatus.OFFLINE,
+                )
+                for agent_type, session in sorted(sessions.items(), key=lambda item: str(item[0]))
+            )
+            self._live_pipeline_bridge.set_advisory_agents(observed_agents)
+
         if self._operator_provider is not None:
             self._operator_provider._source = self._live_pipeline_bridge.build_projection_input()
 

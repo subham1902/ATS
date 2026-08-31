@@ -83,6 +83,7 @@ class LivePipelineBridge:
     marks: dict[str, Decimal] = field(default_factory=dict)
     counters: LivePipelineCounters = field(default_factory=LivePipelineCounters)
     pipeline_evaluations: int = 0
+    agents: tuple[AgentObservation, ...] = ()
 
     def record_tick(
         self, instrument_key: str, price: Decimal, *, received_at: UTCDateTime | None = None
@@ -133,6 +134,10 @@ class LivePipelineBridge:
         if len(self.counters.recent_predictions) > 50:
             self.counters.recent_predictions = self.counters.recent_predictions[-50:]
 
+    def set_advisory_agents(self, agents: tuple[AgentObservation, ...]) -> None:
+        """Expose real Harness lifecycle state without granting it authority."""
+        self.agents = agents
+
     def build_projection_input(
         self, *, as_of: UTCDateTime | None = None
     ) -> OperatorProjectionInput:
@@ -170,15 +175,14 @@ class LivePipelineBridge:
                     reference_valid=True,
                     observed_at=observed_at,
                 )
-            )
+        )
         candidates: tuple[CandidateObservation, ...] = ()
-        agents: tuple[AgentObservation, ...] = ()
         return OperatorProjectionInput(
             as_of=now,
             data_cutoff=data_cutoff,
             instruments=tuple(instruments),
             candidates=candidates,
-            agents=agents,
+            agents=self.agents,
             provenance=ProvenanceType.LIVE,
             rejection_counts=dict(self.counters.rejection_reasons),
             predictions=dict(self.counters.predictions),
