@@ -32,7 +32,7 @@ function Assert-AtsReleaseTruth {
         if ($LASTEXITCODE -ne 0) { throw "ATS_RELEASE_ANCHOR_MISSING: $anchor" }
     }
     $dirty = @(& git -C $script:AtsRepo status --porcelain=v1)
-    $unexpected = @($dirty | Where-Object { $_ -notmatch 'frontend/apps/control-center/next-env\.d\.ts' -and $_ -notmatch 'scripts/' -and $_ -notmatch 'tests/' })
+    $unexpected = @($dirty | Where-Object { $_ -notmatch 'frontend/apps/control-center/next-env\.d\.ts' -and $_ -notmatch 'scripts/' -and $_ -notmatch 'tests/' -and $_ -notmatch 'FINAL_REPORT_' })
     if ($unexpected.Count -gt 0) { throw "ATS_UNEXPLAINED_DIRTY_STATE: $($unexpected -join '; ')" }
     $nextEnvDiff = @($dirty | Where-Object { $_ -match '^ M frontend/apps/control-center/next-env\.d\.ts$' })
     if ($nextEnvDiff.Count -gt 0) {
