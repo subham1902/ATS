@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-import winreg
 from typing import Any, cast
 
 _UPSTOX_BASE = "https://api.upstox.com"
@@ -24,10 +24,14 @@ def _load_token() -> str | None:
     token = os.environ.get("ATS_UPSTOX_ACCESS_TOKEN")
     if token:
         return token
+    if sys.platform != "win32":
+        return None
     try:
+        import winreg
+
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
         return cast("str", winreg.QueryValueEx(key, "ATS_UPSTOX_ACCESS_TOKEN")[0])
-    except Exception:
+    except OSError:
         return None
 
 

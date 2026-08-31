@@ -67,7 +67,7 @@ class AcpSubprocessSidecar:
         environment.update(
             {key: value.get_secret_value() for key, value in self._credential_environment.items()}
         )
-        creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        creation_flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
         try:
             self._process = subprocess.Popen(
                 self._configuration.command,
