@@ -133,13 +133,17 @@ def test_readiness_no_browser_launch() -> None:
 
 
 def test_no_stale_worktree_path_in_launcher() -> None:
-    """Verify that the cmd shim does not reference the obsolete worktree path."""
-    cmd_path = r"C:\Users\subha\AppData\Local\ATS\bin\ats-start.cmd"
-    with open(cmd_path, encoding="utf-8") as f:
-        content = f.read()
-    # The shim should reference the canonical ats directory, not the worktree
-    assert r"worktrees\ats-v3-final" not in content
-    assert r"D:\Projects\ATS\ats" in content or "ats" in content.lower()
+    """Verify no stale worktree path remains in active launcher code."""
+    repo_root = Path(__file__).resolve().parents[3]
+    launcher = repo_root / "scripts" / "ats-start.ps1"
+    content = launcher.read_text(encoding="utf-8")
+    assert "ats-v3-final" not in content
+    # The machine-local cmd shim only exists on the Windows operator box;
+    # check it when present, skip otherwise (e.g. Linux CI).
+    cmd_path = Path(r"C:\Users\subha\AppData\Local\ATS\bin\ats-start.cmd")
+    if cmd_path.exists():
+        shim = cmd_path.read_text(encoding="utf-8")
+        assert "ats-v3-final" not in shim
 
 
 def test_console_lines_started() -> None:
