@@ -129,7 +129,7 @@ jobs:
             echo "supported=false" >> "$GITHUB_OUTPUT"
             echo "Dependency review is not supported for this repository (dependency graph unavailable); skipping enforcement."
           fi
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         if: steps.capability.outputs.supported == 'true'
         with:
           fail-on-severity: high
