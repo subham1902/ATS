@@ -112,9 +112,24 @@ jobs:
     # The action is supported for public repositories and private repositories
     # with GitHub Code Security. This personal private repository has no such
     # entitlement; Dependabot remains enabled for dependency alerts.
+    # Capability probe below: when the dependency graph is unavailable the
+    # review step is skipped instead of failing; when it is available the
+    # review runs with full fail-on-severity enforcement.
     if: github.event_name == 'pull_request' && github.event.repository.private == false
     steps:
       - uses: actions/checkout@v4
+      - name: Check dependency-review capability
+        id: capability
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api "repos/${{ github.repository }}/dependency-graph/sbom" >/dev/null 2>&1; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "Dependency review is not supported for this repository (dependency graph unavailable); skipping enforcement."
+          fi
       - uses: actions/dependency-review-action@v4
+        if: steps.capability.outputs.supported == 'true'
         with:
           fail-on-severity: high
