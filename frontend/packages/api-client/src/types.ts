@@ -237,7 +237,7 @@ export interface StreamEvent {
 }
 
 export type MarketDataState = "LIVE" | "STALE" | "NO_FEED" | "UNKNOWN";
-export type MarketInterval = "5m" | "15m" | "1h";
+export type MarketInterval = "1s" | "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "1d";
 
 export interface CandleView {
   bar_start: string;

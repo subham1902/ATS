@@ -45,6 +45,10 @@ def run_lc1_acceptance():
         page.goto("http://127.0.0.1:3001/market", wait_until="networkidle", timeout=30000)
         page.wait_for_timeout(2000)
 
+        # Check Upstox Chart 360 brand badge
+        assert page.locator("text=Chart 360").first.is_visible(), "Chart 360 brand badge not visible"
+        print("  [OK] Upstox Chart 360 header badge visible")
+
         # Check title & instrument
         assert page.locator("text=MCX GOLD").first.is_visible(), "MCX GOLD header not visible"
         print("  [OK] MCX GOLD header visible")
@@ -56,15 +60,19 @@ def run_lc1_acceptance():
         assert status_pill.is_visible(), "STREAMING / LIVE status pill not visible"
         print(f"  [OK] Live Status Pill visible: '{status_pill.inner_text()}'")
 
-        # Check SVG Chart rendering
-        svg_chart = page.locator("svg").first
-        assert svg_chart.is_visible(), "SVG Candlestick chart not rendered"
-        print("  [OK] SVG Candlestick chart rendered")
+        # Check TradingView Lightweight Canvas rendering
+        canvas = page.locator("canvas").first
+        assert canvas.is_visible(), "TradingView Lightweight Canvas chart not rendered"
+        print("  [OK] TradingView Lightweight Canvas chart rendered successfully")
 
         # Capture Desktop screenshot
         desktop_shot = ARTIFACTS_DIR / "lc1_desktop_market_streaming.png"
         page.screenshot(path=str(desktop_shot), full_page=True)
         print(f"  [OK] Saved screenshot: {desktop_shot.name}")
+
+        chart360_shot = ARTIFACTS_DIR / "upstox_chart360_terminal.png"
+        page.screenshot(path=str(chart360_shot), full_page=True)
+        print(f"  [OK] Saved screenshot: {chart360_shot.name}")
 
         # -------------------------------------------------------------
         # 2. Timeframe Switch Test

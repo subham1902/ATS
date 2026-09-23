@@ -341,6 +341,10 @@ export default function MarketPage() {
           onIntervalChange={setInterval}
           connectionStatus={connectionStatus}
           streamTransport={streamTransport}
+          depthData={depthData}
+          strategies={strategies}
+          selectedStrategy={selectedStrategy}
+          onSelectStrategy={setSelectedStrategy}
         />
       )}
 
