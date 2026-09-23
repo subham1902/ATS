@@ -37,3 +37,4 @@ data/replays/
 data/historical/*/observations.jsonl
 data/historical/calibration_stores/
 data/historical/calibration_store_v1.json
+data/market_journal/

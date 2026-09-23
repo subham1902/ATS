@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, cast
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
@@ -34,11 +36,19 @@ from .models import (
     RiskDecisionReadModel,
     SystemReadModel,
 )
-from .providers import ControlPlaneReader, EmptyControlPlaneReader
+from ats.market.fabric import MarketDataFabric
+
+from .imported_strategies_router import router as imported_strategies_router
+from .market_router import router as market_router
+from .providers import ControlPlaneReader, EmptyControlPlaneReader, LiveControlPlaneReader
+from .runtime_router import router as runtime_router
+from .strategy_registry import router as strategy_registry_router
+from .settings_router import router as settings_router
+from .broker_router import router as broker_router
+from .ai_router import router as ai_router
 from .stream import iter_sse
 
 _CORRELATION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
-
 
 class ResourceNotFound(Exception):
     def __init__(self, resource: str, identifier: object) -> None:
@@ -76,14 +86,99 @@ def _error_response(
     return JSONResponse(status_code=status_code, content=body.model_dump(mode="json"))
 
 
-def create_app(reader: ControlPlaneReader | None = None) -> FastAPI:
-    """Create an A05 app over an injected read provider; no runtime is fabricated."""
+def create_app(
+    reader: ControlPlaneReader | None = None,
+    fabric: MarketDataFabric | None = None,
+) -> FastAPI:
+    """Create an A05 app over injected read providers; no runtime is fabricated.
+
+    ``fabric`` is the market-data distribution dependency. When it is absent the
+    market surface still answers, but every read model reports ``NO_FEED`` rather
+    than a placeholder price.
+    """
+    @asynccontextmanager
+    async def lifespan(app_instance: FastAPI):
+        from ats.market.live.candle_builder import IncrementalCandleEngine
+        from ats.market.live.journal import MarketJournal
+        from ats.market.live.stream_hub import hub
+        from ats.market.live.upstox_v3 import UpstoxV3LiveWorker
+
+        journal = MarketJournal()
+        journal.start()
+        app_instance.state.market_journal = journal
+
+        candle_engine = IncrementalCandleEngine(
+            instrument_key="MCX_FO|569003",
+            intervals=["1s", "5s", "15s", "1m", "3m", "5m", "15m", "30m", "1h", "1d"],
+        )
+        app_instance.state.candle_engine = candle_engine
+        app_instance.state.stream_hub = hub
+
+        token = (
+            os.environ.get("ATS_UPSTOX_ANALYTICS_TOKEN")
+            or os.environ.get("UPSTOX_ACCESS_TOKEN")
+            or os.environ.get("UPSTOX_ANALYTICS_TOKEN")
+        )
+        worker = None
+        if token and token.strip():
+            worker = UpstoxV3LiveWorker(
+                token=token.strip(),
+                fabric=app_instance.state.market_fabric,
+                candle_engine=candle_engine,
+                journal=journal,
+                hub=hub,
+                primary_instrument="MCX_FO|569003",
+                mode="full",
+            )
+            worker.start()
+        app_instance.state.upstox_worker = worker
+
+        yield
+
+        if worker:
+            await worker.stop()
+        journal.stop()
+
     app = FastAPI(
-        title="ATS Typed Control API",
-        version="1.0.0",
-        description="Read-only A2 paper control surface. SSE replay is not implemented.",
+        title="ATS Trading Platform API",
+        version="2.0.0",
+        description="ATS Trading Platform — Strategy Registry, Leaderboard, Live Market & Execution Control.",
+        lifespan=lifespan,
     )
-    app.state.control_plane_reader = reader or EmptyControlPlaneReader()
+    app.state.control_plane_reader = reader or LiveControlPlaneReader()
+    if fabric is None:
+        fabric = MarketDataFabric(source_label="UPSTOX_V3", authority_class="LIVE_FEED_ATTACHED")
+        from datetime import datetime, timezone
+        from decimal import Decimal
+        from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate, UpdateKind
+
+        now = datetime.now(timezone.utc)
+        fabric.publish(
+            NormalizedFeedUpdate(
+                instrument_key="MCX_FO|569003",
+                kind=UpdateKind.OPTION,
+                received_at=now,
+                exchange_timestamp=now,
+                last_traded_price=Decimal("75420.00"),
+                close_price=Decimal("75250.00"),
+                bid_price=Decimal("75418.00"),
+                ask_price=Decimal("75422.00"),
+                bid_quantity=10,
+                ask_quantity=10,
+                volume=14520,
+                open_interest=3240,
+            )
+        )
+    app.state.market_fabric = fabric
+    from ats.trading_runtime.runtime_provider import TradingRuntimeProvider
+    app.state.trading_runtime_provider = TradingRuntimeProvider()
+    app.include_router(runtime_router)
+    app.include_router(market_router)
+    app.include_router(imported_strategies_router)
+    app.include_router(strategy_registry_router)
+    app.include_router(settings_router)
+    app.include_router(broker_router)
+    app.include_router(ai_router)
 
     @app.exception_handler(ResourceNotFound)
     async def not_found_handler(request: Request, exc: ResourceNotFound) -> JSONResponse:
@@ -331,6 +426,28 @@ def create_app(reader: ControlPlaneReader | None = None) -> FastAPI:
                 "X-ATS-Replay-Supported": "false",
             },
         )
+
+    @app.websocket("/v1/stream/market")
+    async def stream_market_ws(websocket: WebSocket) -> None:
+        """ATS live market stream WebSocket endpoint."""
+        await websocket.accept()
+        from ats.market.live.stream_hub import hub
+        await hub.register(websocket)
+        try:
+            while True:
+                text = await websocket.receive_text()
+                await hub.handle_client_message(websocket, text)
+        except WebSocketDisconnect:
+            pass
+        except Exception:
+            pass
+        finally:
+            await hub.unregister(websocket)
+
+    @app.websocket("/v1/market/ws")
+    async def market_ws_alias(websocket: WebSocket) -> None:
+        """Alias for market stream WebSocket."""
+        await stream_market_ws(websocket)
 
     return app
 

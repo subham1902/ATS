@@ -1,0 +1,44 @@
+{
+  "mission": "ATS-LC1 MEGA MISSION: True Tick-to-Chart Streaming + Market Data Backend Hardening",
+  "version": "1.0.0",
+  "timestamp_utc": "2026-09-23T18:15:00Z",
+  "verdict": "ATS_LC1_TRUE_STREAMING_READY",
+  "release_tag": "ats-live-streaming-paper-v1",
+  "runtime": {
+    "frontend_url": "http://127.0.0.1:3001",
+    "backend_url": "http://127.0.0.1:8000",
+    "port_3000_status": "UNTOUCHED_DIGITAL_SUBHAM_PID_34424",
+    "live_money": false,
+    "execution_destination": "PaperBroker",
+    "a04_authority": "DETERMINISTIC_FINANCIAL_VETO",
+    "ai_authority": "NONE"
+  },
+  "market_data": {
+    "provider": "upstox",
+    "protocol": "UPSTOX_V3_PROTOBUF_BINARY",
+    "upstream_host": "wsfeeder-api.upstox.com",
+    "primary_instrument": "MCX_FO|569003",
+    "subscription_mode": "FULL",
+    "effective_mode": "FULL",
+    "provider_state": "STREAMING",
+    "decode_errors": 0,
+    "reconnect_count": 0,
+    "candle_engine_intervals": ["1s", "5s", "15s", "1m", "3m", "5m", "15m", "30m", "1h", "1d"]
+  },
+  "artifacts": [
+    "ATS_LC1_FINAL_REPORT.md",
+    "ATS_LC1_BASELINE.md",
+    "ATS_LIVE_PROVIDER_ARCHITECTURE.md",
+    "ATS_UPSTOX_V3_STREAM_REPORT.md",
+    "ATS_NORMALIZED_MARKET_EVENT_SPEC.md",
+    "ATS_LIVE_CANDLE_ENGINE_SPEC.md",
+    "ATS_HISTORY_LIVE_RECONCILIATION.md",
+    "ATS_STREAM_HUB_SPEC.md",
+    "ATS_FEED_RESILIENCE_REPORT.md",
+    "ATS_MARKET_DATA_OBSERVABILITY.md",
+    "ATS_LIVE_CHART_ACCEPTANCE.md",
+    "ATS_LC1_TEST_REPORT.md",
+    "ATS_LC1_SECURITY_REPORT.md",
+    "ATS_LC1_MANIFEST.json"
+  ]
+}
