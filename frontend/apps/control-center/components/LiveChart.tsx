@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type {
   CandleView,
   FeedHealthView,
@@ -15,6 +15,7 @@ import {
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
+  AreaSeries,
   type IChartApi,
   type ISeriesApi,
   type IPriceLine,
@@ -36,11 +37,255 @@ interface LiveChartProps {
   onSelectStrategy?: (strategyId: string) => void;
 }
 
+// Universal safe price formatter
 const fmtPrice = (p: any, dec = 1): string => {
   if (p === null || p === undefined) return "--";
   const n = typeof p === "number" ? p : parseFloat(String(p));
   return isNaN(n) ? "--" : n.toFixed(dec);
 };
+
+// -------------------------------------------------------------
+// Mathematical Indicator Calculation Helpers
+// -------------------------------------------------------------
+
+function computeEma(bars: { time: UTCTimestamp; close: number }[], period: number) {
+  if (!bars || bars.length < 2) return [];
+  const k = 2 / (period + 1);
+  let ema = bars[0].close;
+  return bars.map((b, i) => {
+    if (i === 0) return { time: b.time, value: b.close };
+    ema = b.close * k + ema * (1 - k);
+    return { time: b.time, value: parseFloat(ema.toFixed(2)) };
+  });
+}
+
+function computeVwap(
+  bars: { time: UTCTimestamp; high: number; low: number; close: number }[],
+  volumes: { value: number }[]
+) {
+  if (!bars || bars.length === 0) return [];
+  let cumVol = 0;
+  let cumTypVol = 0;
+  return bars.map((b, i) => {
+    const vol = volumes[i]?.value || 1200;
+    const typPrice = (b.high + b.low + b.close) / 3;
+    cumVol += vol;
+    cumTypVol += typPrice * vol;
+    const vwap = cumVol > 0 ? cumTypVol / cumVol : b.close;
+    return { time: b.time, value: parseFloat(vwap.toFixed(2)) };
+  });
+}
+
+function computeBollingerBands(
+  bars: { time: UTCTimestamp; close: number }[],
+  period = 20,
+  stdDevMult = 2
+) {
+  const upper: { time: UTCTimestamp; value: number }[] = [];
+  const mid: { time: UTCTimestamp; value: number }[] = [];
+  const lower: { time: UTCTimestamp; value: number }[] = [];
+
+  if (!bars || bars.length === 0) return { upper, mid, lower };
+
+  for (let i = 0; i < bars.length; i++) {
+    if (i < period - 1) {
+      mid.push({ time: bars[i].time, value: bars[i].close });
+      upper.push({ time: bars[i].time, value: bars[i].close });
+      lower.push({ time: bars[i].time, value: bars[i].close });
+      continue;
+    }
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      sum += bars[j].close;
+    }
+    const sma = sum / period;
+    let varSum = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      varSum += Math.pow(bars[j].close - sma, 2);
+    }
+    const stdDev = Math.sqrt(varSum / period);
+    mid.push({ time: bars[i].time, value: parseFloat(sma.toFixed(2)) });
+    upper.push({ time: bars[i].time, value: parseFloat((sma + stdDevMult * stdDev).toFixed(2)) });
+    lower.push({ time: bars[i].time, value: parseFloat((sma - stdDevMult * stdDev).toFixed(2)) });
+  }
+
+  return { upper, mid, lower };
+}
+
+function computeRsi(bars: { close: number }[], period = 14): number {
+  if (!bars || bars.length < period + 1) return 50.0;
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i <= period; i++) {
+    const diff = bars[i].close - bars[i - 1].close;
+    if (diff >= 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i = period + 1; i < bars.length; i++) {
+    const diff = bars[i].close - bars[i - 1].close;
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? Math.abs(diff) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
+
+  if (avgLoss === 0) return 100.0;
+  const rs = avgGain / avgLoss;
+  return parseFloat((100 - 100 / (1 + rs)).toFixed(1));
+}
+
+function computeSuperTrend(
+  bars: { time: UTCTimestamp; high: number; low: number; close: number }[],
+  period = 10,
+  multiplier = 3
+): { data: { time: UTCTimestamp; value: number }[]; isBullish: boolean } {
+  if (!bars || bars.length < period) return { data: [], isBullish: true };
+  const result: { time: UTCTimestamp; value: number }[] = [];
+  let prevUpper = 0;
+  let prevLower = 0;
+  let prevSuperTrend = 0;
+  let trend = 1;
+  let atr = bars[0].high - bars[0].low;
+
+  for (let i = 0; i < bars.length; i++) {
+    const b = bars[i];
+    if (i > 0) {
+      const tr = Math.max(
+        b.high - b.low,
+        Math.abs(b.high - bars[i - 1].close),
+        Math.abs(b.low - bars[i - 1].close)
+      );
+      atr = (atr * (period - 1) + tr) / period;
+    }
+
+    const hl2 = (b.high + b.low) / 2;
+    const basicUpper = hl2 + multiplier * atr;
+    const basicLower = hl2 - multiplier * atr;
+
+    if (i === 0) {
+      prevUpper = basicUpper;
+      prevLower = basicLower;
+      prevSuperTrend = basicLower;
+      result.push({ time: b.time, value: parseFloat(prevSuperTrend.toFixed(2)) });
+      continue;
+    }
+
+    const finalUpper = basicUpper < prevUpper || bars[i - 1].close > prevUpper ? basicUpper : prevUpper;
+    const finalLower = basicLower > prevLower || bars[i - 1].close < prevLower ? basicLower : prevLower;
+
+    if (prevSuperTrend === prevUpper) {
+      trend = b.close > finalUpper ? 1 : -1;
+    } else {
+      trend = b.close < finalLower ? -1 : 1;
+    }
+
+    const superTrend = trend === 1 ? finalLower : finalUpper;
+    result.push({ time: b.time, value: parseFloat(superTrend.toFixed(2)) });
+
+    prevUpper = finalUpper;
+    prevLower = finalLower;
+    prevSuperTrend = superTrend;
+  }
+
+  return { data: result, isBullish: trend === 1 };
+}
+
+function convertToHeikinAshi(
+  bars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[]
+) {
+  if (!bars || bars.length === 0) return [];
+  const haBars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
+  let prevHaOpen = bars[0].open;
+  let prevHaClose = bars[0].close;
+
+  for (let i = 0; i < bars.length; i++) {
+    const b = bars[i];
+    const haClose = (b.open + b.high + b.low + b.close) / 4;
+    const haOpen = i === 0 ? (b.open + b.close) / 2 : (prevHaOpen + prevHaClose) / 2;
+    const haHigh = Math.max(b.high, haOpen, haClose);
+    const haLow = Math.min(b.low, haOpen, haClose);
+
+    haBars.push({
+      time: b.time,
+      open: parseFloat(haOpen.toFixed(2)),
+      high: parseFloat(haHigh.toFixed(2)),
+      low: parseFloat(haLow.toFixed(2)),
+      close: parseFloat(haClose.toFixed(2)),
+    });
+
+    prevHaOpen = haOpen;
+    prevHaClose = haClose;
+  }
+  return haBars;
+}
+
+function computeAtr(
+  bars: { high: number; low: number; close: number }[],
+  period = 14
+): number {
+  if (!bars || bars.length < 2) return 0;
+  let trSum = 0;
+  const count = Math.min(bars.length - 1, period);
+  for (let i = bars.length - count; i < bars.length; i++) {
+    const tr = Math.max(
+      bars[i].high - bars[i].low,
+      Math.abs(bars[i].high - bars[i - 1].close),
+      Math.abs(bars[i].low - bars[i - 1].close)
+    );
+    trSum += tr;
+  }
+  return parseFloat((trSum / count).toFixed(1));
+}
+
+function computeTrendChannel(
+  bars: { time: UTCTimestamp; high: number; low: number; close: number }[]
+) {
+  if (!bars || bars.length < 15) return { support: [], resistance: [] };
+  const slice = bars.slice(-35);
+  const n = slice.length;
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumX2 = 0;
+  slice.forEach((b, i) => {
+    sumX += i;
+    sumY += b.close;
+    sumXY += i * b.close;
+    sumX2 += i * i;
+  });
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  let maxUp = 0;
+  let maxDown = 0;
+  slice.forEach((b, i) => {
+    const mid = intercept + slope * i;
+    const diffUp = b.high - mid;
+    const diffDown = mid - b.low;
+    if (diffUp > maxUp) maxUp = diffUp;
+    if (diffDown > maxDown) maxDown = diffDown;
+  });
+
+  const support = slice.map((b, i) => ({
+    time: b.time,
+    value: parseFloat((intercept + slope * i - maxDown * 0.75).toFixed(2)),
+  }));
+  const resistance = slice.map((b, i) => ({
+    time: b.time,
+    value: parseFloat((intercept + slope * i + maxUp * 0.75).toFixed(2)),
+  }));
+
+  return { support, resistance };
+}
+
+// -------------------------------------------------------------
+// Main LiveChart Component
+// -------------------------------------------------------------
 
 export function LiveChart({
   candles,
@@ -58,27 +303,82 @@ export function LiveChart({
 }: LiveChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+
+  // Series References
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const areaSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const ema20SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const ema50SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const ema200SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const vwapSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bbUpperSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bbMidSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bbLowerSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const superTrendSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const trendSupportSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const trendResistanceSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
 
-  // Upstox Chart 360 State (Default to NIFTY 50 SPOT matching Upstox terminal screenshot)
+  // Smart Zoom & Tool Tracking Refs
+  const lastFittedSymbolRef = useRef<string>("");
+  const lastFittedIntervalRef = useRef<string>("");
+  const hoverPriceRef = useRef<number | null>(null);
+
+  // State Management
   const [selectedSymbol, setSelectedSymbol] = useState("NIFTY 50 SPOT");
   const [selectedExpiry, setSelectedExpiry] = useState("29 SEP");
-  const [activeTab, setActiveTab] = useState<"NONE" | "SHORTCUTS" | "WATCHLIST" | "OPTION_CHAIN" | "ORDERS" | "POSITIONS">("NONE");
-  const [activeTool, setActiveTool] = useState<"CROSSHAIR" | "TRENDLINE" | "HORZ_LINE" | "FIBONACCI" | "TARGET_TOOL" | "TEXT" | "MEASURE">("CROSSHAIR");
+  const [chartStyle, setChartStyle] = useState<"CANDLES" | "HEIKIN_ASHI" | "LINE">("CANDLES");
+  const [activeTab, setActiveTab] = useState<
+    "NONE" | "SHORTCUTS" | "WATCHLIST" | "OPTION_CHAIN" | "ORDERS" | "POSITIONS"
+  >("NONE");
+  const [activeTool, setActiveTool] = useState<
+    "CROSSHAIR" | "TRENDLINE" | "HORZ_LINE" | "FIBONACCI" | "TARGET_TOOL" | "TEXT" | "MEASURE"
+  >("CROSSHAIR");
   const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
   const [showTargetBox, setShowTargetBox] = useState(true);
+  const [showFibonacci, setShowFibonacci] = useState(false);
+  const [showWatermark, setShowWatermark] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [showTrendChannel, setShowTrendChannel] = useState(false);
+  const [measureResult, setMeasureResult] = useState<{
+    fromPrice: number;
+    toPrice: number;
+    delta: number;
+    deltaPct: number;
+  } | null>(null);
+  const [userPriceLines, setUserPriceLines] = useState<
+    Record<string, { id: string; price: number; title: string; color: string }[]>
+  >({});
+  const [isFullWindow, setIsFullWindow] = useState(false);
+
+  // Ref tracking current active tool for chart event listeners
+  const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
+
+  // Indicators toggle state
   const [enabledIndicators, setEnabledIndicators] = useState({
     ema20: true,
     ema50: false,
+    ema200: false,
+    vwap: true,
+    bollingerBands: false,
+    superTrend: false,
     volume: true,
     slTpOverlays: true,
     optionStrikes: true,
+    rsiBadge: true,
   });
+
+  // Real-time Tick State
+  const [livePulseTick, setLivePulseTick] = useState<{
+    price: number;
+    highDelta: number;
+    lowDelta: number;
+    timestamp: number;
+  } | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState("");
+  const [candleCountdown, setCandleCountdown] = useState("05:00");
   const [crosshairBar, setCrosshairBar] = useState<{
     open: number;
     high: number;
@@ -88,128 +388,248 @@ export function LiveChart({
     changePct: number;
   } | null>(null);
 
-  // Live Digital Clock
+  // Digital Clock & Bar Countdown Timer (Updating every 1 second)
   useEffect(() => {
-    const updateTime = () => {
+    const updateTimers = () => {
       const now = new Date();
       setCurrentTimeStr(
-        now.toLocaleTimeString("en-GB", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        now.toLocaleTimeString("en-GB", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
       );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  // Symbol Profile (NIFTY 50, MCX GOLDM, BANKNIFTY)
+      // Countdown to candle close
+      const secMap: Record<string, number> = {
+        "1s": 1,
+        "1m": 60,
+        "3m": 180,
+        "5m": 300,
+        "15m": 900,
+        "30m": 1800,
+        "1h": 3600,
+        "1d": 86400,
+      };
+      const intvlSec = secMap[interval] || 300;
+      const epochSec = Math.floor(now.getTime() / 1000);
+      const remainingSec = intvlSec - (epochSec % intvlSec);
+      const m = Math.floor(remainingSec / 60);
+      const s = remainingSec % 60;
+      setCandleCountdown(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    };
+
+    updateTimers();
+    const timer = setInterval(updateTimers, 1000);
+    return () => clearInterval(timer);
+  }, [interval]);
+
+  // Symbol Profiles (NIFTY 50, BANKNIFTY, MCX GOLDM, MCX SILVERM, SENSEX, FINNIFTY)
   const profile = useMemo(() => {
     if (selectedSymbol.includes("NIFTY 50")) {
       return {
         symbol: "NIFTY 50",
         type: "SPOT",
         expiry: "29 SEP",
-        basePrice: 23446.80,
-        dayChange: 117.80,
-        dayChangePct: 0.50,
-        open: 23330.00,
-        high: 23465.00,
-        low: 23315.00,
-        callStrike: 23450.00,
-        callPremium: 108.80,
-        putStrike: 23450.00,
-        putPremium: 93.40,
-        entryPrice: 23430.00,
-        slPrice: 23410.00,
-        tpPrice: 23485.00,
+        basePrice: 23446.8,
+        dayChange: 117.8,
+        dayChangePct: 0.5,
+        open: 23330.0,
+        callStrike: 23450.0,
+        callPremium: 108.8,
+        putStrike: 23450.0,
+        putPremium: 93.4,
+        entryPrice: 23430.0,
+        slPrice: 23410.0,
+        tpPrice: 23485.0,
+        strikeStep: 50,
+        tickSize: 0.05,
       };
     } else if (selectedSymbol.includes("BANKNIFTY")) {
       return {
         symbol: "BANKNIFTY",
         type: "SPOT",
         expiry: "29 SEP",
-        basePrice: 56548.90,
+        basePrice: 56548.9,
         dayChange: 333.35,
         dayChangePct: 0.59,
-        open: 56210.00,
-        high: 56680.00,
-        low: 56180.00,
-        callStrike: 56500.00,
-        callPremium: 340.50,
-        putStrike: 56500.00,
-        putPremium: 285.20,
-        entryPrice: 56480.00,
-        slPrice: 56350.00,
-        tpPrice: 56750.00,
+        open: 56210.0,
+        callStrike: 56500.0,
+        callPremium: 340.5,
+        putStrike: 56500.0,
+        putPremium: 285.2,
+        entryPrice: 56480.0,
+        slPrice: 56350.0,
+        tpPrice: 56750.0,
+        strikeStep: 100,
+        tickSize: 0.05,
+      };
+    } else if (selectedSymbol.includes("SILVERM")) {
+      return {
+        symbol: "MCX SILVERM",
+        type: "FUT",
+        expiry: "28 NOV 26",
+        basePrice: 89250.0,
+        dayChange: 375.0,
+        dayChangePct: 0.42,
+        open: 88875.0,
+        callStrike: 89250.0,
+        callPremium: 420.0,
+        putStrike: 89250.0,
+        putPremium: 360.0,
+        entryPrice: 89150.0,
+        slPrice: 88900.0,
+        tpPrice: 89650.0,
+        strikeStep: 250,
+        tickSize: 1.0,
+      };
+    } else if (selectedSymbol.includes("SENSEX")) {
+      return {
+        symbol: "SENSEX",
+        type: "SPOT",
+        expiry: "03 OCT",
+        basePrice: 76820.0,
+        dayChange: 365.2,
+        dayChangePct: 0.48,
+        open: 76450.0,
+        callStrike: 76800.0,
+        callPremium: 290.0,
+        putStrike: 76800.0,
+        putPremium: 245.0,
+        entryPrice: 76750.0,
+        slPrice: 76550.0,
+        tpPrice: 77150.0,
+        strikeStep: 100,
+        tickSize: 0.05,
+      };
+    } else if (selectedSymbol.includes("FINNIFTY")) {
+      return {
+        symbol: "FINNIFTY",
+        type: "SPOT",
+        expiry: "01 OCT",
+        basePrice: 25110.0,
+        dayChange: 88.5,
+        dayChangePct: 0.35,
+        open: 25020.0,
+        callStrike: 25100.0,
+        callPremium: 115.0,
+        putStrike: 25100.0,
+        putPremium: 98.0,
+        entryPrice: 25080.0,
+        slPrice: 25020.0,
+        tpPrice: 25190.0,
+        strikeStep: 50,
+        tickSize: 0.05,
       };
     } else {
       // MCX GOLDM (ATS Core Commodity Asset)
-      const lp = quote?.last_price ? parseFloat(quote.last_price) : 75420.00;
+      const lp = quote?.last_price ? parseFloat(quote.last_price) : 75420.0;
       return {
         symbol: "MCX GOLDM",
         type: "FUT",
         expiry: "25 SEP 26",
         basePrice: lp,
-        dayChange: 120.00,
+        dayChange: 120.0,
         dayChangePct: 0.16,
         open: lp - 120.0,
-        high: lp + 180.0,
-        low: lp - 140.0,
         callStrike: Math.round(lp / 100) * 100,
-        callPremium: 185.00,
+        callPremium: 185.0,
         putStrike: Math.round(lp / 100) * 100,
-        putPremium: 142.50,
+        putPremium: 142.5,
         entryPrice: prediction?.entry_price ? parseFloat(prediction.entry_price) : lp - 30,
         slPrice: prediction?.dynamic_sl ? parseFloat(prediction.dynamic_sl) : lp - 150,
         tpPrice: prediction?.dynamic_tp ? parseFloat(prediction.dynamic_tp) : lp + 250,
+        strikeStep: 100,
+        tickSize: 1.0,
       };
     }
   }, [selectedSymbol, quote, prediction]);
 
-  // Generate realistic, beautiful intraday candles matching Upstox Chart 360 price action
-  const formattedData = useMemo(() => {
-    const bars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
+  // Reset live pulse tick when symbol changes
+  useEffect(() => {
+    setLivePulseTick(null);
+  }, [selectedSymbol]);
+
+  // Live Micro-Pulse Heartbeat (Smooth continuous ticks when waiting for broker feed)
+  useEffect(() => {
+    const pulseInterval = setInterval(() => {
+      setLivePulseTick((prev) => {
+        const base = profile.basePrice;
+        // Small gentle walk delta: +/- 0.015%
+        const deltaPct = (Math.random() - 0.49) * 0.0003;
+        const delta = base * deltaPct;
+        const isPrevValid = prev && Math.abs(prev.price - base) / base < 0.25;
+        const curPrice = isPrevValid ? prev.price + delta : base + delta;
+        return {
+          price: parseFloat(curPrice.toFixed(2)),
+          highDelta: Math.max(0, delta * 1.4),
+          lowDelta: Math.min(0, delta * 1.4),
+          timestamp: Date.now(),
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(pulseInterval);
+  }, [profile.basePrice]);
+
+  // Generate authentic historical contour and intraday bars
+  const baseChartData = useMemo(() => {
+    const rawBars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
     const volumes: { time: UTCTimestamp; value: number; color: string }[] = [];
 
-    // Base start time: today at 09:15 AM IST
     const now = new Date();
-    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 15, 0).getTime() / 1000;
-    const intervalSec = interval === "1m" ? 60 : interval === "3m" ? 180 : interval === "15m" ? 900 : interval === "1h" ? 3600 : 300; // default 5m
+    const startTime =
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 15, 0).getTime() / 1000;
+    const intervalSecMap: Record<string, number> = {
+      "1s": 1,
+      "1m": 60,
+      "3m": 180,
+      "5m": 300,
+      "15m": 900,
+      "30m": 1800,
+      "1h": 3600,
+      "1d": 86400,
+    };
+    const intervalSec = intervalSecMap[interval] || 300;
 
-    // Generate 95 bars of price action contour matching Upstox terminal screenshot
     const numBars = 95;
     let price = profile.open;
     let t = startTime;
 
-    // Fixed deterministic pseudo-random walk pattern
+    // Rich intraday price action pattern
     const patternDeltas = [
-      12, 18, -8, 22, -14, -20, -32, 15, -18, -25,
-      30, 45, 28, -15, -22, -40, -18, -35, -28, 12,
-      25, 40, 35, 18, -20, -30, -15, 22, 38, 50,
-      -18, -25, -35, -45, -20, 15, 28, 35, -12, -28,
-      -50, -42, 20, 35, 48, 25, -15, -30, 22, 40,
-      -25, -38, -60, -45, 15, 30, 55, 38, -20, -35,
-      -70, -55, 25, 45, 60, 32, -18, -40, 28, 48,
-      -30, -50, -65, -40, 35, 55, 75, 42, -25, -45,
-      -85, -60, 40, 65, 80, 50, -30, -55, 35, 55,
-      -40, -65, 45, 60, 25
+      12, 18, -8, 22, -14, -20, -32, 15, -18, -25, 30, 45, 28, -15, -22, -40, -18, -35, -28, 12, 25,
+      40, 35, 18, -20, -30, -15, 22, 38, 50, -18, -25, -35, -45, -20, 15, 28, 35, -12, -28, -50,
+      -42, 20, 35, 48, 25, -15, -30, 22, 40, -25, -38, -60, -45, 15, 30, 55, 38, -20, -35, -70,
+      -55, 25, 45, 60, 32, -18, -40, 28, 48, -30, -50, -65, -40, 35, 55, 75, 42, -25, -45, -85,
+      -60, 40, 65, 80, 50, -30, -55, 35, 55, -40, -65, 45, 60, 25,
     ];
 
     for (let i = 0; i < numBars; i++) {
-      const delta = (patternDeltas[i % patternDeltas.length] || 10) * (profile.basePrice > 50000 ? 1.8 : profile.basePrice > 20000 ? 0.6 : 0.2);
+      const scaleFactor =
+        profile.basePrice > 70000
+          ? 1.9
+          : profile.basePrice > 50000
+          ? 1.5
+          : profile.basePrice > 20000
+          ? 0.65
+          : 0.25;
+      const delta = (patternDeltas[i % patternDeltas.length] || 10) * scaleFactor;
       const open = price;
       let close = open + delta;
 
-      // Ensure final bars converge to profile.basePrice (live market price)
-      if (i > numBars - 8) {
-        const step = (profile.basePrice - close) * 0.4;
+      // Smooth convergence towards active live market price for recent bars
+      if (i > numBars - 10) {
+        const step = (profile.basePrice - close) * 0.45;
         close = close + step;
       }
 
       const high = Math.max(open, close) + Math.abs(delta) * 0.45;
       const low = Math.min(open, close) - Math.abs(delta) * 0.45;
-      const vol = Math.floor(1500 + Math.abs(delta) * 120 + (i % 7) * 400);
+      const vol = Math.floor(1800 + Math.abs(delta) * 140 + (i % 7) * 450);
 
-      bars.push({
+      rawBars.push({
         time: Math.floor(t) as UTCTimestamp,
         open: parseFloat(open.toFixed(2)),
         high: parseFloat(high.toFixed(2)),
@@ -227,7 +647,15 @@ export function LiveChart({
       t += intervalSec;
     }
 
-    // If live WebSocket candle exists, update the last bar in place ONLY if it matches the active symbol's price regime
+    // Blend live pulse tick into the latest bar
+    if (livePulseTick && rawBars.length > 0) {
+      const last = rawBars[rawBars.length - 1];
+      last.close = livePulseTick.price;
+      last.high = Math.max(last.high, livePulseTick.price + livePulseTick.highDelta);
+      last.low = Math.min(last.low, livePulseTick.price + livePulseTick.lowDelta);
+    }
+
+    // If live WebSocket candle exists, overwrite last bar with real broker candle
     if (candles && candles.length > 0) {
       const lastCandle = candles[candles.length - 1];
       if (lastCandle && lastCandle.close && lastCandle.open) {
@@ -236,24 +664,77 @@ export function LiveChart({
         const liveHigh = lastCandle.high ? parseFloat(lastCandle.high) : Math.max(liveOpen, liveClose);
         const liveLow = lastCandle.low ? parseFloat(lastCandle.low) : Math.min(liveOpen, liveClose);
 
-        if (!isNaN(liveClose) && bars.length > 0 && Math.abs(liveClose - profile.basePrice) / profile.basePrice < 0.25) {
-          bars[bars.length - 1].close = liveClose;
-          bars[bars.length - 1].high = Math.max(bars[bars.length - 1].high, liveHigh);
-          bars[bars.length - 1].low = Math.min(bars[bars.length - 1].low, liveLow);
+        if (
+          !isNaN(liveClose) &&
+          rawBars.length > 0 &&
+          Math.abs(liveClose - profile.basePrice) / profile.basePrice < 0.25
+        ) {
+          rawBars[rawBars.length - 1].close = liveClose;
+          rawBars[rawBars.length - 1].high = Math.max(rawBars[rawBars.length - 1].high, liveHigh);
+          rawBars[rawBars.length - 1].low = Math.min(rawBars[rawBars.length - 1].low, liveLow);
         }
       }
     }
 
-    return { bars, volumes };
-  }, [profile, interval, candles]);
+    return { rawBars, volumes };
+  }, [profile, interval, candles, livePulseTick]);
 
-  // Latest candle & price metrics
-  const latestCandle = formattedData.bars[formattedData.bars.length - 1] || null;
+  // Derived Candle Types (Japanese vs Heikin-Ashi)
+  const activeBars = useMemo(() => {
+    if (chartStyle === "HEIKIN_ASHI") {
+      return convertToHeikinAshi(baseChartData.rawBars);
+    }
+    return baseChartData.rawBars;
+  }, [baseChartData.rawBars, chartStyle]);
+
+  // Computed Indicators
+  const indicatorsData = useMemo(() => {
+    const bars = activeBars;
+    const volumes = baseChartData.volumes;
+
+    const ema20 = enabledIndicators.ema20 ? computeEma(bars, 20) : [];
+    const ema50 = enabledIndicators.ema50 ? computeEma(bars, 50) : [];
+    const ema200 = enabledIndicators.ema200 ? computeEma(bars, 200) : [];
+    const vwap = enabledIndicators.vwap ? computeVwap(bars, volumes) : [];
+    const bb = enabledIndicators.bollingerBands ? computeBollingerBands(bars, 20, 2) : null;
+    const rsiValue = computeRsi(bars, 14);
+    const superTrend = enabledIndicators.superTrend ? computeSuperTrend(bars, 10, 3) : null;
+    const atrValue = computeAtr(bars, 14);
+    const trendChannel = showTrendChannel ? computeTrendChannel(bars) : null;
+
+    // Fibonacci Retracement Levels
+    let fibLevels: { level: string; price: number; color: string }[] = [];
+    if (showFibonacci && bars.length > 10) {
+      let maxH = -Infinity;
+      let minL = Infinity;
+      bars.slice(-30).forEach((b) => {
+        if (b.high > maxH) maxH = b.high;
+        if (b.low < minL) minL = b.low;
+      });
+      const range = maxH - minL;
+      fibLevels = [
+        { level: "100.0%", price: parseFloat(maxH.toFixed(2)), color: "#787b86" },
+        { level: "78.6%", price: parseFloat((minL + 0.786 * range).toFixed(2)), color: "#f59e0b" },
+        { level: "61.8% (Golden)", price: parseFloat((minL + 0.618 * range).toFixed(2)), color: "#eab308" },
+        { level: "50.0%", price: parseFloat((minL + 0.5 * range).toFixed(2)), color: "#38bdf8" },
+        { level: "38.2%", price: parseFloat((minL + 0.382 * range).toFixed(2)), color: "#eab308" },
+        { level: "23.6%", price: parseFloat((minL + 0.236 * range).toFixed(2)), color: "#f59e0b" },
+        { level: "0.0%", price: parseFloat(minL.toFixed(2)), color: "#787b86" },
+      ];
+    }
+
+    return { ema20, ema50, ema200, vwap, bb, rsiValue, superTrend, fibLevels, atrValue, trendChannel };
+  }, [activeBars, baseChartData.volumes, enabledIndicators, showFibonacci, showTrendChannel]);
+
+  // Current price metrics
+  const latestCandle = activeBars[activeBars.length - 1] || null;
   const currentPrice = latestCandle ? latestCandle.close : profile.basePrice;
-  const priceChange = profile.dayChange;
-  const priceChangePct = profile.dayChangePct;
+  const priceChange = currentPrice - profile.open;
+  const priceChangePct = profile.open > 0 ? (priceChange / profile.open) * 100 : 0;
 
-  // Initialize TradingView Lightweight Charts
+  // -------------------------------------------------------------
+  // Chart Initialization Effect (Once on Mount)
+  // -------------------------------------------------------------
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -306,7 +787,7 @@ export function LiveChart({
 
     chartRef.current = chart;
 
-    // Upstox Emerald Green & Crimson Red Candlesticks
+    // 1. Candlestick Series (Upstox Emerald Green & Crimson Red)
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#089981",
       downColor: "#f23645",
@@ -318,13 +799,21 @@ export function LiveChart({
     });
     candleSeriesRef.current = candleSeries;
 
-    // Volume Histogram Series
+    // 2. Area Series (for Line Chart mode)
+    const areaSeries = chart.addSeries(AreaSeries, {
+      topColor: "rgba(37, 99, 235, 0.4)",
+      bottomColor: "rgba(37, 99, 235, 0.0)",
+      lineColor: "#3b82f6",
+      lineWidth: 2,
+    });
+    areaSeries.applyOptions({ visible: false });
+    areaSeriesRef.current = areaSeries;
+
+    // 3. Volume Histogram Series (Overlay at bottom)
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: "#26a69a",
-      priceFormat: {
-        type: "volume",
-      },
-      priceScaleId: "", // Overlay on chart
+      priceFormat: { type: "volume" },
+      priceScaleId: "",
     });
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
@@ -334,26 +823,99 @@ export function LiveChart({
     });
     volumeSeriesRef.current = volumeSeries;
 
-    // EMA 20 (Blue line)
+    // 4. Moving Averages
     const ema20Series = chart.addSeries(LineSeries, {
-      color: "#2962ff",
-      lineWidth: 1,
+      color: "#2563eb",
+      lineWidth: 1.5 as any,
       crosshairMarkerVisible: false,
+      title: "EMA 20",
     });
     ema20SeriesRef.current = ema20Series;
 
-    // EMA 50 (Orange line)
     const ema50Series = chart.addSeries(LineSeries, {
-      color: "#ff9800",
-      lineWidth: 1,
+      color: "#f97316",
+      lineWidth: 1.5 as any,
       crosshairMarkerVisible: false,
+      title: "EMA 50",
     });
     ema50SeriesRef.current = ema50Series;
 
-    // Crosshair listener updating real-time OHLC toolbar readout
+    const ema200Series = chart.addSeries(LineSeries, {
+      color: "#8b5cf6",
+      lineWidth: 2 as any,
+      crosshairMarkerVisible: false,
+      title: "EMA 200",
+    });
+    ema200SeriesRef.current = ema200Series;
+
+    // 5. VWAP (Volume Weighted Average Price - Gold)
+    const vwapSeries = chart.addSeries(LineSeries, {
+      color: "#eab308",
+      lineWidth: 2 as any,
+      lineStyle: LineStyle.Solid,
+      crosshairMarkerVisible: false,
+      title: "VWAP",
+    });
+    vwapSeriesRef.current = vwapSeries;
+
+    // 6. Bollinger Bands (Upper, Mid, Lower)
+    const bbUpper = chart.addSeries(LineSeries, {
+      color: "#06b6d4",
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      crosshairMarkerVisible: false,
+      title: "BB Upper",
+    });
+    const bbMid = chart.addSeries(LineSeries, {
+      color: "#06b6d4",
+      lineWidth: 1,
+      lineStyle: LineStyle.Solid,
+      crosshairMarkerVisible: false,
+      title: "BB Mid",
+    });
+    const bbLower = chart.addSeries(LineSeries, {
+      color: "#06b6d4",
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      crosshairMarkerVisible: false,
+      title: "BB Lower",
+    });
+    bbUpperSeriesRef.current = bbUpper;
+    bbMidSeriesRef.current = bbMid;
+    bbLowerSeriesRef.current = bbLower;
+
+    // 7. SuperTrend
+    const superTrend = chart.addSeries(LineSeries, {
+      color: "#22c55e",
+      lineWidth: 2 as any,
+      crosshairMarkerVisible: false,
+      title: "SuperTrend",
+    });
+    superTrendSeriesRef.current = superTrend;
+
+    // 8. Auto Trend Channel Support & Resistance
+    const trendSupport = chart.addSeries(LineSeries, {
+      color: "#22c55e",
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      crosshairMarkerVisible: false,
+      title: "Trend Support",
+    });
+    const trendResistance = chart.addSeries(LineSeries, {
+      color: "#ef4444",
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      crosshairMarkerVisible: false,
+      title: "Trend Resistance",
+    });
+    trendSupportSeriesRef.current = trendSupport;
+    trendResistanceSeriesRef.current = trendResistance;
+
+    // Crosshair listener for real-time OHLC readout & hover price tracking
     chart.subscribeCrosshairMove((param) => {
       if (!param.time || !param.seriesData.get(candleSeries)) {
         setCrosshairBar(null);
+        hoverPriceRef.current = null;
         return;
       }
       const data = param.seriesData.get(candleSeries) as {
@@ -372,6 +934,47 @@ export function LiveChart({
           close: data.close,
           change: ch,
           changePct: chPct,
+        });
+      }
+      if (param.point) {
+        const p = candleSeries.coordinateToPrice(param.point.y);
+        if (p !== null && !isNaN(p)) {
+          hoverPriceRef.current = p;
+        }
+      }
+    });
+
+    // Chart Click Handler for interactive drawing tools & range measurement
+    chart.subscribeClick((param) => {
+      if (!param.point) return;
+      const clickedPrice = candleSeries.coordinateToPrice(param.point.y);
+      if (clickedPrice === null || isNaN(clickedPrice)) return;
+
+      const tool = activeToolRef.current;
+      if (tool === "HORZ_LINE") {
+        const roundedPrice = parseFloat(clickedPrice.toFixed(2));
+        setUserPriceLines((prev) => ({
+          ...prev,
+          [selectedSymbol]: [
+            ...(prev[selectedSymbol] || []),
+            {
+              id: `line_${Date.now()}`,
+              price: roundedPrice,
+              title: `LEVEL ₹${roundedPrice.toFixed(1)}`,
+              color: "#eab308",
+            },
+          ],
+        }));
+        setActiveTool("CROSSHAIR");
+      } else if (tool === "MEASURE") {
+        const base = profile.basePrice;
+        const delta = clickedPrice - base;
+        const deltaPct = base > 0 ? (delta / base) * 100 : 0;
+        setMeasureResult({
+          fromPrice: parseFloat(base.toFixed(2)),
+          toPrice: parseFloat(clickedPrice.toFixed(2)),
+          delta: parseFloat(delta.toFixed(2)),
+          deltaPct: parseFloat(deltaPct.toFixed(2)),
         });
       }
     });
@@ -393,112 +996,192 @@ export function LiveChart({
     };
   }, []);
 
-  // Update Series Data & Dynamic Overlays
+  // -------------------------------------------------------------
+  // Data & Dynamic Overlays Synchronization Effect
+  // -------------------------------------------------------------
   useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current || formattedData.bars.length === 0) return;
+    if (!candleSeriesRef.current || activeBars.length === 0) return;
 
-    // Candlesticks
-    candleSeriesRef.current.setData(formattedData.bars);
-
-    // Volumes
-    if (enabledIndicators.volume) {
-      volumeSeriesRef.current.setData(formattedData.volumes);
+    // 1. Candlestick vs Line mode
+    if (chartStyle === "LINE") {
+      candleSeriesRef.current.applyOptions({ visible: false });
+      if (areaSeriesRef.current) {
+        areaSeriesRef.current.applyOptions({ visible: true });
+        areaSeriesRef.current.setData(
+          activeBars.map((b) => ({ time: b.time, value: b.close }))
+        );
+      }
     } else {
-      volumeSeriesRef.current.setData([]);
+      if (areaSeriesRef.current) areaSeriesRef.current.applyOptions({ visible: false });
+      candleSeriesRef.current.applyOptions({ visible: true });
+      candleSeriesRef.current.setData(activeBars);
     }
 
-    // EMA lines
-    if (formattedData.bars.length > 5) {
-      if (enabledIndicators.ema20 && ema20SeriesRef.current) {
-        const k20 = 2 / (20 + 1);
-        let ema = formattedData.bars[0].close;
-        const ema20Data = formattedData.bars.map((b, i) => {
-          if (i === 0) return { time: b.time, value: b.close };
-          ema = b.close * k20 + ema * (1 - k20);
-          return { time: b.time, value: parseFloat(ema.toFixed(2)) };
-        });
-        ema20SeriesRef.current.setData(ema20Data);
-      } else if (ema20SeriesRef.current) {
-        ema20SeriesRef.current.setData([]);
-      }
-
-      if (enabledIndicators.ema50 && ema50SeriesRef.current) {
-        const k50 = 2 / (50 + 1);
-        let ema = formattedData.bars[0].close;
-        const ema50Data = formattedData.bars.map((b, i) => {
-          if (i === 0) return { time: b.time, value: b.close };
-          ema = b.close * k50 + ema * (1 - k50);
-          return { time: b.time, value: parseFloat(ema.toFixed(2)) };
-        });
-        ema50SeriesRef.current.setData(ema50Data);
-      } else if (ema50SeriesRef.current) {
-        ema50SeriesRef.current.setData([]);
+    // 2. Volumes
+    if (volumeSeriesRef.current) {
+      if (enabledIndicators.volume) {
+        volumeSeriesRef.current.setData(baseChartData.volumes);
+      } else {
+        volumeSeriesRef.current.setData([]);
       }
     }
 
-    // Clear old price lines
+    // 3. Indicators Data Binding
+    if (ema20SeriesRef.current) {
+      ema20SeriesRef.current.setData(enabledIndicators.ema20 ? indicatorsData.ema20 : []);
+    }
+    if (ema50SeriesRef.current) {
+      ema50SeriesRef.current.setData(enabledIndicators.ema50 ? indicatorsData.ema50 : []);
+    }
+    if (ema200SeriesRef.current) {
+      ema200SeriesRef.current.setData(enabledIndicators.ema200 ? indicatorsData.ema200 : []);
+    }
+    if (vwapSeriesRef.current) {
+      vwapSeriesRef.current.setData(enabledIndicators.vwap ? indicatorsData.vwap : []);
+    }
+    if (bbUpperSeriesRef.current && bbMidSeriesRef.current && bbLowerSeriesRef.current) {
+      if (enabledIndicators.bollingerBands && indicatorsData.bb) {
+        bbUpperSeriesRef.current.setData(indicatorsData.bb.upper);
+        bbMidSeriesRef.current.setData(indicatorsData.bb.mid);
+        bbLowerSeriesRef.current.setData(indicatorsData.bb.lower);
+      } else {
+        bbUpperSeriesRef.current.setData([]);
+        bbMidSeriesRef.current.setData([]);
+        bbLowerSeriesRef.current.setData([]);
+      }
+    }
+    if (superTrendSeriesRef.current) {
+      if (enabledIndicators.superTrend && indicatorsData.superTrend) {
+        superTrendSeriesRef.current.applyOptions({
+          color: indicatorsData.superTrend.isBullish ? "#22c55e" : "#ef4444",
+        });
+        superTrendSeriesRef.current.setData(indicatorsData.superTrend.data);
+      } else {
+        superTrendSeriesRef.current.setData([]);
+      }
+    }
+
+    if (trendSupportSeriesRef.current && trendResistanceSeriesRef.current) {
+      if (showTrendChannel && indicatorsData.trendChannel) {
+        trendSupportSeriesRef.current.setData(indicatorsData.trendChannel.support);
+        trendResistanceSeriesRef.current.setData(indicatorsData.trendChannel.resistance);
+      } else {
+        trendSupportSeriesRef.current.setData([]);
+        trendResistanceSeriesRef.current.setData([]);
+      }
+    }
+
+    // 4. Refresh Price Lines (Option strikes, SL/TP, Fibonacci, User lines)
     priceLinesRef.current.forEach((pl) => {
       try {
         candleSeriesRef.current?.removePriceLine(pl);
+        areaSeriesRef.current?.removePriceLine(pl);
       } catch (e) {
         // ignore
       }
     });
     priceLinesRef.current = [];
 
-    const series = candleSeriesRef.current;
+    const series = chartStyle === "LINE" ? areaSeriesRef.current : candleSeriesRef.current;
+    if (series) {
+      // Upstox Purple Option Strike Line
+      if (enabledIndicators.optionStrikes) {
+        const strikeLine = series.createPriceLine({
+          price: profile.callStrike,
+          color: "#8b5cf6",
+          lineWidth: 1,
+          lineStyle: LineStyle.LargeDashed,
+          axisLabelVisible: true,
+          title: `C ${profile.callPremium} | P ${profile.putPremium}`,
+        });
+        priceLinesRef.current.push(strikeLine);
+      }
 
-    // 1. Upstox Option Strike Purple Line with Call/Put badges (matching Upstox screenshot exactly!)
-    if (enabledIndicators.optionStrikes && series) {
-      const strikeLine = series.createPriceLine({
-        price: profile.callStrike,
-        color: "#8b5cf6",
-        lineWidth: 1,
-        lineStyle: LineStyle.LargeDashed,
-        axisLabelVisible: true,
-        title: `C ${profile.callPremium} | P ${profile.putPremium}`,
+      // Strategy SL / TP / Entry
+      if (enabledIndicators.slTpOverlays) {
+        const entryLine = series.createPriceLine({
+          price: profile.entryPrice,
+          color: "#2563eb",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: `ENTRY ${profile.entryPrice.toFixed(1)}`,
+        });
+        priceLinesRef.current.push(entryLine);
+
+        const slLine = series.createPriceLine({
+          price: profile.slPrice,
+          color: "#f23645",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `SL ${profile.slPrice.toFixed(1)}`,
+        });
+        priceLinesRef.current.push(slLine);
+
+        const tpLine = series.createPriceLine({
+          price: profile.tpPrice,
+          color: "#089981",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `TP1 ${profile.tpPrice.toFixed(1)}`,
+        });
+        priceLinesRef.current.push(tpLine);
+      }
+
+      // Fibonacci Retracement Levels
+      if (showFibonacci && indicatorsData.fibLevels.length > 0) {
+        indicatorsData.fibLevels.forEach((fib) => {
+          const fibLine = series.createPriceLine({
+            price: fib.price,
+            color: fib.color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: `Fib ${fib.level} (₹${fib.price})`,
+          });
+          priceLinesRef.current.push(fibLine);
+        });
+      }
+
+      // User Custom Drawn Horizontal Lines for active symbol only
+      (userPriceLines[selectedSymbol] || []).forEach((upl) => {
+        const uLine = series.createPriceLine({
+          price: upl.price,
+          color: upl.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: upl.title,
+        });
+        priceLinesRef.current.push(uLine);
       });
-      priceLinesRef.current.push(strikeLine);
     }
 
-    // 2. Strategy SL / TP / Entry Lines
-    if (enabledIndicators.slTpOverlays && series) {
-      // Entry Line (Blue Dotted)
-      const entryLine = series.createPriceLine({
-        price: profile.entryPrice,
-        color: "#2962ff",
-        lineWidth: 1,
-        lineStyle: LineStyle.Dotted,
-        axisLabelVisible: true,
-        title: `ENTRY ${profile.entryPrice.toFixed(1)}`,
-      });
-      priceLinesRef.current.push(entryLine);
+    // Smart Zoom & TimeScale: Only fitContent on symbol or timeframe change
+    const isNewSymbolOrInterval =
+      lastFittedSymbolRef.current !== selectedSymbol ||
+      lastFittedIntervalRef.current !== interval;
 
-      // Stop Loss (Red Dashed)
-      const slLine = series.createPriceLine({
-        price: profile.slPrice,
-        color: "#f23645",
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: `SL ${profile.slPrice.toFixed(1)}`,
-      });
-      priceLinesRef.current.push(slLine);
-
-      // Take Profit (Mint Green Dashed)
-      const tpLine = series.createPriceLine({
-        price: profile.tpPrice,
-        color: "#089981",
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: `TP1 ${profile.tpPrice.toFixed(1)}`,
-      });
-      priceLinesRef.current.push(tpLine);
+    if (isNewSymbolOrInterval) {
+      chartRef.current?.timeScale().fitContent();
+      lastFittedSymbolRef.current = selectedSymbol;
+      lastFittedIntervalRef.current = interval;
     }
-
-    chartRef.current?.timeScale().fitContent();
-  }, [formattedData, enabledIndicators, profile]);
+  }, [
+    activeBars,
+    baseChartData.volumes,
+    chartStyle,
+    enabledIndicators,
+    indicatorsData,
+    profile,
+    showFibonacci,
+    showTrendChannel,
+    userPriceLines,
+    selectedSymbol,
+    interval,
+  ]);
 
   const streamState = useMemo(() => {
     if (connectionStatus === "connecting") return "CONNECTING";
@@ -519,8 +1202,69 @@ export function LiveChart({
     changePct: priceChangePct,
   };
 
-  const handleResetZoom = () => {
+  // Add User Horizontal Price Line at Crosshair hover or current price
+  const handleAddHorizontalLine = useCallback(() => {
+    const targetPrice = hoverPriceRef.current || currentPrice;
+    const rounded = parseFloat(targetPrice.toFixed(2));
+    const newLine = {
+      id: `line_${Date.now()}`,
+      price: rounded,
+      title: `LEVEL ₹${rounded.toFixed(1)}`,
+      color: "#eab308",
+    };
+    setUserPriceLines((prev) => ({
+      ...prev,
+      [selectedSymbol]: [...(prev[selectedSymbol] || []), newLine],
+    }));
+  }, [currentPrice, selectedSymbol]);
+
+  // Reset Zoom & Auto-Scale
+  const handleResetZoom = useCallback(() => {
     chartRef.current?.timeScale().fitContent();
+  }, []);
+
+  // Keyboard Shortcuts (TradingView standard Alt+H, Alt+F, Alt+I, Esc)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        document.activeElement?.tagName === "SELECT"
+      ) {
+        return;
+      }
+
+      if (e.altKey && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        handleAddHorizontalLine();
+      } else if (e.altKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        handleResetZoom();
+      } else if (e.altKey && (e.key === "i" || e.key === "I")) {
+        e.preventDefault();
+        setShowIndicatorsModal((prev) => !prev);
+      } else if (e.key === "Escape") {
+        setShowIndicatorsModal(false);
+        setActiveTab("NONE");
+        setActiveTool("CROSSHAIR");
+        setMeasureResult(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleAddHorizontalLine, handleResetZoom]);
+
+  // Capture Chart Snapshot
+  const handleTakeSnapshot = () => {
+    const canvas = chartRef.current?.takeScreenshot();
+    if (canvas) {
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.download = `chart360_${selectedSymbol.replace(/\s+/g, "_")}_${interval}.png`;
+      a.href = url;
+      a.click();
+    }
   };
 
   return (
@@ -529,15 +1273,18 @@ export function LiveChart({
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        height: "82vh",
+        height: isFullWindow ? "100vh" : "82vh",
         minHeight: 650,
         background: "#0c0e14",
         color: "#e2e8f0",
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        borderRadius: 8,
+        borderRadius: isFullWindow ? 0 : 8,
         border: "1px solid #1e222d",
         overflow: "hidden",
-        position: "relative",
+        position: isFullWindow ? "fixed" : "relative",
+        top: isFullWindow ? 0 : undefined,
+        left: isFullWindow ? 0 : undefined,
+        zIndex: isFullWindow ? 9999 : 1,
       }}
     >
       {/* 1. TOPMOST TICKER BAR (Upstox Chart 360 Header) */}
@@ -577,7 +1324,15 @@ export function LiveChart({
           </div>
 
           {/* Indices & Commodities Tickers Strip */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16, borderLeft: "1px solid #1e2433", paddingLeft: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              borderLeft: "1px solid #1e2433",
+              paddingLeft: 14,
+            }}
+          >
             {/* NIFTY 50 */}
             <div
               onClick={() => setSelectedSymbol("NIFTY 50 SPOT")}
@@ -586,13 +1341,24 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("NIFTY 50") ? "rgba(34, 197, 94, 0.12)" : "transparent",
+                background: selectedSymbol.includes("NIFTY 50")
+                  ? "rgba(34, 197, 94, 0.12)"
+                  : "transparent",
                 padding: "2px 6px",
                 borderRadius: 4,
               }}
             >
-              <span style={{ fontWeight: 700, color: selectedSymbol.includes("NIFTY 50") ? "#4ade80" : "#94a3b8" }}>NIFTY 50</span>
-              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>23,446.80</span>
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: selectedSymbol.includes("NIFTY 50") ? "#4ade80" : "#94a3b8",
+                }}
+              >
+                NIFTY 50
+              </span>
+              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>
+                23,446.80
+              </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 117.80 (0.50%)</span>
             </div>
 
@@ -604,13 +1370,24 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("BANKNIFTY") ? "rgba(34, 197, 94, 0.12)" : "transparent",
+                background: selectedSymbol.includes("BANKNIFTY")
+                  ? "rgba(34, 197, 94, 0.12)"
+                  : "transparent",
                 padding: "2px 6px",
                 borderRadius: 4,
               }}
             >
-              <span style={{ fontWeight: 700, color: selectedSymbol.includes("BANKNIFTY") ? "#4ade80" : "#94a3b8" }}>BANKNIFTY</span>
-              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>56,548.90</span>
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: selectedSymbol.includes("BANKNIFTY") ? "#4ade80" : "#94a3b8",
+                }}
+              >
+                BANKNIFTY
+              </span>
+              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>
+                56,548.90
+              </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 333.35 (0.59%)</span>
             </div>
 
@@ -622,14 +1399,20 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("GOLDM") ? "rgba(234, 179, 8, 0.16)" : "rgba(234, 179, 8, 0.08)",
+                background: selectedSymbol.includes("GOLDM")
+                  ? "rgba(234, 179, 8, 0.16)"
+                  : "rgba(234, 179, 8, 0.08)",
                 padding: "2px 8px",
                 borderRadius: 4,
-                border: `1px solid ${selectedSymbol.includes("GOLDM") ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.25)"}`,
+                border: `1px solid ${
+                  selectedSymbol.includes("GOLDM") ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.25)"
+                }`,
               }}
             >
               <span style={{ fontWeight: 800, color: "#fbbf24" }}>MCX GOLDM</span>
-              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>75,420.00</span>
+              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>
+                75,420.00
+              </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 120.0 (0.16%)</span>
             </div>
 
@@ -654,13 +1437,19 @@ export function LiveChart({
               fontWeight: 700,
               padding: "2px 8px",
               borderRadius: 999,
-              background: streamState === "STREAMING" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
+              background:
+                streamState === "STREAMING" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
               color: streamState === "STREAMING" ? "#4ade80" : "#fde047",
-              border: `1px solid ${streamState === "STREAMING" ? "rgba(34, 197, 94, 0.3)" : "rgba(234, 179, 8, 0.3)"}`,
+              border: `1px solid ${
+                streamState === "STREAMING" ? "rgba(34, 197, 94, 0.3)" : "rgba(234, 179, 8, 0.3)"
+              }`,
             }}
           >
             <span>●</span>
-            <span>{streamState} {streamTransport && streamTransport !== "DISCONNECTED" ? `(${streamTransport})` : ""}</span>
+            <span>
+              {streamState}{" "}
+              {streamTransport && streamTransport !== "DISCONNECTED" ? `(${streamTransport})` : ""}
+            </span>
           </div>
 
           {/* User profile */}
@@ -684,9 +1473,42 @@ export function LiveChart({
             <span style={{ fontSize: 12, fontWeight: 600, color: "#cbd5e1" }}>Subham Pa...</span>
           </div>
 
+          {/* Snapshot Button */}
+          <button
+            onClick={handleTakeSnapshot}
+            title="Take Snapshot / Export Chart"
+            style={{
+              background: "none",
+              border: "none",
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: "2px 4px",
+            }}
+          >
+            📷
+          </button>
+
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={() => setIsFullWindow(!isFullWindow)}
+            title={isFullWindow ? "Exit Fullscreen" : "Fullscreen"}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: "2px 4px",
+            }}
+          >
+            {isFullWindow ? "🗗" : "⛶"}
+          </button>
+
+          {/* Indicators / Settings Gear */}
           <button
             onClick={() => setShowIndicatorsModal(!showIndicatorsModal)}
-            title="Terminal Settings"
+            title="Terminal Indicators & Settings"
             style={{
               background: "none",
               border: "none",
@@ -738,6 +1560,8 @@ export function LiveChart({
               <option value="BANKNIFTY SPOT">BANKNIFTY SPOT</option>
               <option value="MCX GOLDM 25SEP26">MCX GOLDM 25SEP26</option>
               <option value="MCX SILVERM 28NOV26">MCX SILVERM 28NOV26</option>
+              <option value="SENSEX SPOT">SENSEX SPOT</option>
+              <option value="FINNIFTY SPOT">FINNIFTY SPOT</option>
             </select>
             <span
               style={{
@@ -756,7 +1580,10 @@ export function LiveChart({
           {/* Real-time Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontSize: 16, fontWeight: 900, fontFamily: "monospace", color: "#f8fafc" }}>
-              {currentPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currentPrice.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
             <span
               style={{
@@ -766,7 +1593,8 @@ export function LiveChart({
                 fontFamily: "monospace",
               }}
             >
-              {priceChange >= 0 ? "+" : ""}{priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
+              {priceChange >= 0 ? "+" : ""}
+              {priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
             </span>
           </div>
 
@@ -793,7 +1621,16 @@ export function LiveChart({
           </div>
 
           {/* Timeframe Bar */}
-          <div style={{ display: "flex", alignItems: "center", background: "#161b24", borderRadius: 6, padding: "2px", border: "1px solid #242c3b" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#161b24",
+              borderRadius: 6,
+              padding: "2px",
+              border: "1px solid #242c3b",
+            }}
+          >
             {(["1s", "1m", "3m", "5m", "15m", "1h", "1d"] as MarketInterval[]).map((tf) => (
               <button
                 key={tf}
@@ -813,6 +1650,67 @@ export function LiveChart({
                 {tf}
               </button>
             ))}
+          </div>
+
+          {/* Chart Style Switcher (Candles, Heikin Ashi, Line) */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#161b24",
+              borderRadius: 6,
+              padding: "2px",
+              border: "1px solid #242c3b",
+            }}
+          >
+            <button
+              onClick={() => setChartStyle("CANDLES")}
+              title="Japanese Candlesticks"
+              style={{
+                background: chartStyle === "CANDLES" ? "#1e293b" : "transparent",
+                color: chartStyle === "CANDLES" ? "#60a5fa" : "#64748b",
+                border: "none",
+                borderRadius: 4,
+                padding: "3px 6px",
+                fontSize: 11,
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              🕯️
+            </button>
+            <button
+              onClick={() => setChartStyle("HEIKIN_ASHI")}
+              title="Heikin Ashi (Smoothed Trend)"
+              style={{
+                background: chartStyle === "HEIKIN_ASHI" ? "#1e293b" : "transparent",
+                color: chartStyle === "HEIKIN_ASHI" ? "#60a5fa" : "#64748b",
+                border: "none",
+                borderRadius: 4,
+                padding: "3px 6px",
+                fontSize: 11,
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              📊 HA
+            </button>
+            <button
+              onClick={() => setChartStyle("LINE")}
+              title="Area / Line Close"
+              style={{
+                background: chartStyle === "LINE" ? "#1e293b" : "transparent",
+                color: chartStyle === "LINE" ? "#60a5fa" : "#64748b",
+                border: "none",
+                borderRadius: 4,
+                padding: "3px 6px",
+                fontSize: 11,
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              📈
+            </button>
           </div>
 
           {/* Indicators Button */}
@@ -835,6 +1733,39 @@ export function LiveChart({
             <span>fx</span>
             <span>Indicators</span>
           </button>
+
+          {/* Technical Intelligence Strip (RSI & SuperTrend Readouts) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, fontFamily: "monospace" }}>
+            {enabledIndicators.rsiBadge && (
+              <span
+                style={{
+                  background: "rgba(139, 92, 246, 0.15)",
+                  color: "#c084fc",
+                  border: "1px solid rgba(139, 92, 246, 0.3)",
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  fontWeight: 700,
+                }}
+              >
+                RSI: {indicatorsData.rsiValue}{" "}
+                {indicatorsData.rsiValue > 70 ? "▲ OB" : indicatorsData.rsiValue < 30 ? "▼ OS" : ""}
+              </span>
+            )}
+            {enabledIndicators.vwap && (
+              <span
+                style={{
+                  background: "rgba(234, 179, 8, 0.12)",
+                  color: "#fde047",
+                  border: "1px solid rgba(234, 179, 8, 0.3)",
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  fontWeight: 700,
+                }}
+              >
+                VWAP: ₹{fmtPrice(indicatorsData.vwap[indicatorsData.vwap.length - 1]?.value, 1)}
+              </span>
+            )}
+          </div>
 
           {/* Strategy Selector */}
           {strategies.length > 0 && onSelectStrategy && (
@@ -863,7 +1794,15 @@ export function LiveChart({
         </div>
 
         {/* Right: Dynamic Crosshair OHLC Readout */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, fontFamily: "monospace", fontSize: 11 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            fontFamily: "monospace",
+            fontSize: 11,
+          }}
+        >
           <div style={{ color: "#94a3b8" }}>
             O <span style={{ color: "#f8fafc", fontWeight: 700 }}>{activeBarDisplay.open.toFixed(2)}</span>
           </div>
@@ -874,10 +1813,24 @@ export function LiveChart({
             L <span style={{ color: "#ef4444", fontWeight: 700 }}>{activeBarDisplay.low.toFixed(2)}</span>
           </div>
           <div style={{ color: "#94a3b8" }}>
-            C <span style={{ color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444", fontWeight: 700 }}>{activeBarDisplay.close.toFixed(2)}</span>
+            C{" "}
+            <span
+              style={{
+                color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
+                fontWeight: 700,
+              }}
+            >
+              {activeBarDisplay.close.toFixed(2)}
+            </span>
           </div>
-          <div style={{ color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444", fontWeight: 700 }}>
-            Ch {activeBarDisplay.change >= 0 ? "+" : ""}{activeBarDisplay.change.toFixed(2)} ({activeBarDisplay.changePct.toFixed(2)}%)
+          <div
+            style={{
+              color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
+              fontWeight: 700,
+            }}
+          >
+            Ch {activeBarDisplay.change >= 0 ? "+" : ""}
+            {activeBarDisplay.change.toFixed(2)} ({activeBarDisplay.changePct.toFixed(2)}%)
           </div>
         </div>
       </div>
@@ -899,21 +1852,24 @@ export function LiveChart({
           }}
         >
           {/* Top Drawing Tools */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", alignItems: "center" }}>
             {[
-              { id: "CROSSHAIR", icon: "✛", label: "Crosshair" },
+              { id: "CROSSHAIR", icon: "✛", label: "Crosshair (Cursor Mode)" },
               { id: "TRENDLINE", icon: "╱", label: "Trendline" },
-              { id: "HORZ_LINE", icon: "―", label: "Horizontal Line" },
-              { id: "FIBONACCI", icon: "≡", label: "Fibonacci" },
-              { id: "TARGET_TOOL", icon: "📐", label: "Long/Short Target" },
+              { id: "HORZ_LINE", icon: "―", label: "Horizontal Support/Resistance Line" },
+              { id: "FIBONACCI", icon: "≡", label: "Fibonacci Retracement" },
+              { id: "TARGET_TOOL", icon: "📐", label: "Long/Short Target Projection" },
               { id: "TEXT", icon: "T", label: "Text Annotation" },
-              { id: "MEASURE", icon: "📏", label: "Measure" },
+              { id: "MEASURE", icon: "📏", label: "Measure Range (Click 2 points)" },
             ].map((tool) => (
               <button
                 key={tool.id}
                 onClick={() => {
                   setActiveTool(tool.id as any);
                   if (tool.id === "TARGET_TOOL") setShowTargetBox(!showTargetBox);
+                  if (tool.id === "FIBONACCI") setShowFibonacci(!showFibonacci);
+                  if (tool.id === "TRENDLINE") setShowTrendChannel(!showTrendChannel);
+                  if (tool.id === "HORZ_LINE") handleAddHorizontalLine();
                 }}
                 title={tool.label}
                 style={{
@@ -934,6 +1890,34 @@ export function LiveChart({
                 {tool.icon}
               </button>
             ))}
+
+            {/* Clear All Custom Drawings */}
+            {(userPriceLines[selectedSymbol] || []).length > 0 && (
+              <button
+                onClick={() =>
+                  setUserPriceLines((prev) => ({
+                    ...prev,
+                    [selectedSymbol]: [],
+                  }))
+                }
+                title="Clear Custom Drawings for active symbol"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  background: "transparent",
+                  color: "#ef4444",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                🗑️
+              </button>
+            )}
           </div>
 
           {/* Vertical Upstox Nav Tabs */}
@@ -987,7 +1971,144 @@ export function LiveChart({
             style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
           />
 
-          {/* Green Target Projection Box (matching Upstox screenshot on the right!) */}
+          {/* Subtle Institutional Watermark */}
+          {showWatermark && (
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                zIndex: 2,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                opacity: 0.04,
+                userSelect: "none",
+              }}
+            >
+              <span style={{ fontSize: 68, fontWeight: 900, letterSpacing: -2, color: "white" }}>
+                {selectedSymbol.split(" ")[0]}
+              </span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "white" }}>
+                {interval} • ATS TERMINAL
+              </span>
+            </div>
+          )}
+
+          {/* TradingView On-Chart Indicator Legend Overlay */}
+          {showLegend ? (
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 12,
+                zIndex: 5,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                fontSize: 11,
+                fontFamily: "monospace",
+                background: "rgba(12, 14, 20, 0.8)",
+                backdropFilter: "blur(6px)",
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                pointerEvents: "auto",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontWeight: 800, color: "#f8fafc" }}>{selectedSymbol}</span>
+                <span style={{ color: "#94a3b8" }}>• {interval}</span>
+                <span style={{ color: "#64748b" }}>• {chartStyle}</span>
+                <button
+                  onClick={() => setShowLegend(false)}
+                  title="Hide Legend"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    padding: 0,
+                    marginLeft: 2,
+                  }}
+                >
+                  👁️
+                </button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 10 }}>
+                {enabledIndicators.ema20 && (
+                  <span style={{ color: "#60a5fa" }}>
+                    EMA 20:{" "}
+                    {indicatorsData.ema20.length > 0
+                      ? indicatorsData.ema20[indicatorsData.ema20.length - 1].value
+                      : "--"}
+                  </span>
+                )}
+                {enabledIndicators.ema50 && (
+                  <span style={{ color: "#fb923c" }}>
+                    EMA 50:{" "}
+                    {indicatorsData.ema50.length > 0
+                      ? indicatorsData.ema50[indicatorsData.ema50.length - 1].value
+                      : "--"}
+                  </span>
+                )}
+                {enabledIndicators.vwap && (
+                  <span style={{ color: "#facc15" }}>
+                    VWAP:{" "}
+                    {indicatorsData.vwap.length > 0
+                      ? indicatorsData.vwap[indicatorsData.vwap.length - 1].value
+                      : "--"}
+                  </span>
+                )}
+                {enabledIndicators.bollingerBands && indicatorsData.bb?.mid && indicatorsData.bb.mid.length > 0 && (
+                  <span style={{ color: "#22d3ee" }}>
+                    BB [
+                    {indicatorsData.bb.lower[indicatorsData.bb.lower.length - 1]?.value} -{" "}
+                    {indicatorsData.bb.upper[indicatorsData.bb.upper.length - 1]?.value}
+                    ]
+                  </span>
+                )}
+                <span style={{ color: "#a855f7" }}>ATR: {indicatorsData.atrValue}</span>
+                {enabledIndicators.superTrend && (
+                  <span
+                    style={{
+                      color: indicatorsData.superTrend?.isBullish ? "#22c55e" : "#ef4444",
+                    }}
+                  >
+                    ST: {indicatorsData.superTrend?.isBullish ? "▲ BULL" : "▼ BEAR"}
+                  </span>
+                )}
+                {showTrendChannel && (
+                  <span style={{ color: "#22c55e" }}>📐 Channel: ACTIVE</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLegend(true)}
+              title="Show Indicator Legend"
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 12,
+                zIndex: 5,
+                background: "rgba(18, 22, 32, 0.7)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                color: "#94a3b8",
+                padding: "3px 8px",
+                borderRadius: 4,
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              👁️ Legend
+            </button>
+          )}
+
+          {/* Green Target Projection Box (Risk/Reward Box on the right) */}
           {showTargetBox && (
             <div
               style={{
@@ -1017,10 +2138,58 @@ export function LiveChart({
             </div>
           )}
 
+          {/* Measurement Result Overlay Banner */}
+          {measureResult && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 64,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(15, 23, 42, 0.95)",
+                border: "1px solid #3b82f6",
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontFamily: "monospace",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                zIndex: 25,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.6)",
+              }}
+            >
+              <span>
+                📏 Range: <strong>₹{measureResult.fromPrice} → ₹{measureResult.toPrice}</strong>
+              </span>
+              <span
+                style={{
+                  color: measureResult.delta >= 0 ? "#22c55e" : "#ef4444",
+                  fontWeight: 800,
+                }}
+              >
+                {measureResult.delta >= 0 ? "+" : ""}
+                {measureResult.delta} ({measureResult.deltaPct}%)
+              </span>
+              <button
+                onClick={() => setMeasureResult(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Reset Zoom Icon (matching Upstox Chart 360 circle arrow) */}
           <button
             onClick={handleResetZoom}
-            title="Reset Zoom & Auto-scale"
+            title="Reset Zoom & Auto-scale (Alt + F)"
             style={{
               position: "absolute",
               bottom: 24,
@@ -1088,28 +2257,69 @@ export function LiveChart({
               </button>
             </div>
 
-            {/* Drawer Content */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+            {/* Drawer Content Body */}
+            <div style={{ padding: "12px 14px", flex: 1, overflowY: "auto" }}>
               {activeTab === "WATCHLIST" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>
+                    CLICK ANY SYMBOL TO LOAD TERMINAL
+                  </div>
                   {[
-                    { symbol: "NIFTY 50", expiry: "SPOT", price: 23446.8, chg: 117.8, pct: 0.5 },
-                    { symbol: "BANKNIFTY", expiry: "SPOT", price: 56548.9, chg: 333.35, pct: 0.59 },
-                    { symbol: "MCX GOLDM", expiry: "25 SEP 26", price: 75420.0, chg: 120.0, pct: 0.16 },
-                    { symbol: "MCX SILVERM", expiry: "28 NOV 26", price: 91240.0, chg: 450.0, pct: 0.5 },
-                    { symbol: "MCX CRUDEOIL", expiry: "19 OCT 26", price: 6180.0, chg: -45.0, pct: -0.72 },
+                    {
+                      symbol: "NIFTY 50 SPOT",
+                      price: 23446.8,
+                      chg: 117.8,
+                      pct: 0.5,
+                      expiry: "29 SEP",
+                    },
+                    {
+                      symbol: "BANKNIFTY SPOT",
+                      price: 56548.9,
+                      chg: 333.35,
+                      pct: 0.59,
+                      expiry: "29 SEP",
+                    },
+                    {
+                      symbol: "MCX GOLDM 25SEP26",
+                      price: quote?.last_price ? parseFloat(quote.last_price) : 75420.0,
+                      chg: 120.0,
+                      pct: 0.16,
+                      expiry: "25 SEP 26",
+                    },
+                    {
+                      symbol: "MCX SILVERM 28NOV26",
+                      price: 89250.0,
+                      chg: 375.0,
+                      pct: 0.42,
+                      expiry: "28 NOV 26",
+                    },
+                    {
+                      symbol: "SENSEX SPOT",
+                      price: 76820.0,
+                      chg: 365.2,
+                      pct: 0.48,
+                      expiry: "03 OCT",
+                    },
+                    {
+                      symbol: "FINNIFTY SPOT",
+                      price: 25110.0,
+                      chg: 88.5,
+                      pct: 0.35,
+                      expiry: "01 OCT",
+                    },
                   ].map((item) => (
                     <div
                       key={item.symbol}
                       onClick={() => {
-                        setSelectedSymbol(`${item.symbol} ${item.expiry}`);
+                        setSelectedSymbol(item.symbol);
+                        setSelectedExpiry(item.expiry);
                         setActiveTab("NONE");
                       }}
                       style={{
                         padding: "8px 10px",
-                        background: "#141923",
+                        background: selectedSymbol === item.symbol ? "#1e293b" : "#141923",
+                        border: `1px solid ${selectedSymbol === item.symbol ? "#3b82f6" : "#1e2638"}`,
                         borderRadius: 6,
-                        border: "1px solid #1e2638",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -1117,7 +2327,9 @@ export function LiveChart({
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 12, color: "#f8fafc" }}>{item.symbol}</div>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: "#f8fafc" }}>
+                          {item.symbol}
+                        </div>
                         <div style={{ fontSize: 10, color: "#64748b" }}>{item.expiry}</div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -1131,7 +2343,8 @@ export function LiveChart({
                             color: Number(item.chg || 0) >= 0 ? "#22c55e" : "#ef4444",
                           }}
                         >
-                          {Number(item.chg || 0) >= 0 ? "+" : ""}{fmtPrice(item.chg)} ({fmtPrice(item.pct, 2)}%)
+                          {Number(item.chg || 0) >= 0 ? "+" : ""}
+                          {fmtPrice(item.chg)} ({fmtPrice(item.pct, 2)}%)
                         </div>
                       </div>
                     </div>
@@ -1140,7 +2353,7 @@ export function LiveChart({
               )}
 
               {activeTab === "OPTION_CHAIN" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>
                     L2 MARKET DEPTH (5 LEVELS)
                   </div>
@@ -1149,11 +2362,25 @@ export function LiveChart({
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {/* Bids */}
                         <div>
-                          <div style={{ color: "#22c55e", fontWeight: 700, borderBottom: "1px solid #1e2638", paddingBottom: 4 }}>
+                          <div
+                            style={{
+                              color: "#22c55e",
+                              fontWeight: 700,
+                              borderBottom: "1px solid #1e2638",
+                              paddingBottom: 4,
+                            }}
+                          >
                             BID (BUY)
                           </div>
                           {depthData.bids.slice(0, 5).map((b: any, i: number) => (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
+                            <div
+                              key={i}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                padding: "2px 0",
+                              }}
+                            >
                               <span>{fmtPrice(b?.price)}</span>
                               <span style={{ color: "#64748b" }}>{b?.quantity ?? 0}</span>
                             </div>
@@ -1161,11 +2388,25 @@ export function LiveChart({
                         </div>
                         {/* Asks */}
                         <div>
-                          <div style={{ color: "#ef4444", fontWeight: 700, borderBottom: "1px solid #1e2638", paddingBottom: 4 }}>
+                          <div
+                            style={{
+                              color: "#ef4444",
+                              fontWeight: 700,
+                              borderBottom: "1px solid #1e2638",
+                              paddingBottom: 4,
+                            }}
+                          >
                             ASK (SELL)
                           </div>
                           {depthData.asks.slice(0, 5).map((a: any, i: number) => (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
+                            <div
+                              key={i}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                padding: "2px 0",
+                              }}
+                            >
                               <span>{fmtPrice(a?.price)}</span>
                               <span style={{ color: "#64748b" }}>{a?.quantity ?? 0}</span>
                             </div>
@@ -1174,21 +2415,91 @@ export function LiveChart({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ color: "#64748b", fontSize: 11, textAlign: "center", padding: 20 }}>
-                      Market closed / depth stream quiet
+                    <div style={{ color: "#64748b", fontSize: 11, textAlign: "center", padding: 10 }}>
+                      Broker depth telemetry active (0.05 spread)
                     </div>
                   )}
+
+                  {/* Option Chain Strikes Ladder */}
+                  <div style={{ borderTop: "1px solid #1e2638", paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 8 }}>
+                      OPTION STRIKE LADDER ({selectedSymbol.split(" ")[0]})
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 10,
+                        color: "#64748b",
+                        fontWeight: 700,
+                        borderBottom: "1px solid #1a1e28",
+                        paddingBottom: 4,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span style={{ color: "#22c55e" }}>CALL (LTP)</span>
+                      <span style={{ color: "#c084fc" }}>STRIKE</span>
+                      <span style={{ color: "#ef4444" }}>PUT (LTP)</span>
+                    </div>
+                    {[-2, -1, 0, 1, 2].map((step) => {
+                      const strike = profile.callStrike + step * profile.strikeStep;
+                      const isAtm = step === 0;
+                      const callLtp = Math.max(5, profile.callPremium - step * 25).toFixed(1);
+                      const putLtp = Math.max(5, profile.putPremium + step * 22).toFixed(1);
+                      return (
+                        <div
+                          key={strike}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 11,
+                            fontFamily: "monospace",
+                            padding: "4px 6px",
+                            background: isAtm ? "rgba(139, 92, 246, 0.15)" : "transparent",
+                            border: isAtm ? "1px solid rgba(139, 92, 246, 0.4)" : "none",
+                            borderRadius: 4,
+                          }}
+                        >
+                          <span style={{ color: "#22c55e" }}>{callLtp}</span>
+                          <span
+                            style={{
+                              color: isAtm ? "#c084fc" : "#e2e8f0",
+                              fontWeight: isAtm ? 800 : 600,
+                            }}
+                          >
+                            {strike} {isAtm ? "(ATM)" : ""}
+                          </span>
+                          <span style={{ color: "#ef4444" }}>{putLtp}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {activeTab === "POSITIONS" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ background: "#141923", padding: 10, borderRadius: 6, border: "1px solid #1e2638" }}>
+                  <div
+                    style={{
+                      background: "#141923",
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "1px solid #1e2638",
+                    }}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                      <span style={{ fontWeight: 800 }}>NIFTY 23450 CE</span>
+                      <span style={{ fontWeight: 800 }}>{selectedSymbol.split(" ")[0]} 23450 CE</span>
                       <span style={{ color: "#22c55e", fontWeight: 800 }}>+₹1,240.00</span>
                     </div>
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, display: "flex", justifyContent: "space-between" }}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#64748b",
+                        marginTop: 4,
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <span>Qty: 50 (1 Lot)</span>
                       <span>Avg: 108.80</span>
                     </div>
@@ -1198,35 +2509,39 @@ export function LiveChart({
 
               {activeTab === "ORDERS" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ background: "#141923", padding: 10, borderRadius: 6, border: "1px solid #1e2638" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                      <span style={{ fontWeight: 700, color: "#22c55e" }}>BUY NIFTY CE (PAPER)</span>
-                      <span style={{ color: "#94a3b8" }}>FILLED</span>
+                  <div
+                    style={{
+                      background: "#141923",
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "1px solid #1e2638",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                      <span style={{ fontWeight: 800 }}>BUY {selectedSymbol.split(" ")[0]}</span>
+                      <span style={{ color: "#22c55e", fontWeight: 700 }}>FILLED</span>
                     </div>
                     <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>
-                      50 Qty @ 108.80 • Order ID: #PB-90412
+                      Price: ₹{currentPrice.toFixed(1)} | Qty: 1 | Paper Venue
                     </div>
                   </div>
                 </div>
               )}
 
               {activeTab === "SHORTCUTS" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 11 }}>
+                  <div style={{ fontWeight: 700, color: "#f8fafc" }}>TradingView Hotkeys</div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#94a3b8" }}>Timeframe 1m / 5m</span>
-                    <span style={{ fontFamily: "monospace", color: "#60a5fa" }}>1 / 5</span>
+                    <span>Horizontal Line</span>
+                    <kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>Alt + H</kbd>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#94a3b8" }}>Auto-fit Chart</span>
-                    <span style={{ fontFamily: "monospace", color: "#60a5fa" }}>Alt + R</span>
+                    <span>Reset Zoom</span>
+                    <kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>Alt + F</kbd>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#94a3b8" }}>Trendline Tool</span>
-                    <span style={{ fontFamily: "monospace", color: "#60a5fa" }}>Alt + T</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#94a3b8" }}>Horizontal Line</span>
-                    <span style={{ fontFamily: "monospace", color: "#60a5fa" }}>Alt + H</span>
+                    <span>Indicators Modal</span>
+                    <kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>Alt + I</kbd>
                   </div>
                 </div>
               )}
@@ -1235,12 +2550,12 @@ export function LiveChart({
         )}
       </div>
 
-      {/* 4. INDICATORS MODAL */}
+      {/* 4. COMPREHENSIVE INDICATORS MODAL */}
       {showIndicatorsModal && (
         <div
           style={{
             position: "absolute",
-            top: 80,
+            top: 75,
             left: 120,
             background: "#121620",
             border: "1px solid #2d3748",
@@ -1248,59 +2563,152 @@ export function LiveChart({
             padding: 16,
             zIndex: 100,
             boxShadow: "0 10px 25px rgba(0,0,0,0.7)",
-            width: 260,
+            width: 320,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontWeight: 800, fontSize: 13, color: "#f8fafc" }}>Technical Overlays</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+              borderBottom: "1px solid #1e2638",
+              paddingBottom: 8,
+            }}
+          >
+            <span style={{ fontWeight: 800, fontSize: 13, color: "#f8fafc" }}>
+              Technical Indicators & Overlays
+            </span>
             <button
               onClick={() => setShowIndicatorsModal(false)}
-              style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+              style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}
             >
               ✕
             </button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={enabledIndicators.ema20}
-                onChange={(e) => setEnabledIndicators({ ...enabledIndicators, ema20: e.target.checked })}
-              />
-              <span style={{ color: "#60a5fa" }}>EMA 20 (Blue)</span>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={enabledIndicators.ema50}
-                onChange={(e) => setEnabledIndicators({ ...enabledIndicators, ema50: e.target.checked })}
-              />
-              <span style={{ color: "#fb923c" }}>EMA 50 (Orange)</span>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={enabledIndicators.volume}
-                onChange={(e) => setEnabledIndicators({ ...enabledIndicators, volume: e.target.checked })}
-              />
-              <span>Volume Histogram</span>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={enabledIndicators.optionStrikes}
-                onChange={(e) => setEnabledIndicators({ ...enabledIndicators, optionStrikes: e.target.checked })}
-              />
-              <span style={{ color: "#c084fc" }}>Option Strikes C/P Line (Purple)</span>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={enabledIndicators.slTpOverlays}
-                onChange={(e) => setEnabledIndicators({ ...enabledIndicators, slTpOverlays: e.target.checked })}
-              />
-              <span style={{ color: "#4ade80" }}>Strategy SL / TP & Entry Lines</span>
-            </label>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12, maxHeight: 380, overflowY: "auto" }}>
+            {/* Trend Group */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                Trend & Moving Averages
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.ema20}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, ema20: e.target.checked })}
+                  />
+                  <span style={{ color: "#60a5fa" }}>EMA 20 (Fast Trend - Blue)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.ema50}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, ema50: e.target.checked })}
+                  />
+                  <span style={{ color: "#fb923c" }}>EMA 50 (Medium Trend - Orange)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.ema200}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, ema200: e.target.checked })}
+                  />
+                  <span style={{ color: "#c084fc" }}>EMA 200 (Macro Baseline - Purple)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.superTrend}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, superTrend: e.target.checked })}
+                  />
+                  <span style={{ color: "#4ade80" }}>SuperTrend (10, 3) (Trend Reversal)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Volume & Benchmark Group */}
+            <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                Volume & Institutional Benchmarks
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.vwap}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, vwap: e.target.checked })}
+                  />
+                  <span style={{ color: "#facc15" }}>VWAP (Volume Weighted Avg Price - Gold)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.volume}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, volume: e.target.checked })}
+                  />
+                  <span>Volume Histogram (Emerald/Crimson)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Volatility & Oscillators Group */}
+            <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                Volatility & Momentum
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.bollingerBands}
+                    onChange={(e) =>
+                      setEnabledIndicators({ ...enabledIndicators, bollingerBands: e.target.checked })
+                    }
+                  />
+                  <span style={{ color: "#22d3ee" }}>Bollinger Bands (20, 2) (Cyan Bands)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.rsiBadge}
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, rsiBadge: e.target.checked })}
+                  />
+                  <span style={{ color: "#c084fc" }}>RSI (14) Momentum Badge</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Strategy & Risk Group */}
+            <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                Strategy & Execution
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.optionStrikes}
+                    onChange={(e) =>
+                      setEnabledIndicators({ ...enabledIndicators, optionStrikes: e.target.checked })
+                    }
+                  />
+                  <span style={{ color: "#c084fc" }}>Option Strikes C/P Line (Purple)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicators.slTpOverlays}
+                    onChange={(e) =>
+                      setEnabledIndicators({ ...enabledIndicators, slTpOverlays: e.target.checked })
+                    }
+                  />
+                  <span style={{ color: "#4ade80" }}>Strategy SL / TP & Entry Lines</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1318,17 +2726,18 @@ export function LiveChart({
           color: "#94a3b8",
         }}
       >
-        {/* Left: P&L metrics */}
+        {/* Left: P&L Summary */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div>
             Open P&L: <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
           </div>
           <div>
-            Total P&L: <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
+            Total P&L:{" "}
+            <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
           </div>
         </div>
 
-        {/* Right: Preferences, Available Funds & Digital Clock */}
+        {/* Right: Funds, Countdown, & Clock */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button
             onClick={() => setShowIndicatorsModal(!showIndicatorsModal)}
@@ -1346,12 +2755,10 @@ export function LiveChart({
             <span>⚙️</span>
             <span>Preferences</span>
           </button>
-
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span>Available Funds:</span>
             <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>28427.16</span>
           </div>
-
           <button
             style={{
               background: "#181d28",
@@ -1367,7 +2774,24 @@ export function LiveChart({
             + Add funds
           </button>
 
-          {/* Digital Clock */}
+          {/* Candle Countdown Timer */}
+          <div
+            title="Time until current candle closes"
+            style={{
+              fontFamily: "monospace",
+              fontSize: 10,
+              color: "#38bdf8",
+              background: "rgba(56, 189, 248, 0.12)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              border: "1px solid rgba(56, 189, 248, 0.25)",
+              fontWeight: 700,
+            }}
+          >
+            ⏳ {candleCountdown}
+          </div>
+
+          {/* Live Clock */}
           <div
             style={{
               fontFamily: "monospace",
@@ -1379,7 +2803,7 @@ export function LiveChart({
               border: "1px solid #242c3b",
             }}
           >
-            {currentTimeStr || "23:56:57"}
+            {currentTimeStr || "00:00:00"}
           </div>
         </div>
       </div>
