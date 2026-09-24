@@ -345,6 +345,7 @@ export default function MarketPage() {
           strategies={strategies}
           selectedStrategy={selectedStrategy}
           onSelectStrategy={setSelectedStrategy}
+          defaultSymbol="MCX GOLDM 25SEP26"
         />
       )}
 

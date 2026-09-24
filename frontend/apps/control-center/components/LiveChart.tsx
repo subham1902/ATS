@@ -21,6 +21,11 @@ import {
   type IPriceLine,
   type UTCTimestamp,
 } from "lightweight-charts";
+import {
+  inMemoryFootprintStore,
+  type BarFootprint,
+  type FootprintMemoryStats,
+} from "../lib/footprint";
 
 interface LiveChartProps {
   candles: CandleView[];
@@ -35,6 +40,7 @@ interface LiveChartProps {
   strategies?: any[];
   selectedStrategy?: string;
   onSelectStrategy?: (strategyId: string) => void;
+  defaultSymbol?: string;
 }
 
 // Universal safe price formatter
@@ -300,6 +306,7 @@ export function LiveChart({
   strategies = [],
   selectedStrategy = "A04_PROBABILISTIC",
   onSelectStrategy,
+  defaultSymbol = "MCX GOLDM 25SEP26",
 }: LiveChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -325,12 +332,12 @@ export function LiveChart({
   const lastFittedIntervalRef = useRef<string>("");
   const hoverPriceRef = useRef<number | null>(null);
 
-  // State Management
-  const [selectedSymbol, setSelectedSymbol] = useState("NIFTY 50 SPOT");
-  const [selectedExpiry, setSelectedExpiry] = useState("29 SEP");
-  const [chartStyle, setChartStyle] = useState<"CANDLES" | "HEIKIN_ASHI" | "LINE">("CANDLES");
+  // State Management (Gold Mini as Primary Default Commodity)
+  const [selectedSymbol, setSelectedSymbol] = useState(defaultSymbol || "MCX GOLDM 25SEP26");
+  const [selectedExpiry, setSelectedExpiry] = useState("25 SEP 26");
+  const [chartStyle, setChartStyle] = useState<"CANDLES" | "HEIKIN_ASHI" | "LINE" | "FOOTPRINT">("CANDLES");
   const [activeTab, setActiveTab] = useState<
-    "NONE" | "SHORTCUTS" | "WATCHLIST" | "OPTION_CHAIN" | "ORDERS" | "POSITIONS"
+    "NONE" | "SHORTCUTS" | "WATCHLIST" | "OPTION_CHAIN" | "FOOTPRINT" | "ORDERS" | "POSITIONS"
   >("NONE");
   const [activeTool, setActiveTool] = useState<
     "CROSSHAIR" | "TRENDLINE" | "HORZ_LINE" | "FIBONACCI" | "TARGET_TOOL" | "TEXT" | "MEASURE"
@@ -347,6 +354,19 @@ export function LiveChart({
     delta: number;
     deltaPct: number;
   } | null>(null);
+
+  // In-Memory Order Flow Footprint State
+  const [footprintBars, setFootprintBars] = useState<BarFootprint[]>([]);
+  const [footprintStats, setFootprintStats] = useState<FootprintMemoryStats>({
+    cachedBars: 0,
+    memoryBytes: 0,
+    totalVolume: 0,
+    totalDelta: 0,
+    cumDelta: 0,
+    buyPressurePct: 50,
+    sellPressurePct: 50,
+    imbalancesCount: 0,
+  });
   const [userPriceLines, setUserPriceLines] = useState<
     Record<string, { id: string; price: number; title: string; color: string }[]>
   >({});
@@ -425,114 +445,24 @@ export function LiveChart({
     return () => clearInterval(timer);
   }, [interval]);
 
-  // Symbol Profiles (NIFTY 50, BANKNIFTY, MCX GOLDM, MCX SILVERM, SENSEX, FINNIFTY)
+  // Symbol Profiles (MCX Commodities Primary, plus NSE Indices)
   const profile = useMemo(() => {
-    if (selectedSymbol.includes("NIFTY 50")) {
-      return {
-        symbol: "NIFTY 50",
-        type: "SPOT",
-        expiry: "29 SEP",
-        basePrice: 23446.8,
-        dayChange: 117.8,
-        dayChangePct: 0.5,
-        open: 23330.0,
-        callStrike: 23450.0,
-        callPremium: 108.8,
-        putStrike: 23450.0,
-        putPremium: 93.4,
-        entryPrice: 23430.0,
-        slPrice: 23410.0,
-        tpPrice: 23485.0,
-        strikeStep: 50,
-        tickSize: 0.05,
-      };
-    } else if (selectedSymbol.includes("BANKNIFTY")) {
-      return {
-        symbol: "BANKNIFTY",
-        type: "SPOT",
-        expiry: "29 SEP",
-        basePrice: 56548.9,
-        dayChange: 333.35,
-        dayChangePct: 0.59,
-        open: 56210.0,
-        callStrike: 56500.0,
-        callPremium: 340.5,
-        putStrike: 56500.0,
-        putPremium: 285.2,
-        entryPrice: 56480.0,
-        slPrice: 56350.0,
-        tpPrice: 56750.0,
-        strikeStep: 100,
-        tickSize: 0.05,
-      };
-    } else if (selectedSymbol.includes("SILVERM")) {
-      return {
-        symbol: "MCX SILVERM",
-        type: "FUT",
-        expiry: "28 NOV 26",
-        basePrice: 89250.0,
-        dayChange: 375.0,
-        dayChangePct: 0.42,
-        open: 88875.0,
-        callStrike: 89250.0,
-        callPremium: 420.0,
-        putStrike: 89250.0,
-        putPremium: 360.0,
-        entryPrice: 89150.0,
-        slPrice: 88900.0,
-        tpPrice: 89650.0,
-        strikeStep: 250,
-        tickSize: 1.0,
-      };
-    } else if (selectedSymbol.includes("SENSEX")) {
-      return {
-        symbol: "SENSEX",
-        type: "SPOT",
-        expiry: "03 OCT",
-        basePrice: 76820.0,
-        dayChange: 365.2,
-        dayChangePct: 0.48,
-        open: 76450.0,
-        callStrike: 76800.0,
-        callPremium: 290.0,
-        putStrike: 76800.0,
-        putPremium: 245.0,
-        entryPrice: 76750.0,
-        slPrice: 76550.0,
-        tpPrice: 77150.0,
-        strikeStep: 100,
-        tickSize: 0.05,
-      };
-    } else if (selectedSymbol.includes("FINNIFTY")) {
-      return {
-        symbol: "FINNIFTY",
-        type: "SPOT",
-        expiry: "01 OCT",
-        basePrice: 25110.0,
-        dayChange: 88.5,
-        dayChangePct: 0.35,
-        open: 25020.0,
-        callStrike: 25100.0,
-        callPremium: 115.0,
-        putStrike: 25100.0,
-        putPremium: 98.0,
-        entryPrice: 25080.0,
-        slPrice: 25020.0,
-        tpPrice: 25190.0,
-        strikeStep: 50,
-        tickSize: 0.05,
-      };
-    } else {
-      // MCX GOLDM (ATS Core Commodity Asset)
+    if (selectedSymbol.includes("GOLDM") || selectedSymbol.includes("GOLD")) {
       const lp = quote?.last_price ? parseFloat(quote.last_price) : 75420.0;
       return {
         symbol: "MCX GOLDM",
+        name: "Gold Mini 100g",
+        contract: "25SEP26",
+        segment: "COMMODITY",
         type: "FUT",
         expiry: "25 SEP 26",
         basePrice: lp,
         dayChange: 120.0,
         dayChangePct: 0.16,
         open: lp - 120.0,
+        lotSize: "100 grams",
+        tickSize: 1.0,
+        strikeStep: 100,
         callStrike: Math.round(lp / 100) * 100,
         callPremium: 185.0,
         putStrike: Math.round(lp / 100) * 100,
@@ -540,8 +470,168 @@ export function LiveChart({
         entryPrice: prediction?.entry_price ? parseFloat(prediction.entry_price) : lp - 30,
         slPrice: prediction?.dynamic_sl ? parseFloat(prediction.dynamic_sl) : lp - 150,
         tpPrice: prediction?.dynamic_tp ? parseFloat(prediction.dynamic_tp) : lp + 250,
-        strikeStep: 100,
+      };
+    } else if (selectedSymbol.includes("SILVERM") || selectedSymbol.includes("SILVER")) {
+      return {
+        symbol: "MCX SILVERM",
+        name: "Silver Mini 5kg",
+        contract: "28NOV26",
+        segment: "COMMODITY",
+        type: "FUT",
+        expiry: "28 NOV 26",
+        basePrice: 89250.0,
+        dayChange: 375.0,
+        dayChangePct: 0.42,
+        open: 88875.0,
+        lotSize: "5 kg",
         tickSize: 1.0,
+        strikeStep: 250,
+        callStrike: 89250.0,
+        callPremium: 420.0,
+        putStrike: 89250.0,
+        putPremium: 360.0,
+        entryPrice: 89150.0,
+        slPrice: 88900.0,
+        tpPrice: 89650.0,
+      };
+    } else if (selectedSymbol.includes("CRUDEOIL") || selectedSymbol.includes("CRUDE")) {
+      return {
+        symbol: "MCX CRUDEOIL",
+        name: "Crude Oil 100 bbl",
+        contract: "19OCT26",
+        segment: "COMMODITY",
+        type: "FUT",
+        expiry: "19 OCT 26",
+        basePrice: 6180.0,
+        dayChange: 45.0,
+        dayChangePct: 0.73,
+        open: 6135.0,
+        lotSize: "100 bbl",
+        tickSize: 1.0,
+        strikeStep: 50,
+        callStrike: 6200.0,
+        callPremium: 68.0,
+        putStrike: 6200.0,
+        putPremium: 52.0,
+        entryPrice: 6160.0,
+        slPrice: 6120.0,
+        tpPrice: 6240.0,
+      };
+    } else if (selectedSymbol.includes("NATURALGAS") || selectedSymbol.includes("NATGAS")) {
+      return {
+        symbol: "MCX NATURALGAS",
+        name: "Natural Gas 1250 mmBtu",
+        contract: "27OCT26",
+        segment: "COMMODITY",
+        type: "FUT",
+        expiry: "27 OCT 26",
+        basePrice: 238.5,
+        dayChange: -3.2,
+        dayChangePct: -1.32,
+        open: 241.7,
+        lotSize: "1250 mmBtu",
+        tickSize: 0.1,
+        strikeStep: 2.5,
+        callStrike: 240.0,
+        callPremium: 6.8,
+        putStrike: 240.0,
+        putPremium: 5.2,
+        entryPrice: 239.0,
+        slPrice: 235.0,
+        tpPrice: 245.0,
+      };
+    } else if (selectedSymbol.includes("COPPER")) {
+      return {
+        symbol: "MCX COPPER",
+        name: "Copper 2500 kg",
+        contract: "31OCT26",
+        segment: "COMMODITY",
+        type: "FUT",
+        expiry: "31 OCT 26",
+        basePrice: 842.2,
+        dayChange: 6.8,
+        dayChangePct: 0.81,
+        open: 835.4,
+        lotSize: "2500 kg",
+        tickSize: 0.05,
+        strikeStep: 5,
+        callStrike: 845.0,
+        callPremium: 14.5,
+        putStrike: 845.0,
+        putPremium: 11.2,
+        entryPrice: 840.0,
+        slPrice: 832.0,
+        tpPrice: 852.0,
+      };
+    } else if (selectedSymbol.includes("BANKNIFTY")) {
+      return {
+        symbol: "BANKNIFTY",
+        name: "Nifty Bank Index",
+        contract: "SPOT",
+        segment: "INDEX",
+        type: "SPOT",
+        expiry: "29 SEP",
+        basePrice: 56548.9,
+        dayChange: 333.35,
+        dayChangePct: 0.59,
+        open: 56210.0,
+        lotSize: "15",
+        tickSize: 0.05,
+        strikeStep: 100,
+        callStrike: 56500.0,
+        callPremium: 340.5,
+        putStrike: 56500.0,
+        putPremium: 285.2,
+        entryPrice: 56480.0,
+        slPrice: 56350.0,
+        tpPrice: 56750.0,
+      };
+    } else if (selectedSymbol.includes("SENSEX")) {
+      return {
+        symbol: "SENSEX",
+        name: "BSE Sensex Index",
+        contract: "SPOT",
+        segment: "INDEX",
+        type: "SPOT",
+        expiry: "03 OCT",
+        basePrice: 76820.0,
+        dayChange: 365.2,
+        dayChangePct: 0.48,
+        open: 76450.0,
+        lotSize: "10",
+        tickSize: 0.05,
+        strikeStep: 100,
+        callStrike: 76800.0,
+        callPremium: 290.0,
+        putStrike: 76800.0,
+        putPremium: 245.0,
+        entryPrice: 76750.0,
+        slPrice: 76550.0,
+        tpPrice: 77150.0,
+      };
+    } else {
+      // NIFTY 50
+      return {
+        symbol: "NIFTY 50",
+        name: "Nifty 50 Index",
+        contract: "SPOT",
+        segment: "INDEX",
+        type: "SPOT",
+        expiry: "29 SEP",
+        basePrice: 23446.8,
+        dayChange: 117.8,
+        dayChangePct: 0.5,
+        open: 23330.0,
+        lotSize: "25",
+        tickSize: 0.05,
+        strikeStep: 50,
+        callStrike: 23450.0,
+        callPremium: 108.8,
+        putStrike: 23450.0,
+        putPremium: 93.4,
+        entryPrice: 23430.0,
+        slPrice: 23410.0,
+        tpPrice: 23485.0,
       };
     }
   }, [selectedSymbol, quote, prediction]);
@@ -561,8 +651,13 @@ export function LiveChart({
         const delta = base * deltaPct;
         const isPrevValid = prev && Math.abs(prev.price - base) / base < 0.25;
         const curPrice = isPrevValid ? prev.price + delta : base + delta;
+        const roundedPrice = parseFloat(curPrice.toFixed(2));
+
+        // Update in-memory footprint store with live micro-tick
+        inMemoryFootprintStore.updateWithTick(selectedSymbol, roundedPrice, 15, Date.now());
+
         return {
-          price: parseFloat(curPrice.toFixed(2)),
+          price: roundedPrice,
           highDelta: Math.max(0, delta * 1.4),
           lowDelta: Math.min(0, delta * 1.4),
           timestamp: Date.now(),
@@ -571,7 +666,7 @@ export function LiveChart({
     }, 1000);
 
     return () => clearInterval(pulseInterval);
-  }, [profile.basePrice]);
+  }, [profile.basePrice, selectedSymbol]);
 
   // Generate authentic historical contour and intraday bars
   const baseChartData = useMemo(() => {
@@ -678,6 +773,19 @@ export function LiveChart({
 
     return { rawBars, volumes };
   }, [profile, interval, candles, livePulseTick]);
+
+  // Synchronize In-Memory Footprint buffer when baseChartData changes
+  useEffect(() => {
+    if (baseChartData.rawBars.length > 0) {
+      const barsWithVol = baseChartData.rawBars.map((b, i) => ({
+        ...b,
+        volume: baseChartData.volumes[i]?.value || 1200,
+      }));
+      const fps = inMemoryFootprintStore.ingestBars(selectedSymbol, barsWithVol, profile.tickSize);
+      setFootprintBars(fps);
+      setFootprintStats(inMemoryFootprintStore.getStats(selectedSymbol));
+    }
+  }, [baseChartData.rawBars, baseChartData.volumes, selectedSymbol, profile.tickSize]);
 
   // Derived Candle Types (Japanese vs Heikin-Ashi)
   const activeBars = useMemo(() => {
@@ -1328,11 +1436,123 @@ export function LiveChart({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 16,
+              gap: 14,
               borderLeft: "1px solid #1e2433",
               paddingLeft: 14,
             }}
           >
+            {/* COMMODITIES SECTION */}
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#f59e0b", letterSpacing: "0.5px" }}>
+              MCX COMMODITIES:
+            </span>
+
+            {/* GOLDM MCX (ATS Core Asset) */}
+            <div
+              onClick={() => setSelectedSymbol("MCX GOLDM 25SEP26")}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                cursor: "pointer",
+                background: selectedSymbol.includes("GOLDM")
+                  ? "rgba(234, 179, 8, 0.2)"
+                  : "rgba(234, 179, 8, 0.08)",
+                padding: "3px 10px",
+                borderRadius: 4,
+                border: `1px solid ${
+                  selectedSymbol.includes("GOLDM") ? "#eab308" : "rgba(234, 179, 8, 0.3)"
+                }`,
+              }}
+            >
+              <span style={{ fontWeight: 900, color: "#fbbf24" }}>★ MCX GOLDM</span>
+              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>
+                75,420.00
+              </span>
+              <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 700 }}>▲ 120.0 (0.16%)</span>
+            </div>
+
+            {/* SILVERM MCX */}
+            <div
+              onClick={() => setSelectedSymbol("MCX SILVERM 28NOV26")}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                cursor: "pointer",
+                background: selectedSymbol.includes("SILVERM")
+                  ? "rgba(148, 163, 184, 0.2)"
+                  : "transparent",
+                padding: "3px 8px",
+                borderRadius: 4,
+                border: `1px solid ${
+                  selectedSymbol.includes("SILVERM") ? "#94a3b8" : "rgba(148, 163, 184, 0.2)"
+                }`,
+              }}
+            >
+              <span style={{ fontWeight: 800, color: "#cbd5e1" }}>MCX SILVERM</span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
+                89,250.00
+              </span>
+              <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 375.0 (0.42%)</span>
+            </div>
+
+            {/* CRUDEOIL MCX */}
+            <div
+              onClick={() => setSelectedSymbol("MCX CRUDEOIL 19OCT26")}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                cursor: "pointer",
+                background: selectedSymbol.includes("CRUDEOIL")
+                  ? "rgba(239, 68, 68, 0.2)"
+                  : "transparent",
+                padding: "3px 8px",
+                borderRadius: 4,
+                border: `1px solid ${
+                  selectedSymbol.includes("CRUDEOIL") ? "#ef4444" : "rgba(239, 68, 68, 0.2)"
+                }`,
+              }}
+            >
+              <span style={{ fontWeight: 800, color: "#f87171" }}>MCX CRUDEOIL</span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
+                6,180.00
+              </span>
+              <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 45.0 (0.73%)</span>
+            </div>
+
+            {/* NATURALGAS MCX */}
+            <div
+              onClick={() => setSelectedSymbol("MCX NATURALGAS 27OCT26")}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                cursor: "pointer",
+                background: selectedSymbol.includes("NATURALGAS")
+                  ? "rgba(56, 189, 248, 0.2)"
+                  : "transparent",
+                padding: "3px 8px",
+                borderRadius: 4,
+                border: `1px solid ${
+                  selectedSymbol.includes("NATURALGAS") ? "#38bdf8" : "rgba(56, 189, 248, 0.2)"
+                }`,
+              }}
+            >
+              <span style={{ fontWeight: 800, color: "#38bdf8" }}>MCX NATGAS</span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
+                238.50
+              </span>
+              <span style={{ fontSize: 10, color: "#ef4444" }}>▼ -3.20 (-1.32%)</span>
+            </div>
+
+            <span style={{ color: "#334155" }}>|</span>
+
+            {/* NSE INDICES */}
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px" }}>
+              INDICES:
+            </span>
+
             {/* NIFTY 50 */}
             <div
               onClick={() => setSelectedSymbol("NIFTY 50 SPOT")}
@@ -1389,31 +1609,6 @@ export function LiveChart({
                 56,548.90
               </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 333.35 (0.59%)</span>
-            </div>
-
-            {/* GOLDM MCX (ATS Core Asset) */}
-            <div
-              onClick={() => setSelectedSymbol("MCX GOLDM 25SEP26")}
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                gap: 6,
-                cursor: "pointer",
-                background: selectedSymbol.includes("GOLDM")
-                  ? "rgba(234, 179, 8, 0.16)"
-                  : "rgba(234, 179, 8, 0.08)",
-                padding: "2px 8px",
-                borderRadius: 4,
-                border: `1px solid ${
-                  selectedSymbol.includes("GOLDM") ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.25)"
-                }`,
-              }}
-            >
-              <span style={{ fontWeight: 800, color: "#fbbf24" }}>MCX GOLDM</span>
-              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>
-                75,420.00
-              </span>
-              <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 120.0 (0.16%)</span>
             </div>
 
             {/* INDIA VIX */}
@@ -1539,7 +1734,7 @@ export function LiveChart({
       >
         {/* Left: Symbol & Price Readout */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          {/* Symbol Select */}
+          {/* Symbol Select (Grouped by MCX Commodities and NSE Indices) */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <select
               value={selectedSymbol}
@@ -1556,24 +1751,32 @@ export function LiveChart({
                 outline: "none",
               }}
             >
-              <option value="NIFTY 50 SPOT">NIFTY 50 SPOT</option>
-              <option value="BANKNIFTY SPOT">BANKNIFTY SPOT</option>
-              <option value="MCX GOLDM 25SEP26">MCX GOLDM 25SEP26</option>
-              <option value="MCX SILVERM 28NOV26">MCX SILVERM 28NOV26</option>
-              <option value="SENSEX SPOT">SENSEX SPOT</option>
-              <option value="FINNIFTY SPOT">FINNIFTY SPOT</option>
+              <optgroup label="MCX Commodities (Live)">
+                <option value="MCX GOLDM 25SEP26">★ MCX GOLDM (Gold Mini)</option>
+                <option value="MCX SILVERM 28NOV26">MCX SILVERM (Silver Mini)</option>
+                <option value="MCX CRUDEOIL 19OCT26">MCX CRUDEOIL (Crude Oil)</option>
+                <option value="MCX NATURALGAS 27OCT26">MCX NATURALGAS (Nat Gas)</option>
+                <option value="MCX COPPER 31OCT26">MCX COPPER (Copper)</option>
+              </optgroup>
+              <optgroup label="NSE Indices">
+                <option value="NIFTY 50 SPOT">NIFTY 50 SPOT</option>
+                <option value="BANKNIFTY SPOT">BANKNIFTY SPOT</option>
+                <option value="SENSEX SPOT">SENSEX SPOT</option>
+                <option value="FINNIFTY SPOT">FINNIFTY SPOT</option>
+              </optgroup>
             </select>
             <span
               style={{
                 fontSize: 10,
                 fontWeight: 800,
-                background: "#262e3d",
-                color: "#94a3b8",
+                background: profile.segment === "COMMODITY" ? "rgba(234, 179, 8, 0.2)" : "#262e3d",
+                color: profile.segment === "COMMODITY" ? "#fbbf24" : "#94a3b8",
                 padding: "2px 6px",
                 borderRadius: 4,
+                border: profile.segment === "COMMODITY" ? "1px solid rgba(234, 179, 8, 0.4)" : "none",
               }}
             >
-              {profile.type}
+              {profile.segment === "COMMODITY" ? "COMMODITY FUT" : "INDEX SPOT"}
             </span>
           </div>
 
@@ -1614,9 +1817,10 @@ export function LiveChart({
                 outline: "none",
               }}
             >
-              <option value="29 SEP">29 SEP</option>
               <option value="25 SEP 26">25 SEP 26</option>
               <option value="05 OCT 26">05 OCT 26</option>
+              <option value="28 NOV 26">28 NOV 26</option>
+              <option value="29 SEP">29 SEP</option>
             </select>
           </div>
 
@@ -1652,7 +1856,7 @@ export function LiveChart({
             ))}
           </div>
 
-          {/* Chart Style Switcher (Candles, Heikin Ashi, Line) */}
+          {/* Chart Style Switcher (Candles, Heikin Ashi, Line, Footprint) */}
           <div
             style={{
               display: "flex",
@@ -1711,6 +1915,22 @@ export function LiveChart({
             >
               📈
             </button>
+            <button
+              onClick={() => setChartStyle("FOOTPRINT")}
+              title="Order Flow Footprint (In-Memory Bid/Ask Ladder)"
+              style={{
+                background: chartStyle === "FOOTPRINT" ? "#1e293b" : "transparent",
+                color: chartStyle === "FOOTPRINT" ? "#38bdf8" : "#64748b",
+                border: "none",
+                borderRadius: 4,
+                padding: "3px 6px",
+                fontSize: 11,
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              👣 FP
+            </button>
           </div>
 
           {/* Indicators Button */}
@@ -1734,8 +1954,8 @@ export function LiveChart({
             <span>Indicators</span>
           </button>
 
-          {/* Technical Intelligence Strip (RSI & SuperTrend Readouts) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, fontFamily: "monospace" }}>
+          {/* Technical Intelligence Strip (RSI, VWAP, In-Memory CVD & RAM Telemetry) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontFamily: "monospace" }}>
             {enabledIndicators.rsiBadge && (
               <span
                 style={{
@@ -1765,6 +1985,40 @@ export function LiveChart({
                 VWAP: ₹{fmtPrice(indicatorsData.vwap[indicatorsData.vwap.length - 1]?.value, 1)}
               </span>
             )}
+            <span
+              title="Cumulative Volume Delta (In-Memory CVD Flow)"
+              style={{
+                background:
+                  footprintStats.cumDelta >= 0
+                    ? "rgba(34, 197, 94, 0.15)"
+                    : "rgba(239, 68, 68, 0.15)",
+                color: footprintStats.cumDelta >= 0 ? "#4ade80" : "#f87171",
+                border: `1px solid ${
+                  footprintStats.cumDelta >= 0
+                    ? "rgba(34, 197, 94, 0.3)"
+                    : "rgba(239, 68, 68, 0.3)"
+                }`,
+                padding: "2px 6px",
+                borderRadius: 4,
+                fontWeight: 700,
+              }}
+            >
+              CVD: {footprintStats.cumDelta >= 0 ? "+" : ""}
+              {footprintStats.cumDelta}
+            </span>
+            <span
+              title="Active In-Memory Footprint Buffer"
+              style={{
+                background: "rgba(56, 189, 248, 0.12)",
+                color: "#38bdf8",
+                border: "1px solid rgba(56, 189, 248, 0.25)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                fontWeight: 700,
+              }}
+            >
+              RAM: {footprintStats.cachedBars} bars
+            </span>
           </div>
 
           {/* Strategy Selector */}
@@ -1926,6 +2180,7 @@ export function LiveChart({
               { id: "SHORTCUTS", label: "Shortcuts" },
               { id: "WATCHLIST", label: "Watchlist" },
               { id: "OPTION_CHAIN", label: "Option Chain" },
+              { id: "FOOTPRINT", label: "Footprint" },
               { id: "ORDERS", label: "Orders (0)" },
               { id: "POSITIONS", label: "Positions (0)" },
             ].map((tab) => (
@@ -2186,6 +2441,237 @@ export function LiveChart({
             </div>
           )}
 
+          {/* Order Flow Footprint Overlay (When FOOTPRINT mode is active) */}
+          {chartStyle === "FOOTPRINT" && (
+            <div
+              style={{
+                position: "absolute",
+                top: 45,
+                left: 12,
+                right: 55,
+                bottom: 35,
+                zIndex: 6,
+                pointerEvents: "auto",
+                background: "rgba(10, 12, 18, 0.94)",
+                backdropFilter: "blur(6px)",
+                borderRadius: 8,
+                border: "1px solid #1e293b",
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.8)",
+              }}
+            >
+              {/* Footprint Header */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottom: "1px solid #1e293b",
+                  paddingBottom: 8,
+                  marginBottom: 10,
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontWeight: 800, color: "#38bdf8" }}>
+                    👣 ORDER FLOW FOOTPRINT (IN-MEMORY BID x ASK LADDER)
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      background: "rgba(34, 197, 94, 0.15)",
+                      color: "#4ade80",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ● REAL-TIME RAM BUFFER
+                  </span>
+                  <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                    {profile.symbol} · {interval} · POC Gold Row · Diagonal Imbalances (2.8x)
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 12, fontSize: 11, fontFamily: "monospace" }}>
+                  <span>
+                    Buy Pressure:{" "}
+                    <strong style={{ color: "#22c55e" }}>
+                      {footprintStats.buyPressurePct}%
+                    </strong>
+                  </span>
+                  <span>
+                    Sell Pressure:{" "}
+                    <strong style={{ color: "#ef4444" }}>
+                      {footprintStats.sellPressurePct}%
+                    </strong>
+                  </span>
+                  <span>
+                    Net CVD:{" "}
+                    <strong
+                      style={{
+                        color: footprintStats.cumDelta >= 0 ? "#22c55e" : "#ef4444",
+                      }}
+                    >
+                      {footprintStats.cumDelta >= 0 ? "+" : ""}
+                      {footprintStats.cumDelta}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Footprint Bars Grid */}
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  gap: 10,
+                  overflowX: "auto",
+                  paddingBottom: 6,
+                  alignItems: "flex-end",
+                }}
+              >
+                {footprintBars.slice(-8).map((fp) => {
+                  const isBull = fp.close >= fp.open;
+                  const dateStr = new Date(fp.time * 1000).toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  return (
+                    <div
+                      key={fp.time}
+                      style={{
+                        minWidth: 125,
+                        background: "#0c0f17",
+                        border: `1px solid ${
+                          isBull ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)"
+                        }`,
+                        borderRadius: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        fontSize: 9.5,
+                        fontFamily: "monospace",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                      }}
+                    >
+                      {/* Bar Top Header */}
+                      <div
+                        style={{
+                          padding: "3px 6px",
+                          background: isBull
+                            ? "rgba(34, 197, 94, 0.15)"
+                            : "rgba(239, 68, 68, 0.15)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          borderBottom: "1px solid #1e2433",
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span style={{ color: "#94a3b8" }}>{dateStr}</span>
+                        <span style={{ color: isBull ? "#4ade80" : "#f87171" }}>
+                          {isBull ? "▲" : "▼"} {fp.close.toFixed(1)}
+                        </span>
+                      </div>
+
+                      {/* Footprint Price Levels Ladder */}
+                      <div
+                        style={{
+                          padding: "3px 0",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          maxHeight: 280,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {fp.levels.map((lvl, lIdx) => (
+                          <div
+                            key={lIdx}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr 1fr",
+                              padding: "1.5px 3px",
+                              background: lvl.isPoc
+                                ? "rgba(234, 179, 8, 0.25)"
+                                : lvl.isBuyImbalance
+                                ? "rgba(34, 197, 94, 0.18)"
+                                : lvl.isSellImbalance
+                                ? "rgba(239, 68, 68, 0.18)"
+                                : "transparent",
+                              border: lvl.isPoc ? "1px solid #eab308" : "none",
+                              borderRadius: 2,
+                              fontSize: 9,
+                              textAlign: "center",
+                            }}
+                          >
+                            {/* Bid Vol */}
+                            <span
+                              style={{
+                                color: lvl.isSellImbalance ? "#ef4444" : "#94a3b8",
+                                fontWeight: lvl.isSellImbalance ? 800 : 500,
+                                textAlign: "right",
+                                paddingRight: 3,
+                              }}
+                            >
+                              {lvl.bidVol}
+                            </span>
+                            {/* Level Price */}
+                            <span
+                              style={{
+                                color: lvl.isPoc ? "#fef08a" : "#cbd5e1",
+                                fontWeight: lvl.isPoc ? 800 : 600,
+                              }}
+                            >
+                              {lvl.price}
+                            </span>
+                            {/* Ask Vol */}
+                            <span
+                              style={{
+                                color: lvl.isBuyImbalance ? "#22c55e" : "#94a3b8",
+                                fontWeight: lvl.isBuyImbalance ? 800 : 500,
+                                textAlign: "left",
+                                paddingLeft: 3,
+                              }}
+                            >
+                              {lvl.askVol}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Bar Bottom Delta & CVD Pill */}
+                      <div
+                        style={{
+                          padding: "3px 6px",
+                          background: "#080a10",
+                          borderTop: "1px solid #1e2433",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 8.5,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            color: fp.delta >= 0 ? "#22c55e" : "#ef4444",
+                          }}
+                        >
+                          Δ {fp.delta >= 0 ? "+" : ""}
+                          {fp.delta}
+                        </span>
+                        <span style={{ color: "#64748b" }}>
+                          Vol: {fp.volume.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Reset Zoom Icon (matching Upstox Chart 360 circle arrow) */}
           <button
             onClick={handleResetZoom}
@@ -2261,12 +2747,115 @@ export function LiveChart({
             <div style={{ padding: "12px 14px", flex: 1, overflowY: "auto" }}>
               {activeTab === "WATCHLIST" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>
-                    CLICK ANY SYMBOL TO LOAD TERMINAL
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#f59e0b", letterSpacing: "0.5px" }}>
+                    MCX COMMODITIES (LIVE):
+                  </div>
+                  {[
+                    {
+                      symbol: "MCX GOLDM 25SEP26",
+                      name: "Gold Mini (ATS Core Asset)",
+                      price: quote?.last_price ? parseFloat(quote.last_price) : 75420.0,
+                      chg: 120.0,
+                      pct: 0.16,
+                      expiry: "25 SEP 26",
+                      isCore: true,
+                    },
+                    {
+                      symbol: "MCX SILVERM 28NOV26",
+                      name: "Silver Mini",
+                      price: 89250.0,
+                      chg: 375.0,
+                      pct: 0.42,
+                      expiry: "28 NOV 26",
+                      isCore: false,
+                    },
+                    {
+                      symbol: "MCX CRUDEOIL 19OCT26",
+                      name: "Crude Oil",
+                      price: 6180.0,
+                      chg: 45.0,
+                      pct: 0.73,
+                      expiry: "19 OCT 26",
+                      isCore: false,
+                    },
+                    {
+                      symbol: "MCX NATURALGAS 27OCT26",
+                      name: "Natural Gas",
+                      price: 238.5,
+                      chg: -3.2,
+                      pct: -1.32,
+                      expiry: "27 OCT 26",
+                      isCore: false,
+                    },
+                    {
+                      symbol: "MCX COPPER 31OCT26",
+                      name: "Copper",
+                      price: 842.2,
+                      chg: 6.8,
+                      pct: 0.81,
+                      expiry: "31 OCT 26",
+                      isCore: false,
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.symbol}
+                      onClick={() => {
+                        setSelectedSymbol(item.symbol);
+                        setSelectedExpiry(item.expiry);
+                        setActiveTab("NONE");
+                      }}
+                      style={{
+                        padding: "8px 10px",
+                        background: selectedSymbol === item.symbol
+                          ? "rgba(234, 179, 8, 0.18)"
+                          : item.isCore
+                          ? "rgba(234, 179, 8, 0.08)"
+                          : "#141923",
+                        border: `1px solid ${
+                          selectedSymbol === item.symbol
+                            ? "#eab308"
+                            : item.isCore
+                            ? "rgba(234, 179, 8, 0.4)"
+                            : "#1e2638"
+                        }`,
+                        borderRadius: 6,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 12, color: item.isCore ? "#fbbf24" : "#f8fafc" }}>
+                          {item.isCore ? "★ " : ""}{item.symbol}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{item.name} · {item.expiry}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 800, fontSize: 12, fontFamily: "monospace" }}>
+                          {fmtPrice(item.price)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: Number(item.chg || 0) >= 0 ? "#22c55e" : "#ef4444",
+                          }}
+                        >
+                          {Number(item.chg || 0) >= 0 ? "+" : ""}
+                          {fmtPrice(item.chg)} ({fmtPrice(item.pct, 2)}%)
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px", marginTop: 8 }}>
+                    NSE INDICES:
                   </div>
                   {[
                     {
                       symbol: "NIFTY 50 SPOT",
+                      name: "Nifty 50 Index",
                       price: 23446.8,
                       chg: 117.8,
                       pct: 0.5,
@@ -2274,38 +2863,19 @@ export function LiveChart({
                     },
                     {
                       symbol: "BANKNIFTY SPOT",
+                      name: "Nifty Bank Index",
                       price: 56548.9,
                       chg: 333.35,
                       pct: 0.59,
                       expiry: "29 SEP",
                     },
                     {
-                      symbol: "MCX GOLDM 25SEP26",
-                      price: quote?.last_price ? parseFloat(quote.last_price) : 75420.0,
-                      chg: 120.0,
-                      pct: 0.16,
-                      expiry: "25 SEP 26",
-                    },
-                    {
-                      symbol: "MCX SILVERM 28NOV26",
-                      price: 89250.0,
-                      chg: 375.0,
-                      pct: 0.42,
-                      expiry: "28 NOV 26",
-                    },
-                    {
                       symbol: "SENSEX SPOT",
+                      name: "BSE Sensex Index",
                       price: 76820.0,
                       chg: 365.2,
                       pct: 0.48,
                       expiry: "03 OCT",
-                    },
-                    {
-                      symbol: "FINNIFTY SPOT",
-                      price: 25110.0,
-                      chg: 88.5,
-                      pct: 0.35,
-                      expiry: "01 OCT",
                     },
                   ].map((item) => (
                     <div
@@ -2349,6 +2919,243 @@ export function LiveChart({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Order Flow & Footprint Analytics Drawer */}
+              {activeTab === "FOOTPRINT" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Active Instrument Header */}
+                  <div
+                    style={{
+                      background: "rgba(234, 179, 8, 0.12)",
+                      border: "1px solid rgba(234, 179, 8, 0.3)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 12, color: "#fbbf24" }}>
+                        {profile.symbol}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                        {profile.contract} · {profile.segment}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 900, fontSize: 13, fontFamily: "monospace", color: "#fef08a" }}>
+                        ₹{currentPrice.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 9, color: "#22c55e", fontWeight: 700 }}>
+                        ● IN-MEMORY STREAMING
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Telemetry Buffer Card */}
+                  <div
+                    style={{
+                      background: "#141923",
+                      border: "1px solid #1e2638",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      fontSize: 11,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "#38bdf8", marginBottom: 6 }}>
+                      ⚡ In-Memory Footprint Buffer
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ color: "#94a3b8" }}>Cached Bars:</span>
+                      <strong style={{ fontFamily: "monospace" }}>{footprintStats.cachedBars} bars in RAM</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ color: "#94a3b8" }}>Memory Footprint:</span>
+                      <strong style={{ fontFamily: "monospace" }}>{(footprintStats.memoryBytes / 1024).toFixed(1)} KB</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "#94a3b8" }}>Read Latency:</span>
+                      <strong style={{ color: "#4ade80", fontFamily: "monospace" }}>0.00 ms (Zero Latency)</strong>
+                    </div>
+                  </div>
+
+                  {/* Buy vs Sell Pressure Meter */}
+                  <div
+                    style={{
+                      background: "#141923",
+                      border: "1px solid #1e2638",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      fontSize: 11,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#22c55e" }}>
+                        Aggressive Buys ({footprintStats.buyPressurePct}%)
+                      </span>
+                      <span style={{ fontWeight: 700, color: "#ef4444" }}>
+                        Aggressive Sells ({footprintStats.sellPressurePct}%)
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 8,
+                        borderRadius: 4,
+                        background: "#1e293b",
+                        display: "flex",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${footprintStats.buyPressurePct}%`,
+                          background: "#22c55e",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: `${footprintStats.sellPressurePct}%`,
+                          background: "#ef4444",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Net CVD & Imbalance Card */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
+                      fontSize: 11,
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: "#141923",
+                        border: "1px solid #1e2638",
+                        borderRadius: 6,
+                        padding: "6px 8px",
+                      }}
+                    >
+                      <div style={{ color: "#94a3b8", fontSize: 10 }}>Net Volume Delta</div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          fontFamily: "monospace",
+                          color: footprintStats.totalDelta >= 0 ? "#22c55e" : "#ef4444",
+                          marginTop: 2,
+                        }}
+                      >
+                        {footprintStats.totalDelta >= 0 ? "+" : ""}
+                        {footprintStats.totalDelta.toLocaleString()}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        background: "#141923",
+                        border: "1px solid #1e2638",
+                        borderRadius: 6,
+                        padding: "6px 8px",
+                      }}
+                    >
+                      <div style={{ color: "#94a3b8", fontSize: 10 }}>Diagonal Imbalances</div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          fontFamily: "monospace",
+                          color: "#f59e0b",
+                          marginTop: 2,
+                        }}
+                      >
+                        {footprintStats.imbalancesCount} signals
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Candle Footprint Ledger Table */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#94a3b8",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        paddingBottom: 4,
+                        borderBottom: "1px solid #1e2638",
+                      }}
+                    >
+                      <span>BAR</span>
+                      <span>CLOSE</span>
+                      <span>DELTA</span>
+                      <span>POC</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 180, overflowY: "auto" }}>
+                      {footprintBars.slice(-10).reverse().map((b) => {
+                        const timeStr = new Date(b.time * 1000).toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        return (
+                          <div
+                            key={b.time}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                              fontSize: 10,
+                              fontFamily: "monospace",
+                              padding: "3px 4px",
+                              background: "#121620",
+                              borderRadius: 4,
+                              alignItems: "center",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>{timeStr}</span>
+                            <span style={{ fontWeight: 600 }}>{b.close.toFixed(1)}</span>
+                            <span
+                              style={{
+                                color: b.delta >= 0 ? "#22c55e" : "#ef4444",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {b.delta >= 0 ? "+" : ""}
+                              {b.delta}
+                            </span>
+                            <span style={{ color: "#fef08a" }}>{b.pocPrice.toFixed(1)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Switch to Footprint chart button */}
+                  <button
+                    onClick={() => {
+                      setChartStyle("FOOTPRINT");
+                      setActiveTab("NONE");
+                    }}
+                    style={{
+                      background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      marginTop: 4,
+                    }}
+                  >
+                    👣 Open Footprint Chart View
+                  </button>
                 </div>
               )}
 
