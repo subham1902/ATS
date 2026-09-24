@@ -36,6 +36,12 @@ interface LiveChartProps {
   onSelectStrategy?: (strategyId: string) => void;
 }
 
+const fmtPrice = (p: any, dec = 1): string => {
+  if (p === null || p === undefined) return "--";
+  const n = typeof p === "number" ? p : parseFloat(String(p));
+  return isNaN(n) ? "--" : n.toFixed(dec);
+};
+
 export function LiveChart({
   candles,
   quote,
@@ -931,7 +937,7 @@ export function LiveChart({
           </div>
 
           {/* Vertical Upstox Nav Tabs */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8, width: "100%" }}>
             {[
               { id: "SHORTCUTS", label: "Shortcuts" },
               { id: "WATCHLIST", label: "Watchlist" },
@@ -941,22 +947,34 @@ export function LiveChart({
             ].map((tab) => (
               <button
                 key={tab.id}
+                data-testid={`drawer-tab-${tab.id.toLowerCase()}`}
                 onClick={() => setActiveTab(activeTab === tab.id ? "NONE" : (tab.id as any))}
                 style={{
                   background: activeTab === tab.id ? "#1e293b" : "transparent",
                   color: activeTab === tab.id ? "#60a5fa" : "#64748b",
                   border: "none",
-                  writingMode: "vertical-rl",
-                  transform: "rotate(180deg)",
-                  fontSize: 11,
-                  fontWeight: 700,
                   cursor: "pointer",
                   padding: "6px 2px",
                   borderRadius: 4,
-                  letterSpacing: "0.5px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "100%",
                 }}
               >
-                {tab.label}
+                <span
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: "rotate(180deg)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                    display: "inline-block",
+                    userSelect: "none",
+                  }}
+                >
+                  {tab.label}
+                </span>
               </button>
             ))}
           </div>
@@ -1030,6 +1048,7 @@ export function LiveChart({
         {/* Slide-out Side Drawers (Watchlist / Option Chain / Orders / Positions) */}
         {activeTab !== "NONE" && (
           <div
+            data-testid="chart360-drawer"
             style={{
               width: 320,
               background: "#0f131c",
@@ -1051,10 +1070,11 @@ export function LiveChart({
                 background: "#0b0e14",
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#f8fafc" }}>
+              <span data-testid="drawer-title" style={{ fontSize: 13, fontWeight: 800, color: "#f8fafc" }}>
                 {activeTab.replace("_", " ")}
               </span>
               <button
+                data-testid="drawer-close"
                 onClick={() => setActiveTab("NONE")}
                 style={{
                   background: "none",
@@ -1102,16 +1122,16 @@ export function LiveChart({
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontWeight: 800, fontSize: 12, fontFamily: "monospace" }}>
-                          {item.price.toFixed(1)}
+                          {fmtPrice(item.price)}
                         </div>
                         <div
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            color: item.chg >= 0 ? "#22c55e" : "#ef4444",
+                            color: Number(item.chg || 0) >= 0 ? "#22c55e" : "#ef4444",
                           }}
                         >
-                          {item.chg >= 0 ? "+" : ""}{item.chg.toFixed(1)} ({item.pct.toFixed(2)}%)
+                          {Number(item.chg || 0) >= 0 ? "+" : ""}{fmtPrice(item.chg)} ({fmtPrice(item.pct, 2)}%)
                         </div>
                       </div>
                     </div>
@@ -1134,8 +1154,8 @@ export function LiveChart({
                           </div>
                           {depthData.bids.slice(0, 5).map((b: any, i: number) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-                              <span>{b.price?.toFixed(1)}</span>
-                              <span style={{ color: "#64748b" }}>{b.quantity}</span>
+                              <span>{fmtPrice(b?.price)}</span>
+                              <span style={{ color: "#64748b" }}>{b?.quantity ?? 0}</span>
                             </div>
                           ))}
                         </div>
@@ -1146,8 +1166,8 @@ export function LiveChart({
                           </div>
                           {depthData.asks.slice(0, 5).map((a: any, i: number) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-                              <span>{a.price?.toFixed(1)}</span>
-                              <span style={{ color: "#64748b" }}>{a.quantity}</span>
+                              <span>{fmtPrice(a?.price)}</span>
+                              <span style={{ color: "#64748b" }}>{a?.quantity ?? 0}</span>
                             </div>
                           ))}
                         </div>
