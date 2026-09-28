@@ -14,7 +14,7 @@ export interface SseContextValue {
 
 const SseContext = createContext<SseContextValue | null>(null);
 
-function useLocalSse(): SseContextValue {
+function useLocalSse(enabled: boolean): SseContextValue {
   const [status, setStatus] = useState<SseStatus>("disconnected");
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -87,23 +87,25 @@ function useLocalSse(): SseContextValue {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     connect();
     return () => disconnect();
-  }, [connect, disconnect]);
+  }, [enabled, connect, disconnect]);
 
   return { status, events, error, reconnect: connect, disconnect };
 }
 
 export function SseProvider({ children }: { children: ReactNode }) {
-  const value = useLocalSse();
+  const value = useLocalSse(true);
   return <SseContext.Provider value={value}>{children}</SseContext.Provider>;
 }
 
 export function useSse(): SseContextValue {
   const context = useContext(SseContext);
-  // If inside an SseProvider, return the singleton instance. Otherwise fall back to a local hook.
-  if (context) {
-    return context;
-  }
-  return useLocalSse();
+  // Both hooks run on every render so the hook order is identical whether or
+  // not an SseProvider is mounted. `enabled` gates only the side effect: when
+  // a provider already owns the connection, the local instance stays idle
+  // instead of opening a second one.
+  const local = useLocalSse(context === null);
+  return context ?? local;
 }
