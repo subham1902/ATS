@@ -40,6 +40,7 @@ export function useMarketFeed(
   const wsRef = useRef<WebSocket | null>(null);
   const sseAbortRef = useRef<AbortController | null>(null);
   const reconnectTimer = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef<number>(0);
   const pingTimer = useRef<number | null>(null);
   const intervalRef = useRef<MarketInterval>(interval);
   intervalRef.current = interval;
@@ -71,6 +72,7 @@ export function useMarketFeed(
       window.clearTimeout(reconnectTimer.current);
       reconnectTimer.current = null;
     }
+    reconnectAttemptRef.current = 0;
     if (wsRef.current) {
       wsRef.current.onclose = null;
       wsRef.current.onerror = null;
@@ -208,6 +210,7 @@ export function useMarketFeed(
       wsRef.current = ws;
 
       ws.onopen = () => {
+        reconnectAttemptRef.current = 0;
         setConnectionStatus("connected");
         setStreamTransport("WEBSOCKET");
         loadCandles(intervalRef.current);
@@ -362,7 +365,11 @@ export function useMarketFeed(
         if (wsRef.current === ws) {
           wsRef.current = null;
           startSseFallback();
-          reconnectTimer.current = window.setTimeout(() => connect(), 3000);
+          reconnectAttemptRef.current += 1;
+          const base = Math.min(30000, 1000 * Math.pow(2, Math.min(reconnectAttemptRef.current, 5)));
+          const jitter = Math.random() * 1000;
+          const delay = Math.round(base + jitter);
+          reconnectTimer.current = window.setTimeout(() => connect(), delay);
         }
       };
     } catch (e) {

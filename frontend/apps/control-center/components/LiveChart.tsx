@@ -26,6 +26,7 @@ import {
   type BarFootprint,
   type FootprintMemoryStats,
 } from "../lib/footprint";
+import { getMarketSessionInfo, type MarketSessionInfo } from "../lib/marketHours";
 
 interface LiveChartProps {
   candles: CandleView[];
@@ -408,6 +409,15 @@ export function LiveChart({
     changePct: number;
   } | null>(null);
 
+  // Market Session Status (Accurate Indian Exchange Hours: NSE 09:15-15:30 IST, MCX 09:00-23:30 IST)
+  const [marketSession, setMarketSession] = useState<MarketSessionInfo>(() =>
+    getMarketSessionInfo(selectedSymbol)
+  );
+
+  useEffect(() => {
+    setMarketSession(getMarketSessionInfo(selectedSymbol));
+  }, [selectedSymbol]);
+
   // Digital Clock & Bar Countdown Timer (Updating every 1 second)
   useEffect(() => {
     const updateTimers = () => {
@@ -420,6 +430,9 @@ export function LiveChart({
           second: "2-digit",
         })
       );
+
+      // Periodically refresh market session status
+      setMarketSession(getMarketSessionInfo(selectedSymbol, now));
 
       // Countdown to candle close
       const secMap: Record<string, number> = {
@@ -443,7 +456,7 @@ export function LiveChart({
     updateTimers();
     const timer = setInterval(updateTimers, 1000);
     return () => clearInterval(timer);
-  }, [interval]);
+  }, [interval, selectedSymbol]);
 
   // Symbol Profiles (MCX Commodities Primary, plus NSE Indices)
   const profile = useMemo(() => {
@@ -641,8 +654,15 @@ export function LiveChart({
     setLivePulseTick(null);
   }, [selectedSymbol]);
 
-  // Live Micro-Pulse Heartbeat (Smooth continuous ticks when waiting for broker feed)
+  // Live Micro-Pulse Heartbeat (Smooth continuous ticks only during live market session when waiting for broker feed)
   useEffect(() => {
+    // CRITICAL HONESTY RULE: When market is closed (e.g. NIFTY after 15:30 IST or on weekends),
+    // NEVER generate synthetic price movement! Ticks and chart remain completely frozen.
+    if (!marketSession.isOpen) {
+      setLivePulseTick(null);
+      return;
+    }
+
     const pulseInterval = setInterval(() => {
       setLivePulseTick((prev) => {
         const base = profile.basePrice;
@@ -666,7 +686,7 @@ export function LiveChart({
     }, 1000);
 
     return () => clearInterval(pulseInterval);
-  }, [profile.basePrice, selectedSymbol]);
+  }, [marketSession.isOpen, profile.basePrice, selectedSymbol]);
 
   // Generate authentic historical contour and intraday bars
   const baseChartData = useMemo(() => {
@@ -742,8 +762,8 @@ export function LiveChart({
       t += intervalSec;
     }
 
-    // Blend live pulse tick into the latest bar
-    if (livePulseTick && rawBars.length > 0) {
+    // Blend live pulse tick into the latest bar ONLY if market is active and open
+    if (marketSession.isOpen && livePulseTick && rawBars.length > 0) {
       const last = rawBars[rawBars.length - 1];
       last.close = livePulseTick.price;
       last.high = Math.max(last.high, livePulseTick.price + livePulseTick.highDelta);
@@ -772,7 +792,7 @@ export function LiveChart({
     }
 
     return { rawBars, volumes };
-  }, [profile, interval, candles, livePulseTick]);
+  }, [profile, interval, candles, livePulseTick, marketSession.isOpen]);
 
   // Synchronize In-Memory Footprint buffer when baseChartData changes
   useEffect(() => {
@@ -1580,6 +1600,11 @@ export function LiveChart({
                 23,446.80
               </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 117.80 (0.50%)</span>
+              {!getMarketSessionInfo("NIFTY 50").isOpen && (
+                <span style={{ fontSize: 9, color: "#f87171", fontWeight: 700, background: "rgba(239, 68, 68, 0.15)", padding: "1px 5px", borderRadius: 3, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                  CLOSED
+                </span>
+              )}
             </div>
 
             {/* BANKNIFTY */}
@@ -1609,6 +1634,11 @@ export function LiveChart({
                 56,548.90
               </span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 333.35 (0.59%)</span>
+              {!getMarketSessionInfo("BANKNIFTY").isOpen && (
+                <span style={{ fontSize: 9, color: "#f87171", fontWeight: 700, background: "rgba(239, 68, 68, 0.15)", padding: "1px 5px", borderRadius: 3, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                  CLOSED
+                </span>
+              )}
             </div>
 
             {/* INDIA VIX */}
@@ -1778,9 +1808,35 @@ export function LiveChart({
             >
               {profile.segment === "COMMODITY" ? "COMMODITY FUT" : "INDEX SPOT"}
             </span>
+
+            {/* Market Session Status Badge */}
+            <span
+              title={marketSession.sessionDetail}
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                background: marketSession.badgeBackground,
+                color: marketSession.badgeColor,
+                padding: "2px 7px",
+                borderRadius: 4,
+                border: `1px solid ${marketSession.badgeBorder}`,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                letterSpacing: "0.3px",
+              }}
+            >
+              <span style={{ fontSize: 8 }}>●</span>
+              <span>{marketSession.statusText}</span>
+              {!marketSession.isOpen && (
+                <span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 9 }}>
+                  ({marketSession.nextOpen})
+                </span>
+              )}
+            </span>
           </div>
 
-          {/* Real-time Price */}
+          {/* Real-time Price / Frozen Closing Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontSize: 16, fontWeight: 900, fontFamily: "monospace", color: "#f8fafc" }}>
               {currentPrice.toLocaleString("en-IN", {
@@ -1799,6 +1855,11 @@ export function LiveChart({
               {priceChange >= 0 ? "+" : ""}
               {priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
             </span>
+            {!marketSession.isOpen && (
+              <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>
+                · Frozen at Close
+              </span>
+            )}
           </div>
 
           {/* Expiry Selector */}

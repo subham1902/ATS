@@ -45,6 +45,10 @@ data/agents/upstox_live_trades_ledger.json
 # Operator runtime state (pids, logs)
 scripts/ats-runtime/
 
+# Ad-hoc local harnesses, not part of the product
+frontend/**/smoke-test.js
+frontend/**/smoke-test.mjs
+
 # Collected market-data caches (regenerable from live feeds / brokers)
 data/raw/upstox/sessions/
 data/raw/upstox/banknifty_option_chain.json

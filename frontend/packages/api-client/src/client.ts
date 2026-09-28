@@ -12,6 +12,15 @@ import type {
   PolicyValidationRequest,
   RiskDecisionReadModel,
   SystemReadModel,
+  FeedHealthView,
+  MarketQuoteView,
+  MarketSnapshotView,
+  CandleSeriesView,
+  RuntimeStatusReadModel,
+  StrategyRegistryOverview,
+  LeaderboardResponse,
+  StrategyRegistryEntry,
+  StrategyPerformanceReport,
 } from "./types";
 import { ROUTES } from "./types";
 
@@ -92,6 +101,21 @@ export function createApiClient(options?: ClientOptions) {
       request<AutonomyTokenReadModel>(ROUTES.autonomyTokenById(id), { method: "GET" }, opts),
     getActivity: () => request<ActivityPage>(ROUTES.activity, { method: "GET" }, opts),
     streamUrl: () => `${resolveBaseUrl(opts)}${ROUTES.stream}`,
+    getMarketHealth: () => request<FeedHealthView>(ROUTES.marketHealth, { method: "GET" }, opts),
+    getMarketQuote: (instrument?: string) =>
+      request<MarketQuoteView>(ROUTES.marketQuote(instrument), { method: "GET" }, opts),
+    getMarketSnapshot: (instrument?: string) =>
+      request<MarketSnapshotView>(ROUTES.marketSnapshot(instrument), { method: "GET" }, opts),
+    getMarketCandles: (interval: string = "5m", instrument?: string, limit?: number) =>
+      request<CandleSeriesView>(ROUTES.marketCandles(interval, instrument, limit), { method: "GET" }, opts),
+    marketStreamUrl: (instrument?: string) => `${resolveBaseUrl(opts)}${ROUTES.marketStream(instrument)}`,
+    getRuntimeStatus: () => request<RuntimeStatusReadModel>(ROUTES.runtimeStatus, { method: "GET" }, opts),
+    // Strategy Registry & Leaderboard
+    getStrategyRegistry: () => request<StrategyRegistryOverview>(ROUTES.strategyRegistry, { method: "GET" }, opts),
+    getStrategyLeaderboard: (timeframe?: string, context?: string, badge?: string) =>
+      request<LeaderboardResponse>(ROUTES.strategyLeaderboard(timeframe, context, badge), { method: "GET" }, opts),
+    getStrategy: (id: string) => request<StrategyRegistryEntry>(ROUTES.strategyById(id), { method: "GET" }, opts),
+    getStrategyReport: (id: string) => request<StrategyPerformanceReport>(ROUTES.strategyReport(id), { method: "GET" }, opts),
   };
 }
 
@@ -100,3 +124,4 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 export function isApiError(e: unknown): e is ApiError {
   return e instanceof ApiError;
 }
+

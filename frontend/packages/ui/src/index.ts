@@ -5,3 +5,7 @@ export * from "./components/ErrorEnvelopeView";
 export * from "./components/SystemStateBadge";
 export * from "./components/ConnectionIndicator";
 export * from "./components/DetailField";
+export * from "./components/StrategyBadge";
+export * from "./components/RatingBar";
+export * from "./components/RankBadge";
+export * from "./components/PerformanceMetric";

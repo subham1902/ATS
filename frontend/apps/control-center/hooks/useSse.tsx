@@ -1,19 +1,33 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { StreamEvent } from "@ats/api-client";
-import { parseSseFrame, type SseStatus } from "@ats/api-client";
+import React, { createContext, useContext, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { StreamEvent, SseStatus } from "@ats/api-client";
+import { parseSseFrame } from "@ats/api-client";
 import { getApiClient } from "../lib/api";
 
-export function useSse() {
+export interface SseContextValue {
+  status: SseStatus;
+  events: StreamEvent[];
+  error: string | null;
+  reconnect: () => void;
+  disconnect: () => void;
+}
+
+const SseContext = createContext<SseContextValue | null>(null);
+
+function useLocalSse(): SseContextValue {
   const [status, setStatus] = useState<SseStatus>("disconnected");
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const reconnectTimer = useRef<number | null>(null);
+  const attemptRef = useRef<number>(0);
 
   const connect = useCallback(async () => {
     abortRef.current?.abort();
-    if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
+    if (reconnectTimer.current) {
+      window.clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
     setStatus("connecting");
     setError(null);
     const controller = new AbortController();
@@ -27,6 +41,7 @@ export function useSse() {
       if (!res.ok || !res.body) {
         throw new Error(`SSE ${res.status}`);
       }
+      attemptRef.current = 0;
       setStatus("connected");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -35,7 +50,6 @@ export function useSse() {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        // Frames delimited by blank line
         let idx: number;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
           const frame = buffer.slice(0, idx);
@@ -48,21 +62,27 @@ export function useSse() {
       }
       if (!controller.signal.aborted) {
         setStatus("disconnected");
-        // Reconnect after delay, but do not fabricate continuity
-        reconnectTimer.current = window.setTimeout(() => connect(), 3000);
+        attemptRef.current += 1;
+        // Exponential backoff with full jitter: min(30s, 2^n * 1s + rand(0, 1s))
+        const delay = Math.min(30000, Math.pow(2, Math.min(attemptRef.current, 5)) * 1000 + Math.random() * 1000);
+        reconnectTimer.current = window.setTimeout(() => connect(), Math.round(delay));
       }
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       setStatus("error");
       setError(e instanceof Error ? e.message : String(e));
-      // reconnect
-      reconnectTimer.current = window.setTimeout(() => connect(), 5000);
+      attemptRef.current += 1;
+      const delay = Math.min(30000, Math.pow(2, Math.min(attemptRef.current, 5)) * 1000 + Math.random() * 1000);
+      reconnectTimer.current = window.setTimeout(() => connect(), Math.round(delay));
     }
   }, []);
 
   const disconnect = useCallback(() => {
     abortRef.current?.abort();
-    if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
+    if (reconnectTimer.current) {
+      window.clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
     setStatus("disconnected");
   }, []);
 
@@ -72,4 +92,18 @@ export function useSse() {
   }, [connect, disconnect]);
 
   return { status, events, error, reconnect: connect, disconnect };
+}
+
+export function SseProvider({ children }: { children: ReactNode }) {
+  const value = useLocalSse();
+  return <SseContext.Provider value={value}>{children}</SseContext.Provider>;
+}
+
+export function useSse(): SseContextValue {
+  const context = useContext(SseContext);
+  // If inside an SseProvider, return the singleton instance. Otherwise fall back to a local hook.
+  if (context) {
+    return context;
+  }
+  return useLocalSse();
 }
