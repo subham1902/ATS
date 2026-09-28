@@ -28,6 +28,23 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
+# Generated reports (produced by scripts; code is the source of truth)
+reports/
+ATS_*.md
+ATS_*.csv
+ATS_*.json
+ATS_*.jsonl
+# ...but these are maintained documentation, not generated output.
+!ATS_BASELINE_STATUS.md
+!ATS_IMPLEMENTATION_REPORT.md
+
+# Captured market-data journals and runtime ledgers (regenerable)
+backend/data/market_journal/
+data/agents/upstox_live_trades_ledger.json
+
+# Operator runtime state (pids, logs)
+scripts/ats-runtime/
+
 # Collected market-data caches (regenerable from live feeds / brokers)
 data/raw/upstox/sessions/
 data/raw/upstox/banknifty_option_chain.json
