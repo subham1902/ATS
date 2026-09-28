@@ -45,9 +45,9 @@ export interface FootprintMemoryStats {
 export function generateBarFootprint(
   bar: { time: number; open: number; high: number; low: number; close: number; volume?: number },
   tickStep: number,
-  prevCumDelta: number
+  prevCumDelta: number,
 ): BarFootprint {
-  const step = tickStep > 0 ? tickStep : (bar.close > 10000 ? 5 : bar.close > 1000 ? 1 : 0.25);
+  const step = tickStep > 0 ? tickStep : bar.close > 10000 ? 5 : bar.close > 1000 ? 1 : 0.25;
   const minPrice = Math.floor(bar.low / step) * step;
   const maxPrice = Math.ceil(bar.high / step) * step;
   const numLevels = Math.max(3, Math.min(18, Math.round((maxPrice - minPrice) / step) + 1));
@@ -99,15 +99,12 @@ export function generateBarFootprint(
   }
 
   // Diagonal Imbalance calculation (ask[i+1] >= 2.8 * bid[i])
-  let imbCount = 0;
   for (let i = 0; i < levels.length - 1; i++) {
     if (levels[i + 1].askVol >= 2.8 * levels[i].bidVol && levels[i + 1].askVol > 40) {
       levels[i + 1].isBuyImbalance = true;
-      imbCount++;
     }
     if (levels[i].bidVol >= 2.8 * levels[i + 1].askVol && levels[i].bidVol > 40) {
       levels[i].isSellImbalance = true;
-      imbCount++;
     }
   }
 
@@ -147,7 +144,7 @@ class InMemoryFootprintStore {
   public ingestBars(
     symbol: string,
     bars: { time: number; open: number; high: number; low: number; close: number; volume?: number }[],
-    tickStep: number
+    tickStep: number,
   ): BarFootprint[] {
     const store = this.getStore(symbol);
     let runningCumDelta = 0;
@@ -180,12 +177,7 @@ class InMemoryFootprintStore {
   /**
    * Update active candle footprint in memory with a live micro-tick.
    */
-  public updateWithTick(
-    symbol: string,
-    price: number,
-    vol: number,
-    timestamp: number
-  ): void {
+  public updateWithTick(symbol: string, price: number, vol: number, _timestamp: number): void {
     const store = this.getStore(symbol);
     const keys = Array.from(store.keys()).sort((a, b) => a - b);
     if (keys.length === 0) return;

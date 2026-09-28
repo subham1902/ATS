@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 const BADGE_CONFIG: Record<
   string,
   { icon: string; label: string; bg: string; border: string; color: string; tooltip: string }
@@ -62,13 +60,7 @@ const BADGE_CONFIG: Record<
   },
 };
 
-export function StrategyBadge({
-  badge,
-  size = "normal",
-}: {
-  badge: string;
-  size?: "small" | "normal" | "large";
-}) {
+export function StrategyBadge({ badge, size = "normal" }: { badge: string; size?: "small" | "normal" | "large" }) {
   const config = BADGE_CONFIG[badge] ?? BADGE_CONFIG.BASELINE;
   const fontSize = size === "small" ? 10 : size === "large" ? 13 : 11;
   const padding = size === "small" ? "1px 5px" : size === "large" ? "4px 10px" : "2px 7px";

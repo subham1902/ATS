@@ -17,7 +17,7 @@ interface ResearchJob {
   notes: string;
 }
 
-const INITIAL_JOBS: ResearchJob[] = [
+const _INITIAL_JOBS: ResearchJob[] = [
   {
     id: "JOB-STRAT04-S01-5M",
     strategyId: "S01_MULTI_TF_TREND_AGREEMENT",
@@ -119,8 +119,8 @@ export default function ResearchPage() {
                 gatePassed: false,
                 notes: "Dev net expectancy negative under 2.5 bps round-trip cost model. Gate failed.",
               }
-            : j
-        )
+            : j,
+        ),
       );
     }, 2000);
   };
@@ -246,23 +246,20 @@ export default function ResearchPage() {
                         fontSize: 11,
                         fontWeight: 700,
                         background:
-                          j.status === "COMPLETED"
-                            ? "#dcfce7"
-                            : j.status === "RUNNING"
-                            ? "#dbeafe"
-                            : "#fee2e2",
-                        color:
-                          j.status === "COMPLETED"
-                            ? "#15803d"
-                            : j.status === "RUNNING"
-                            ? "#1d4ed8"
-                            : "#b91c1c",
+                          j.status === "COMPLETED" ? "#dcfce7" : j.status === "RUNNING" ? "#dbeafe" : "#fee2e2",
+                        color: j.status === "COMPLETED" ? "#15803d" : j.status === "RUNNING" ? "#1d4ed8" : "#b91c1c",
                       }}
                     >
                       {j.status} ({j.progress}%)
                     </span>
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "monospace", color: (j.netExpectancy ?? 0) < 0 ? "#dc2626" : "#16a34a" }}>
+                  <td
+                    style={{
+                      padding: "8px 10px",
+                      fontFamily: "monospace",
+                      color: (j.netExpectancy ?? 0) < 0 ? "#dc2626" : "#16a34a",
+                    }}
+                  >
                     {j.netExpectancy !== undefined ? j.netExpectancy.toFixed(2) : "—"}
                   </td>
                   <td style={{ padding: "8px 10px", fontFamily: "monospace" }}>

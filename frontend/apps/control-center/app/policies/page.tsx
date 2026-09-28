@@ -21,7 +21,7 @@ interface GovernedPolicy {
 
 export default function PoliciesPage() {
   const [policies, setPolicies] = useState<GovernedPolicy[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [validatorInput, setValidatorInput] = useState(
     JSON.stringify(
       {
@@ -32,8 +32,8 @@ export default function PoliciesPage() {
         max_drawdown_percent: 12.0,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
   const [validationResult, setValidationResult] = useState<any | null>(null);
 
@@ -47,7 +47,7 @@ export default function PoliciesPage() {
 
   const handleValidate = () => {
     try {
-      const parsed = JSON.parse(validatorInput);
+      const _parsed = JSON.parse(validatorInput);
       setValidationResult({
         outcome: "VALID",
         reason_codes: ["POLICY_SYNTAX_VALID", "LEVERAGE_WITHIN_BOUNDS", "INVARIANTS_PASSED"],
@@ -108,7 +108,8 @@ export default function PoliciesPage() {
             </span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            Formal policy specifications defining leverage caps, slippage boundaries, execution schedules, and risk limits.
+            Formal policy specifications defining leverage caps, slippage boundaries, execution schedules, and risk
+            limits.
           </p>
         </div>
 
@@ -221,9 +222,7 @@ export default function PoliciesPage() {
               padding: 20,
             }}
           >
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 14px", color: "#f8fafc" }}>
-              Policy Catalog
-            </h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 14px", color: "#f8fafc" }}>Policy Catalog</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {policies.map((p) => (
                 <div
@@ -271,9 +270,7 @@ export default function PoliciesPage() {
             padding: 20,
           }}
         >
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 8px", color: "#f8fafc" }}>
-            Policy Rule Validator
-          </h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 8px", color: "#f8fafc" }}>Policy Rule Validator</h3>
           <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 0, marginBottom: 12 }}>
             Test a policy JSON structure against kernel syntax and boundary rules.
           </p>
@@ -318,14 +315,9 @@ export default function PoliciesPage() {
                 marginTop: 14,
                 padding: 12,
                 borderRadius: 8,
-                background:
-                  validationResult.outcome === "VALID"
-                    ? "rgba(16, 185, 129, 0.1)"
-                    : "rgba(239, 68, 68, 0.1)",
+                background: validationResult.outcome === "VALID" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
                 border: `1px solid ${
-                  validationResult.outcome === "VALID"
-                    ? "rgba(16, 185, 129, 0.3)"
-                    : "rgba(239, 68, 68, 0.3)"
+                  validationResult.outcome === "VALID" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"
                 }`,
               }}
             >

@@ -11,13 +11,13 @@ export default function ShadowPage() {
     setNotice(
       !recorderActive
         ? "Shadow recorder enabled in research observation mode. (No paper execution authority granted)."
-        : "Shadow recorder paused. Background telemetry intake suspended."
+        : "Shadow recorder paused. Background telemetry intake suspended.",
     );
   };
 
   const requestReview = () => {
     setNotice(
-      "Promotion review requested: S17 requires 20 resolved valid trades with Open Interest. Current support is 0/20. Promotion gate fails closed."
+      "Promotion review requested: S17 requires 20 resolved valid trades with Open Interest. Current support is 0/20. Promotion gate fails closed.",
     );
   };
 
@@ -74,7 +74,14 @@ export default function ShadowPage() {
             <div style={{ width: "0%", height: "100%", background: "#2563eb" }} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 12,
+              fontSize: 13,
+            }}
+          >
             <div>
               <div style={{ color: "#6b7280" }}>Resolved Valid</div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>0</div>
@@ -142,13 +149,16 @@ export default function ShadowPage() {
       <Card title="Shadow Governance Invariants">
         <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
           <p style={{ margin: "0 0 6px" }}>
-            1. <strong>ZERO Financial Authority:</strong> Shadow strategies cannot place orders, allocate capital, or mutate paper ledger state.
+            1. <strong>ZERO Financial Authority:</strong> Shadow strategies cannot place orders, allocate capital, or
+            mutate paper ledger state.
           </p>
           <p style={{ margin: "0 0 6px" }}>
-            2. <strong>Fails Closed:</strong> A strategy remains in shadow calibration until N &ge; 20 verified out-of-sample forward trades are resolved with positive expectancy.
+            2. <strong>Fails Closed:</strong> A strategy remains in shadow calibration until N &ge; 20 verified
+            out-of-sample forward trades are resolved with positive expectancy.
           </p>
           <p style={{ margin: 0 }}>
-            3. <strong>Open Interest Prerequisite:</strong> Live signals require continuous Upstox V3 tick feed with Open Interest. When feed is disconnected, shadow recorder enters idle hold.
+            3. <strong>Open Interest Prerequisite:</strong> Live signals require continuous Upstox V3 tick feed with
+            Open Interest. When feed is disconnected, shadow recorder enters idle hold.
           </p>
         </div>
       </Card>

@@ -48,21 +48,31 @@ export default function SurvivorsPage() {
 
         <p style={{ margin: 0, fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
           Every legitimate OHLCV-evaluable strategy family (S01, S02, S03, S04, S30, S34 plus baselines B01–B04)
-          produced negative net expectancy at base cost (2.5 bps) and under 1.5x / 2.0x cost stress across 5m,
-          15m, and 1h reference gold series. Several families also failed on sealed holdout after passing dev.
-          This independently reproduces the platform’s own STRAT-02 verdict (20 strategies REJECTED under MCX PIT V3
-          costs) on a different dataset.
+          produced negative net expectancy at base cost (2.5 bps) and under 1.5x / 2.0x cost stress across 5m, 15m, and
+          1h reference gold series. Several families also failed on sealed holdout after passing dev. This independently
+          reproduces the platform’s own STRAT-02 verdict (20 strategies REJECTED under MCX PIT V3 costs) on a different
+          dataset.
         </p>
 
         <div style={{ fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
-          Per mission rules, the survivor count was NOT inflated to reach 3–5. Zero is the honest result.
-          No strategy is handed to shadow collection on the strength of reference-data results.
+          Per mission rules, the survivor count was NOT inflated to reach 3–5. Zero is the honest result. No strategy is
+          handed to shadow collection on the strength of reference-data results.
         </div>
       </div>
 
       {/* 10-Point Gate Rules */}
       <Card title="10-Point Survivor Selection Gate">
-        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "#374151", display: "flex", flexDirection: "column", gap: 6 }}>
+        <ol
+          style={{
+            margin: 0,
+            paddingLeft: 20,
+            fontSize: 13,
+            color: "#374151",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
           <li>Dev net expectancy &gt; 0 after PIT transaction costs (base 2.5 bps round trip)</li>
           <li>Net expectancy &gt; 0 at 2.0x cost stress (5.0 bps round trip)</li>
           <li>Walk-forward net expectancy &gt; 0 across out-of-sample folds</li>
@@ -80,8 +90,8 @@ export default function SurvivorsPage() {
       <Card title="Governed Next Action & Data Unlocks">
         <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
           <p style={{ margin: "0 0 8px" }}>
-            <strong>Blocker:</strong> MCX GOLDM canonical historical intraday data with Open Interest (OI) is
-            currently absent locally. All local reference series (5m Yahoo, 15m/1h RefB) lack Open Interest.
+            <strong>Blocker:</strong> MCX GOLDM canonical historical intraday data with Open Interest (OI) is currently
+            absent locally. All local reference series (5m Yahoo, 15m/1h RefB) lack Open Interest.
           </p>
           <p style={{ margin: "0 0 8px" }}>
             <strong>Action:</strong> Admit S34 (regime router) plus S01/S02/S03 to a governed development loop ONLY

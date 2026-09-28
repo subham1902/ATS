@@ -1,12 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  CandleView,
-  FeedHealthView,
-  MarketInterval,
-  MarketQuoteView,
-  SseStatus,
-} from "@ats/api-client";
+import type { CandleView, FeedHealthView, MarketInterval, MarketQuoteView, SseStatus } from "@ats/api-client";
 import { parseMarketSseFrame } from "@ats/api-client/sse";
 import { getApiClient } from "../lib/api";
 
@@ -24,10 +18,7 @@ export interface MarketFeedState {
   setInterval: (interval: MarketInterval) => void;
 }
 
-export function useMarketFeed(
-  instrument?: string,
-  initialInterval: MarketInterval = "5m",
-): MarketFeedState {
+export function useMarketFeed(instrument?: string, initialInterval: MarketInterval = "5m"): MarketFeedState {
   const [connectionStatus, setConnectionStatus] = useState<SseStatus>("disconnected");
   const [streamTransport, setStreamTransport] = useState<"WEBSOCKET" | "SSE" | "DISCONNECTED">("DISCONNECTED");
   const [quote, setQuote] = useState<MarketQuoteView | null>(null);
@@ -46,17 +37,20 @@ export function useMarketFeed(
   intervalRef.current = interval;
 
   // 1. Initial historical candle bootstrap
-  const loadCandles = useCallback(async (intvl: MarketInterval) => {
-    try {
-      const client = getApiClient();
-      const series = await client.getMarketCandles(intvl, instrument);
-      if (series && series.candles) {
-        setCandles(series.candles);
+  const loadCandles = useCallback(
+    async (intvl: MarketInterval) => {
+      try {
+        const client = getApiClient();
+        const series = await client.getMarketCandles(intvl, instrument);
+        if (series && series.candles) {
+          setCandles(series.candles);
+        }
+      } catch (e) {
+        console.error("Failed to load historical candles:", e);
       }
-    } catch (e) {
-      console.error("Failed to load historical candles:", e);
-    }
-  }, [instrument]);
+    },
+    [instrument],
+  );
 
   useEffect(() => {
     loadCandles(interval);
@@ -222,7 +216,7 @@ export function useMarketFeed(
             instrument_key: instrument || "MCX_FO|569003",
             interval: intervalRef.current,
             channels: ["candle", "quote", "depth", "oi", "feed_health", "market_status"],
-          })
+          }),
         );
 
         // Setup ping keepalive
@@ -241,7 +235,7 @@ export function useMarketFeed(
           if (type === "candle_update") {
             const bar = envelope.bar;
             if (envelope.interval === intervalRef.current && bar) {
-              const p = String(bar.close);
+              const _p = String(bar.close);
               setCandles((prev) => {
                 if (prev.length === 0) {
                   return [
@@ -268,7 +262,7 @@ export function useMarketFeed(
                   close: String(bar.close),
                   volume: bar.volume ?? last.volume,
                   open_interest: bar.open_interest ?? last.open_interest,
-                  tick_count: bar.tick_count ?? (last.tick_count + 1),
+                  tick_count: bar.tick_count ?? last.tick_count + 1,
                   is_closed: false,
                 };
                 return [...prev.slice(0, -1), updated];
@@ -345,10 +339,13 @@ export function useMarketFeed(
             }
           } else if (type === "feed_health") {
             if (envelope.health) {
-              setHealth((prev) => ({
-                ...(prev || {}),
-                ...envelope.health,
-              } as FeedHealthView));
+              setHealth(
+                (prev) =>
+                  ({
+                    ...(prev || {}),
+                    ...envelope.health,
+                  }) as FeedHealthView,
+              );
             }
           }
         } catch (err) {
@@ -384,22 +381,25 @@ export function useMarketFeed(
   }, [connect, disconnect]);
 
   // Dynamic interval switch
-  const handleSetInterval = useCallback((newInterval: MarketInterval) => {
-    setInterval(newInterval);
-    intervalRef.current = newInterval;
-    loadCandles(newInterval);
+  const handleSetInterval = useCallback(
+    (newInterval: MarketInterval) => {
+      setInterval(newInterval);
+      intervalRef.current = newInterval;
+      loadCandles(newInterval);
 
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          action: "subscribe",
-          instrument_key: instrument || "MCX_FO|569003",
-          interval: newInterval,
-          channels: ["candle", "quote", "depth", "oi", "feed_health", "market_status"],
-        })
-      );
-    }
-  }, [instrument, loadCandles]);
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            action: "subscribe",
+            instrument_key: instrument || "MCX_FO|569003",
+            interval: newInterval,
+            channels: ["candle", "quote", "depth", "oi", "feed_health", "market_status"],
+          }),
+        );
+      }
+    },
+    [instrument, loadCandles],
+  );
 
   return {
     connectionStatus,

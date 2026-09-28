@@ -26,15 +26,32 @@ export function SystemPanel({
   healthReady: HealthReadModel | null;
   error: ErrorEnvelope | null;
 }) {
-  if (error) return <Card title="System State"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!system) return <Card title="System State"><EmptyState message="No system state available" hint="Control plane not attached — backend returns no system snapshot." /></Card>;
+  if (error)
+    return (
+      <Card title="System State">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!system)
+    return (
+      <Card title="System State">
+        <EmptyState
+          message="No system state available"
+          hint="Control plane not attached — backend returns no system snapshot."
+        />
+      </Card>
+    );
   return (
     <Card title="System State">
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <SystemStateBadge state={system.system_state} />
-          <Badge tone={system.halted ? "danger" : "neutral"}>{system.halted ? "HALTED" : system.reconciliation_active ? "RECONCILING" : "operational"}</Badge>
-          <Badge tone={system.readiness === "READY" ? "success" : system.readiness === "DEGRADED" ? "warn" : "unknown"}>readiness {system.readiness}</Badge>
+          <Badge tone={system.halted ? "danger" : "neutral"}>
+            {system.halted ? "HALTED" : system.reconciliation_active ? "RECONCILING" : "operational"}
+          </Badge>
+          <Badge tone={system.readiness === "READY" ? "success" : system.readiness === "DEGRADED" ? "warn" : "unknown"}>
+            readiness {system.readiness}
+          </Badge>
           <Badge tone="neutral">loss {system.loss_state}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -46,7 +63,17 @@ export function SystemPanel({
           <DetailField label="Last event at" value={system.last_event_at ?? "—"} />
         </div>
         {system.degradation_indicators.length > 0 ? (
-          <div role="status" style={{ fontSize: 12, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", padding: 8, borderRadius: 8 }}>
+          <div
+            role="status"
+            style={{
+              fontSize: 12,
+              color: "#92400e",
+              background: "#fef3c7",
+              border: "1px solid #fcd34d",
+              padding: 8,
+              borderRadius: 8,
+            }}
+          >
             Degradation: {system.degradation_indicators.join(", ")}
           </div>
         ) : null}
@@ -60,8 +87,18 @@ export function SystemPanel({
 }
 
 export function PolicyPanel({ policy, error }: { policy: PolicyReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="Active Policy"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!policy) return <Card title="Active Policy"><EmptyState message="No active policy" hint="No VALIDATED→ACTIVE policy is currently bound." /></Card>;
+  if (error)
+    return (
+      <Card title="Active Policy">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!policy)
+    return (
+      <Card title="Active Policy">
+        <EmptyState message="No active policy" hint="No VALIDATED→ACTIVE policy is currently bound." />
+      </Card>
+    );
   return (
     <Card title="Active Policy">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -80,9 +117,28 @@ export function PolicyPanel({ policy, error }: { policy: PolicyReadModel | null;
   );
 }
 
-export function CampaignPanel({ campaign, error }: { campaign: CampaignReadModel | null; error: ErrorEnvelope | null }) {
-  if (error && error.code !== "RESOURCE_NOT_FOUND") return <Card title="Campaign"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!campaign) return <Card title="Campaign"><EmptyState message="No active campaign" hint="Runtime campaigns not yet instantiated. System may be awaiting policy binding." /></Card>;
+export function CampaignPanel({
+  campaign,
+  error,
+}: {
+  campaign: CampaignReadModel | null;
+  error: ErrorEnvelope | null;
+}) {
+  if (error && error.code !== "RESOURCE_NOT_FOUND")
+    return (
+      <Card title="Campaign">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!campaign)
+    return (
+      <Card title="Campaign">
+        <EmptyState
+          message="No active campaign"
+          hint="Runtime campaigns not yet instantiated. System may be awaiting policy binding."
+        />
+      </Card>
+    );
   return (
     <Card title="Campaign">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -99,9 +155,25 @@ export function CampaignPanel({ campaign, error }: { campaign: CampaignReadModel
   );
 }
 
-export function CandidatePanel({ candidate, error }: { candidate: CandidateReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="Candidate"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!candidate) return <Card title="Candidate"><EmptyState message="No candidates available" hint="Intelligence packages not yet emitting candidates." /></Card>;
+export function CandidatePanel({
+  candidate,
+  error,
+}: {
+  candidate: CandidateReadModel | null;
+  error: ErrorEnvelope | null;
+}) {
+  if (error)
+    return (
+      <Card title="Candidate">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!candidate)
+    return (
+      <Card title="Candidate">
+        <EmptyState message="No candidates available" hint="Intelligence packages not yet emitting candidates." />
+      </Card>
+    );
   return (
     <Card title="Candidate">
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12, margin: 0 }}>
@@ -118,9 +190,28 @@ export function CandidatePanel({ candidate, error }: { candidate: CandidateReadM
   );
 }
 
-export function GovernancePanel({ ctx, error }: { ctx: GovernanceContextReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="GovernanceContext"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!ctx) return <Card title="GovernanceContext"><EmptyState message="No governance contexts yet" hint="Contexts appear when risk/supervisor paths materialize." /></Card>;
+export function GovernancePanel({
+  ctx,
+  error,
+}: {
+  ctx: GovernanceContextReadModel | null;
+  error: ErrorEnvelope | null;
+}) {
+  if (error)
+    return (
+      <Card title="GovernanceContext">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!ctx)
+    return (
+      <Card title="GovernanceContext">
+        <EmptyState
+          message="No governance contexts yet"
+          hint="Contexts appear when risk/supervisor paths materialize."
+        />
+      </Card>
+    );
   return (
     <Card title="GovernanceContext">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -136,9 +227,25 @@ export function GovernancePanel({ ctx, error }: { ctx: GovernanceContextReadMode
   );
 }
 
-export function RiskPanel({ decision, error }: { decision: RiskDecisionReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="RiskDecision"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!decision) return <Card title="RiskDecision"><EmptyState message="No risk decisions yet" hint="Risk evaluates candidates when they appear." /></Card>;
+export function RiskPanel({
+  decision,
+  error,
+}: {
+  decision: RiskDecisionReadModel | null;
+  error: ErrorEnvelope | null;
+}) {
+  if (error)
+    return (
+      <Card title="RiskDecision">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!decision)
+    return (
+      <Card title="RiskDecision">
+        <EmptyState message="No risk decisions yet" hint="Risk evaluates candidates when they appear." />
+      </Card>
+    );
   return (
     <Card title="RiskDecision">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -151,9 +258,25 @@ export function RiskPanel({ decision, error }: { decision: RiskDecisionReadModel
   );
 }
 
-export function AdvisoryPanel({ advisory, error }: { advisory: AdvisoryReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="SupervisorAdvisory"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!advisory) return <Card title="SupervisorAdvisory"><EmptyState message="No advisories yet" hint="Supervisor emits advisories for risk-evaluated candidates." /></Card>;
+export function AdvisoryPanel({
+  advisory,
+  error,
+}: {
+  advisory: AdvisoryReadModel | null;
+  error: ErrorEnvelope | null;
+}) {
+  if (error)
+    return (
+      <Card title="SupervisorAdvisory">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!advisory)
+    return (
+      <Card title="SupervisorAdvisory">
+        <EmptyState message="No advisories yet" hint="Supervisor emits advisories for risk-evaluated candidates." />
+      </Card>
+    );
   return (
     <Card title="SupervisorAdvisory">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -169,8 +292,18 @@ export function AdvisoryPanel({ advisory, error }: { advisory: AdvisoryReadModel
 }
 
 export function TokenPanel({ token, error }: { token: AutonomyTokenReadModel | null; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="Autonomy Token (A2_PAPER)"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (!token) return <Card title="Autonomy Token (A2_PAPER)"><EmptyState message="No autonomy tokens yet" hint="Tokens are issued for ALLOW + APPROVE paths." /></Card>;
+  if (error)
+    return (
+      <Card title="Autonomy Token (A2_PAPER)">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (!token)
+    return (
+      <Card title="Autonomy Token (A2_PAPER)">
+        <EmptyState message="No autonomy tokens yet" hint="Tokens are issued for ALLOW + APPROVE paths." />
+      </Card>
+    );
   return (
     <Card title="Autonomy Token (A2_PAPER)">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
@@ -182,18 +315,35 @@ export function TokenPanel({ token, error }: { token: AutonomyTokenReadModel | n
         <DetailField label="Expires at" value={token.expires_at} />
         <DetailField label="Consumed at" value={token.consumed_at ?? "—"} />
       </div>
-      <div style={{ marginTop: 8, fontSize: 11, color: "#6b7280" }}>Safe view only — nonce/payload hash never exposed.</div>
+      <div style={{ marginTop: 8, fontSize: 11, color: "#6b7280" }}>
+        Safe view only — nonce/payload hash never exposed.
+      </div>
     </Card>
   );
 }
 
 export function ActivityPanel({ items, error }: { items: ActivityReadModel[]; error: ErrorEnvelope | null }) {
-  if (error) return <Card title="Activity"><ErrorEnvelopeView envelope={error} /></Card>;
-  if (items.length === 0) return <Card title="Activity"><EmptyState message="No runtime activity yet" hint="Activity appears as governed events flow through the system. Replay not supported." /></Card>;
+  if (error)
+    return (
+      <Card title="Activity">
+        <ErrorEnvelopeView envelope={error} />
+      </Card>
+    );
+  if (items.length === 0)
+    return (
+      <Card title="Activity">
+        <EmptyState
+          message="No runtime activity yet"
+          hint="Activity appears as governed events flow through the system. Replay not supported."
+        />
+      </Card>
+    );
   return (
     <Card title="Activity">
       <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>Replay unsupported — stream is forward-only.</p>
-      <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "flex", flexDirection: "column", gap: 8 }}>
+      <ul
+        style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "flex", flexDirection: "column", gap: 8 }}
+      >
         {items.map((a) => (
           <li key={a.activity_id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -201,7 +351,9 @@ export function ActivityPanel({ items, error }: { items: ActivityReadModel[]; er
               <span style={{ color: "#6b7280", fontSize: 11 }}>{new Date(a.occurred_at).toLocaleString()}</span>
             </div>
             <div style={{ color: "#374151", marginTop: 2 }}>{a.summary}</div>
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, fontFamily: "monospace" }}>corr {a.correlation_id.slice(0, 8)} · trace {a.trace_id ?? "—"}</div>
+            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, fontFamily: "monospace" }}>
+              corr {a.correlation_id.slice(0, 8)} · trace {a.trace_id ?? "—"}
+            </div>
           </li>
         ))}
       </ul>

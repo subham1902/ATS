@@ -1,20 +1,33 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Shell } from "../components/Shell";
-import { SystemPanel, PolicyPanel, CampaignPanel, CandidatePanel, RiskPanel, TokenPanel, ActivityPanel } from "../components/panels";
+import {
+  SystemPanel,
+  PolicyPanel,
+  CampaignPanel,
+  CandidatePanel,
+  RiskPanel,
+  TokenPanel,
+  ActivityPanel,
+} from "../components/panels";
 import type { SystemReadModel, PolicyReadModel } from "@ats/api-client";
 
 // Mock next/navigation usePathname
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
-vi.mock("next/link", () => ({ default: (props: unknown) => {
-  const { children, href } = props as { children: unknown; href: string };
-  // eslint-disable-next-line @next/next/no-html-link-for-pages
-  return <a href={href}>{children as string}</a>;
-}}));
+vi.mock("next/link", () => ({
+  default: (props: unknown) => {
+    const { children, href } = props as { children: unknown; href: string };
+    return <a href={href}>{children as string}</a>;
+  },
+}));
 
 describe("shell", () => {
   it("renders header/nav/main and skip link", () => {
-    render(<Shell systemState="READY" sseStatus="connected"><div>content</div></Shell>);
+    render(
+      <Shell systemState="READY" sseStatus="connected">
+        <div>content</div>
+      </Shell>,
+    );
     expect(screen.getByText("ATS CONTROL CENTER")).toBeInTheDocument();
     expect(screen.getByText("A2_PAPER")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
@@ -23,7 +36,11 @@ describe("shell", () => {
   });
 
   it("UNKNOWN system state looks unknown not healthy", () => {
-    render(<Shell systemState="UNKNOWN" sseStatus="disconnected">x</Shell>);
+    render(
+      <Shell systemState="UNKNOWN" sseStatus="disconnected">
+        x
+      </Shell>,
+    );
     expect(screen.getByLabelText("system state UNKNOWN")).toBeInTheDocument();
     expect(screen.getByText(/unknown, not healthy/i)).toBeInTheDocument();
   });
@@ -47,7 +64,14 @@ describe("system status", () => {
       last_state_at: "2026-01-01T00:00:00Z",
       last_event_at: null,
     };
-    render(<SystemPanel system={sys} healthLive={{ status: "LIVE", ready: true, reason_codes: [] }} healthReady={{ status: "READY", ready: true, reason_codes: [] }} error={null} />);
+    render(
+      <SystemPanel
+        system={sys}
+        healthLive={{ status: "LIVE", ready: true, reason_codes: [] }}
+        healthReady={{ status: "READY", ready: true, reason_codes: [] }}
+        error={null}
+      />,
+    );
     expect(screen.getByLabelText("system state READY")).toBeInTheDocument();
     expect(screen.getByText("A2_PAPER")).toBeInTheDocument();
     expect(screen.getByText((t) => t.includes("loss") && t.includes("NORMAL"))).toBeInTheDocument();
@@ -101,11 +125,29 @@ describe("system status", () => {
 describe("health", () => {
   it("health panel shows live/ready", () => {
     const sys: SystemReadModel = {
-      system_state: "READY", system_state_version: 1, readiness: "READY", degradation_indicators: [], loss_state: "NORMAL",
-      active_policy_id: null, active_policy_version: null, active_campaign_id: null, active_campaign_version: null,
-      authority_mode: "A2_PAPER", reconciliation_active: false, halted: false, last_state_at: "2026-01-01T00:00:00Z", last_event_at: null,
+      system_state: "READY",
+      system_state_version: 1,
+      readiness: "READY",
+      degradation_indicators: [],
+      loss_state: "NORMAL",
+      active_policy_id: null,
+      active_policy_version: null,
+      active_campaign_id: null,
+      active_campaign_version: null,
+      authority_mode: "A2_PAPER",
+      reconciliation_active: false,
+      halted: false,
+      last_state_at: "2026-01-01T00:00:00Z",
+      last_event_at: null,
     };
-    render(<SystemPanel system={sys} healthLive={{ status: "LIVE", ready: true, reason_codes: [] }} healthReady={{ status: "READY", ready: true, reason_codes: [] }} error={null} />);
+    render(
+      <SystemPanel
+        system={sys}
+        healthLive={{ status: "LIVE", ready: true, reason_codes: [] }}
+        healthReady={{ status: "READY", ready: true, reason_codes: [] }}
+        error={null}
+      />,
+    );
     expect(screen.getByText(/health\/live: LIVE/)).toBeInTheDocument();
     expect(screen.getByText(/health\/ready: READY/)).toBeInTheDocument();
   });
@@ -141,7 +183,12 @@ describe("policy panel", () => {
   });
 
   it("error state renders envelope", () => {
-    render(<PolicyPanel policy={null} error={{ code: "RESOURCE_NOT_FOUND", message: "not found", correlation_id: "cid-1", details: [] }} />);
+    render(
+      <PolicyPanel
+        policy={null}
+        error={{ code: "RESOURCE_NOT_FOUND", message: "not found", correlation_id: "cid-1", details: [] }}
+      />,
+    );
     expect(screen.getByText(/RESOURCE_NOT_FOUND/)).toBeInTheDocument();
     expect(screen.getByText("cid-1")).toBeInTheDocument();
   });
@@ -160,7 +207,35 @@ describe("candidate panel", () => {
     expect(screen.getByText("No candidates available")).toBeInTheDocument();
   });
   it("shows candidate when present", () => {
-    render(<CandidatePanel candidate={{ candidate_id: "c1", candidate_version: 1, instrument_id: "EURUSD", market_context_id: "m1", thesis_id: "t1", thesis_version: 1, distribution_id: "d1", campaign_id: "camp1", campaign_version: 1, strategy_definition_id: "s1", strategy_definition_version: 1, calibrated_probability: "0.55", expected_net_edge_r: 0.2, expected_reward_risk: "2.0", status: "CREATED", risk_decision_id: null, advisory_id: null, autonomy_token_id: null, created_at: "2026-01-01T00:00:00Z", expires_at: "2026-01-02T00:00:00Z" } as unknown as import("@ats/api-client").CandidateReadModel} error={null} />);
+    render(
+      <CandidatePanel
+        candidate={
+          {
+            candidate_id: "c1",
+            candidate_version: 1,
+            instrument_id: "EURUSD",
+            market_context_id: "m1",
+            thesis_id: "t1",
+            thesis_version: 1,
+            distribution_id: "d1",
+            campaign_id: "camp1",
+            campaign_version: 1,
+            strategy_definition_id: "s1",
+            strategy_definition_version: 1,
+            calibrated_probability: "0.55",
+            expected_net_edge_r: 0.2,
+            expected_reward_risk: "2.0",
+            status: "CREATED",
+            risk_decision_id: null,
+            advisory_id: null,
+            autonomy_token_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            expires_at: "2026-01-02T00:00:00Z",
+          } as unknown as import("@ats/api-client").CandidateReadModel
+        }
+        error={null}
+      />,
+    );
     expect(screen.getByText("EURUSD")).toBeInTheDocument();
   });
 });
@@ -174,7 +249,27 @@ describe("risk panel", () => {
 
 describe("token status", () => {
   it("safe view never exposes nonce", () => {
-    const { container } = render(<TokenPanel token={{ token_id: "tok1", scope: "A2_PAPER", candidate_id: "c1", policy_id: "p1", policy_version: 1, risk_decision_id: "r1", advisory_id: "a1", system_state_version: 1, issued_at: "2026-01-01T00:00:00Z", expires_at: "2026-01-02T00:00:00Z", consumed_at: null, state: "ISSUED" } as import("@ats/api-client").AutonomyTokenReadModel} error={null} />);
+    const { container } = render(
+      <TokenPanel
+        token={
+          {
+            token_id: "tok1",
+            scope: "A2_PAPER",
+            candidate_id: "c1",
+            policy_id: "p1",
+            policy_version: 1,
+            risk_decision_id: "r1",
+            advisory_id: "a1",
+            system_state_version: 1,
+            issued_at: "2026-01-01T00:00:00Z",
+            expires_at: "2026-01-02T00:00:00Z",
+            consumed_at: null,
+            state: "ISSUED",
+          } as import("@ats/api-client").AutonomyTokenReadModel
+        }
+        error={null}
+      />,
+    );
     expect(screen.getByText("ISSUED")).toBeInTheDocument();
     // Details must not contain nonce field label
     const dtText = container.textContent ?? "";
@@ -192,13 +287,29 @@ describe("token status", () => {
 
 describe("SSE", () => {
   it("connection indicator statuses", async () => {
-    const { rerender } = render(<Shell systemState="READY" sseStatus="connecting">x</Shell>);
+    const { rerender } = render(
+      <Shell systemState="READY" sseStatus="connecting">
+        x
+      </Shell>,
+    );
     expect(screen.getByLabelText("SSE connecting")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="connected">x</Shell>);
+    rerender(
+      <Shell systemState="READY" sseStatus="connected">
+        x
+      </Shell>,
+    );
     expect(screen.getByLabelText("SSE connected")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="disconnected">x</Shell>);
+    rerender(
+      <Shell systemState="READY" sseStatus="disconnected">
+        x
+      </Shell>,
+    );
     expect(screen.getByLabelText("SSE disconnected")).toBeInTheDocument();
-    rerender(<Shell systemState="READY" sseStatus="error">x</Shell>);
+    rerender(
+      <Shell systemState="READY" sseStatus="error">
+        x
+      </Shell>,
+    );
     expect(screen.getByLabelText("SSE error")).toBeInTheDocument();
   });
 });

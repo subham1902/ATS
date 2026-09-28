@@ -85,11 +85,31 @@ export default function SettingsPage() {
               {section.fields.map((field) => {
                 const val = values.values[section.name]?.[field.name];
                 return (
-                  <div key={field.name} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 12, borderBottom: "1px solid #f3f4f6" }}>
+                  <div
+                    key={field.name}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      paddingBottom: 12,
+                      borderBottom: "1px solid #f3f4f6",
+                    }}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{field.name}</span>
                       {field.governance_locked && (
-                        <span style={{ fontSize: 11, backgroundColor: "#fee2e2", color: "#dc2626", padding: "2px 6px", borderRadius: 4, fontWeight: 600 }}>LOCKED</span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            backgroundColor: "#fee2e2",
+                            color: "#dc2626",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            fontWeight: 600,
+                          }}
+                        >
+                          LOCKED
+                        </span>
                       )}
                     </div>
                     <span style={{ fontSize: 12, color: "#6b7280" }}>{field.description}</span>
@@ -98,20 +118,38 @@ export default function SettingsPage() {
                         <select
                           disabled={field.governance_locked}
                           defaultValue={val?.effective_value}
-                          style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, width: 200 }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #d1d5db",
+                            fontSize: 14,
+                            width: 200,
+                          }}
                         >
                           {field.allowed_values.map((v) => (
-                            <option key={v} value={v}>{String(v)}</option>
+                            <option key={v} value={v}>
+                              {String(v)}
+                            </option>
                           ))}
                         </select>
                       ) : field.type === "boolean" ? (
-                        <input type="checkbox" disabled={field.governance_locked} defaultChecked={val?.effective_value} />
+                        <input
+                          type="checkbox"
+                          disabled={field.governance_locked}
+                          defaultChecked={val?.effective_value}
+                        />
                       ) : (
                         <input
                           type={field.type === "number" ? "number" : "text"}
                           disabled={field.governance_locked}
                           defaultValue={val?.effective_value}
-                          style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, width: 200 }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #d1d5db",
+                            fontSize: 14,
+                            width: 200,
+                          }}
                         />
                       )}
                       <span style={{ fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>

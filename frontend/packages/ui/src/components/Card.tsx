@@ -25,7 +25,17 @@ export function Card({
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <h2 id={labelledBy} style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: "0.02em", textTransform: "uppercase", color: "#374151" }}>
+        <h2
+          id={labelledBy}
+          style={{
+            margin: 0,
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            textTransform: "uppercase",
+            color: "#374151",
+          }}
+        >
           {title}
         </h2>
         {actions}

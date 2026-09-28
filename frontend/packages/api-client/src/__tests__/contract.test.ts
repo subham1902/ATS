@@ -4,7 +4,7 @@ import { createApiClient, ApiError } from "../client";
 import { parseSseFrame } from "../sse";
 
 // Frozen shapes matching A05 contract
-const SAMPLE_SYSTEM = {
+const _SAMPLE_SYSTEM = {
   system_state: "READY",
   system_state_version: 1,
   readiness: "READY",
@@ -40,14 +40,24 @@ describe("api-client contract", () => {
   });
 
   it("ApiError carries envelope", () => {
-    const env: ErrorEnvelope = { code: "RESOURCE_NOT_FOUND", message: "not found", correlation_id: "cid-1", details: [] };
+    const env: ErrorEnvelope = {
+      code: "RESOURCE_NOT_FOUND",
+      message: "not found",
+      correlation_id: "cid-1",
+      details: [],
+    };
     const err = new ApiError(404, env, "cid-1", "not found");
     expect(err.status).toBe(404);
     expect(err.envelope?.code).toBe("RESOURCE_NOT_FOUND");
   });
 
   it("client uses fetch impl and parses ErrorEnvelope 404", async () => {
-    const env: ErrorEnvelope = { code: "RESOURCE_NOT_FOUND", message: "nope", correlation_id: "req-1", details: [{ field: "id", issue: "missing" }] };
+    const env: ErrorEnvelope = {
+      code: "RESOURCE_NOT_FOUND",
+      message: "nope",
+      correlation_id: "req-1",
+      details: [{ field: "id", issue: "missing" }],
+    };
     const fetchImpl = async () =>
       new Response(JSON.stringify(env), { status: 404, headers: { "content-type": "application/json" } });
     const client = createApiClient({ baseUrl: "http://test", fetchImpl: fetchImpl as unknown as typeof fetch });
@@ -69,7 +79,20 @@ describe("api-client contract", () => {
 
   it("autonomy token type excludes nonce/payload_hash", () => {
     // Type-level check represented via runtime shape absence
-    const sample = { token_id: "1", scope: "A2_PAPER", candidate_id: "2", policy_id: "3", policy_version: 1, risk_decision_id: "4", advisory_id: "5", system_state_version: 1, issued_at: new Date().toISOString(), expires_at: new Date().toISOString(), consumed_at: null, state: "ISSUED" };
+    const sample = {
+      token_id: "1",
+      scope: "A2_PAPER",
+      candidate_id: "2",
+      policy_id: "3",
+      policy_version: 1,
+      risk_decision_id: "4",
+      advisory_id: "5",
+      system_state_version: 1,
+      issued_at: new Date().toISOString(),
+      expires_at: new Date().toISOString(),
+      consumed_at: null,
+      state: "ISSUED",
+    };
     expect(sample).not.toHaveProperty("nonce");
     expect(sample).not.toHaveProperty("payload_hash");
     expect(sample).toHaveProperty("state");

@@ -26,7 +26,7 @@ interface AutonomyData {
 
 export default function TokensPage() {
   const [autonomy, setAutonomy] = useState<AutonomyData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/v1/governance/autonomy")
@@ -80,7 +80,8 @@ export default function TokensPage() {
             </span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            Cryptographic single-use trade authorization tokens. Safe view guarantees zero private nonces or secret hashes are exposed.
+            Cryptographic single-use trade authorization tokens. Safe view guarantees zero private nonces or secret
+            hashes are exposed.
           </p>
         </div>
 
@@ -114,23 +115,46 @@ export default function TokensPage() {
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.37)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#34d399" }}>CURRENT ACTIVE AUTONOMY LEVEL</div>
             <h2 style={{ fontSize: 22, fontWeight: 800, margin: "4px 0 8px", color: "#f8fafc" }}>
               A2_PAPER: Autonomous Paper Trading
             </h2>
             <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", maxWidth: 700, lineHeight: 1.5 }}>
-              {autonomy?.description || "Autonomous agent decision execution exclusively inside PaperBroker. Automated 4-gate candidate evaluation and dynamic margin management. Live money operations are strictly rejected at the architectural level."}
+              {autonomy?.description ||
+                "Autonomous agent decision execution exclusively inside PaperBroker. Automated 4-gate candidate evaluation and dynamic margin management. Live money operations are strictly rejected at the architectural level."}
             </p>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ padding: "8px 14px", background: "rgba(30, 41, 59, 0.8)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            <div
+              style={{
+                padding: "8px 14px",
+                background: "rgba(30, 41, 59, 0.8)",
+                borderRadius: 8,
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+              }}
+            >
               <div style={{ fontSize: 10, color: "#94a3b8" }}>HARDWARE LOCK</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#38bdf8" }}>LIVE_MONEY = False</div>
             </div>
-            <div style={{ padding: "8px 14px", background: "rgba(30, 41, 59, 0.8)", borderRadius: 8, border: "1px solid rgba(139, 92, 246, 0.3)" }}>
+            <div
+              style={{
+                padding: "8px 14px",
+                background: "rgba(30, 41, 59, 0.8)",
+                borderRadius: 8,
+                border: "1px solid rgba(139, 92, 246, 0.3)",
+              }}
+            >
               <div style={{ fontSize: 10, color: "#94a3b8" }}>EXECUTION TARGET</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#a78bfa" }}>PaperBroker Only</div>
             </div>
@@ -180,9 +204,7 @@ export default function TokensPage() {
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
             Active Autonomy Tokens (Safe View)
           </h3>
-          <span style={{ fontSize: 11, color: "#94a3b8" }}>
-            Single-use cryptographic execution tokens (TTL 60s)
-          </span>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>Single-use cryptographic execution tokens (TTL 60s)</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -220,7 +242,8 @@ export default function TokensPage() {
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                  Bound Candidate: <strong style={{ color: "#cbd5e1" }}>{t.candidate_id}</strong> · Nonces protected · Safe View Active
+                  Bound Candidate: <strong style={{ color: "#cbd5e1" }}>{t.candidate_id}</strong> · Nonces protected ·
+                  Safe View Active
                 </div>
               </div>
 

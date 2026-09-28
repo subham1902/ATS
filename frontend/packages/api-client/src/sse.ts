@@ -65,4 +65,3 @@ export async function* iterateSseResponse(response: Response): AsyncGenerator<Pa
     if (parsed) yield parsed;
   }
 }
-

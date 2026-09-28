@@ -30,7 +30,12 @@ export function SystemStateBadge({ state }: { state: SystemState }) {
   return (
     <Badge tone={tone[state]} ariaLabel={`system state ${state}`}>
       <span aria-hidden>{icon[state]}</span> {label[state]}
-      {state === "UNKNOWN" ? <span aria-hidden style={{ opacity: 0.8 }}> — unknown, not healthy</span> : null}
+      {state === "UNKNOWN" ? (
+        <span aria-hidden style={{ opacity: 0.8 }}>
+          {" "}
+          — unknown, not healthy
+        </span>
+      ) : null}
     </Badge>
   );
 }

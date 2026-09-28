@@ -90,12 +90,17 @@ export function createApiClient(options?: ClientOptions) {
     getActivePolicy: () => request<PolicyReadModel>(ROUTES.policiesActive, { method: "GET" }, opts),
     getPolicy: (id: string) => request<PolicyReadModel>(ROUTES.policyById(id), { method: "GET" }, opts),
     validatePolicy: (body: PolicyValidationRequest) =>
-      request<PolicyValidationReadModel>(ROUTES.policyValidate, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts),
+      request<PolicyValidationReadModel>(
+        ROUTES.policyValidate,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+        opts,
+      ),
     getCampaign: (id: string) => request<CampaignReadModel>(ROUTES.campaignById(id), { method: "GET" }, opts),
     getCandidate: (id: string) => request<CandidateReadModel>(ROUTES.candidateById(id), { method: "GET" }, opts),
     getGovernanceContext: (id: string) =>
       request<GovernanceContextReadModel>(ROUTES.governanceById(id), { method: "GET" }, opts),
-    getRiskDecision: (id: string) => request<RiskDecisionReadModel>(ROUTES.riskDecisionById(id), { method: "GET" }, opts),
+    getRiskDecision: (id: string) =>
+      request<RiskDecisionReadModel>(ROUTES.riskDecisionById(id), { method: "GET" }, opts),
     getAdvisory: (id: string) => request<AdvisoryReadModel>(ROUTES.advisoryById(id), { method: "GET" }, opts),
     getAutonomyToken: (id: string) =>
       request<AutonomyTokenReadModel>(ROUTES.autonomyTokenById(id), { method: "GET" }, opts),
@@ -115,7 +120,8 @@ export function createApiClient(options?: ClientOptions) {
     getStrategyLeaderboard: (timeframe?: string, context?: string, badge?: string) =>
       request<LeaderboardResponse>(ROUTES.strategyLeaderboard(timeframe, context, badge), { method: "GET" }, opts),
     getStrategy: (id: string) => request<StrategyRegistryEntry>(ROUTES.strategyById(id), { method: "GET" }, opts),
-    getStrategyReport: (id: string) => request<StrategyPerformanceReport>(ROUTES.strategyReport(id), { method: "GET" }, opts),
+    getStrategyReport: (id: string) =>
+      request<StrategyPerformanceReport>(ROUTES.strategyReport(id), { method: "GET" }, opts),
   };
 }
 
@@ -124,4 +130,3 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 export function isApiError(e: unknown): e is ApiError {
   return e instanceof ApiError;
 }
-

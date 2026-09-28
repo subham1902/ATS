@@ -32,7 +32,16 @@ describe("ui primitives", () => {
   });
 
   it("ErrorEnvelopeView renders code/message/correlation", () => {
-    render(<ErrorEnvelopeView envelope={{ code: "RESOURCE_NOT_FOUND", message: "not found", correlation_id: "cid-99", details: [{ field: "id", issue: "missing" }] }} />);
+    render(
+      <ErrorEnvelopeView
+        envelope={{
+          code: "RESOURCE_NOT_FOUND",
+          message: "not found",
+          correlation_id: "cid-99",
+          details: [{ field: "id", issue: "missing" }],
+        }}
+      />,
+    );
     expect(screen.getByText(/RESOURCE_NOT_FOUND/)).toBeInTheDocument();
     expect(screen.getByText("not found")).toBeInTheDocument();
     expect(screen.getByText("cid-99")).toBeInTheDocument();
@@ -45,7 +54,11 @@ describe("ui primitives", () => {
   });
 
   it("Card is semantic section with heading", () => {
-    render(<Card title="System State"><span>body</span></Card>);
+    render(
+      <Card title="System State">
+        <span>body</span>
+      </Card>,
+    );
     expect(document.querySelector("section")).toBeTruthy();
     expect(screen.getByText("System State")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "System State" })).toBeInTheDocument();

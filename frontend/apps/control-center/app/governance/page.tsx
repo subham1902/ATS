@@ -95,7 +95,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 1,
     name: "Market Ingestion & Microstructure",
     category: "FEED",
-    description: "Consumes high-frequency tick streams via Upstox v3 WebSocket and aggregates non-repainting candles with volume deduplication.",
+    description:
+      "Consumes high-frequency tick streams via Upstox v3 WebSocket and aggregates non-repainting candles with volume deduplication.",
     authoritative_engine: "IncrementalCandleEngine & StreamHub",
     status: "ACTIVE",
     invariants: ["Zero external write capabilities", "Non-blocking tick queue"],
@@ -105,7 +106,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 2,
     name: "Multi-Agent Alpha Generation",
     category: "MODEL",
-    description: "Autonomous strategy agents (S17 Breakout, S02 VWAP, S04 JEV Shadow) analyze normalized price structures to synthesize opportunity candidates.",
+    description:
+      "Autonomous strategy agents (S17 Breakout, S02 VWAP, S04 JEV Shadow) analyze normalized price structures to synthesize opportunity candidates.",
     authoritative_engine: "Strategy Registry & Isolated Adapters",
     status: "ACTIVE",
     invariants: ["Exception isolation per agent", "Zero broker direct access"],
@@ -115,7 +117,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 3,
     name: "Gate 1: A04 Probabilistic Filter",
     category: "GOVERNANCE",
-    description: "Evaluates Bayesian calibrated probability P(win) and expected economic edge R. Drops candidates that do not exceed statistical edge thresholds.",
+    description:
+      "Evaluates Bayesian calibrated probability P(win) and expected economic edge R. Drops candidates that do not exceed statistical edge thresholds.",
     authoritative_engine: "A04 Probabilistic Gate",
     status: "ENFORCED",
     invariants: ["Calibrated P(win) >= 0.52", "Net Edge R >= 1.0x Total Friction"],
@@ -125,7 +128,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 4,
     name: "Gate 2: Capital Governor",
     category: "GOVERNANCE",
-    description: "Verifies capital sufficiency and margin reserves before granting trade approval. Enforces maximum portfolio allocation caps per trade.",
+    description:
+      "Verifies capital sufficiency and margin reserves before granting trade approval. Enforces maximum portfolio allocation caps per trade.",
     authoritative_engine: "Capital Governor & Margin Manager",
     status: "ENFORCED",
     invariants: ["Required Margin <= Available Capital", "Dynamic margin release on exit"],
@@ -135,7 +139,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 5,
     name: "Gate 3: Risk Governor & Circuit Breakers",
     category: "GOVERNANCE",
-    description: "Enforces portfolio VaR, session drawdown limits, correlation matrix constraints, and concurrent position caps (up to 10 positions).",
+    description:
+      "Enforces portfolio VaR, session drawdown limits, correlation matrix constraints, and concurrent position caps (up to 10 positions).",
     authoritative_engine: "Risk Governor Engine",
     status: "ENFORCED",
     invariants: ["Session Drawdown <= Max Loss Budget", "Active Positions < Max Concurrency Cap"],
@@ -145,7 +150,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 6,
     name: "Gate 4: Autonomy Token Authority",
     category: "AUTHORITY",
-    description: "Verifies operational tier (A2_PAPER). Generates a cryptographic, single-use Autonomy Token binding candidate, policy, and risk decision.",
+    description:
+      "Verifies operational tier (A2_PAPER). Generates a cryptographic, single-use Autonomy Token binding candidate, policy, and risk decision.",
     authoritative_engine: "Autonomy Token Issuer (Safe View)",
     status: "ARMED",
     invariants: ["LIVE_MONEY = False Permanent Invariant", "Single-use token with 60s TTL"],
@@ -155,7 +161,8 @@ const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
     stage_number: 7,
     name: "Simulated Execution (PaperBroker)",
     category: "EXECUTION",
-    description: "Routes approved and tokenized candidate to canonical PaperBroker singleton. Deducts margin, creates open position, and logs audit trail.",
+    description:
+      "Routes approved and tokenized candidate to canonical PaperBroker singleton. Deducts margin, creates open position, and logs audit trail.",
     authoritative_engine: "PaperBroker (Singleton)",
     status: "ACTIVE",
     invariants: ["Sole execution target", "Zero external broker orders"],
@@ -169,7 +176,7 @@ function GovernanceContent() {
   const [activeTab, setActiveTab] = useState<"workflow" | "autonomy" | "policies" | "candidates" | "advisories">(
     initialTab && ["workflow", "autonomy", "policies", "candidates", "advisories"].includes(initialTab)
       ? initialTab
-      : "workflow"
+      : "workflow",
   );
 
   const [workflow, setWorkflow] = useState<GovernanceWorkflowData | null>(null);
@@ -177,7 +184,7 @@ function GovernanceContent() {
   const [policies, setPolicies] = useState<GovernedPolicy[]>([]);
   const [candidates, setCandidates] = useState<GovernedCandidate[]>([]);
   const [advisories, setAdvisories] = useState<SupervisorAdvisory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   // Simulator state
   const [simStrategy, setSimStrategy] = useState("ATS-S17");
@@ -291,7 +298,7 @@ function GovernanceContent() {
       setSimDirection("BUY");
       setSimPrice(74250.0);
       setSimProb(0.68);
-      setSimEdgeR(2.10);
+      setSimEdgeR(2.1);
       setSimMargin(140000.0); // Exceeds 100k
       setSimAvailable(100000.0);
       setSimDrawdown(500.0);
@@ -303,7 +310,7 @@ function GovernanceContent() {
       setSimDirection("BUY");
       setSimPrice(74280.0);
       setSimProb(0.61);
-      setSimEdgeR(1.70);
+      setSimEdgeR(1.7);
       setSimMargin(25000.0);
       setSimAvailable(100000.0);
       setSimDrawdown(5400.0); // Breached 5000 max loss
@@ -318,9 +325,7 @@ function GovernanceContent() {
     try {
       const res = await fetch(`/v1/governance/advisories/${id}/acknowledge`, { method: "POST" });
       if (res.ok) {
-        setAdvisories((prev) =>
-          prev.map((a) => (a.advisory_id === id ? { ...a, acknowledged: true } : a))
-        );
+        setAdvisories((prev) => prev.map((a) => (a.advisory_id === id ? { ...a, acknowledged: true } : a)));
       }
     } catch (e) {
       console.error("Failed to acknowledge advisory", e);
@@ -371,7 +376,8 @@ function GovernanceContent() {
             </span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            Deterministic 7-stage multi-agent governance pipeline from live tick ingestion to simulated PaperBroker execution.
+            Deterministic 7-stage multi-agent governance pipeline from live tick ingestion to simulated PaperBroker
+            execution.
           </p>
         </div>
 
@@ -445,9 +451,7 @@ function GovernanceContent() {
               cursor: "pointer",
               transition: "all 0.15s ease",
               background:
-                activeTab === tab.id
-                  ? "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
-                  : "rgba(15, 23, 42, 0.6)",
+                activeTab === tab.id ? "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" : "rgba(15, 23, 42, 0.6)",
               color: activeTab === tab.id ? "#ffffff" : "#94a3b8",
               boxShadow: activeTab === tab.id ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none",
               display: "flex",
@@ -516,7 +520,14 @@ function GovernanceContent() {
                   }}
                 >
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 6,
+                      }}
+                    >
                       <span
                         style={{
                           fontSize: 10,
@@ -540,19 +551,13 @@ function GovernanceContent() {
                         {s.status}
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>
-                      {s.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>
-                      {s.description}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>{s.name}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>{s.description}</div>
                   </div>
 
                   <div style={{ marginTop: 12, paddingTop: 8, borderTop: "1px solid rgba(51, 65, 85, 0.4)" }}>
                     <div style={{ fontSize: 10, color: "#64748b" }}>ENGINE:</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1" }}>
-                      {s.authoritative_engine}
-                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1" }}>{s.authoritative_engine}</div>
                   </div>
                 </div>
               ))}
@@ -588,9 +593,7 @@ function GovernanceContent() {
 
               {/* Quick Presets */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 6 }}>
-                  QUICK PRESETS:
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 6 }}>QUICK PRESETS:</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button
                     onClick={() => loadPreset("PASS_ALL")}
@@ -876,10 +879,7 @@ function GovernanceContent() {
                         simResult.overall_outcome === "APPROVED_AND_EXECUTED"
                           ? "rgba(16, 185, 129, 0.2)"
                           : "rgba(239, 68, 68, 0.2)",
-                      color:
-                        simResult.overall_outcome === "APPROVED_AND_EXECUTED"
-                          ? "#34d399"
-                          : "#f87171",
+                      color: simResult.overall_outcome === "APPROVED_AND_EXECUTED" ? "#34d399" : "#f87171",
                       border: `1px solid ${
                         simResult.overall_outcome === "APPROVED_AND_EXECUTED"
                           ? "rgba(16, 185, 129, 0.4)"
@@ -903,7 +903,10 @@ function GovernanceContent() {
                     borderRadius: 10,
                   }}
                 >
-                  <div>Select a preset or adjust candidate inputs, then click <strong>Run Live Workflow Test</strong> to view step-by-step gate evaluation.</div>
+                  <div>
+                    Select a preset or adjust candidate inputs, then click <strong>Run Live Workflow Test</strong> to
+                    view step-by-step gate evaluation.
+                  </div>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -935,13 +938,15 @@ function GovernanceContent() {
                         </span>
                       </div>
 
-                      <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>
-                        {st.details}
-                      </div>
+                      <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>{st.details}</div>
 
                       <div style={{ display: "flex", gap: 16, fontSize: 10, color: "#94a3b8", marginTop: 6 }}>
-                        <span><strong>Measured:</strong> {st.measured}</span>
-                        <span><strong>Hurdle:</strong> {st.threshold}</span>
+                        <span>
+                          <strong>Measured:</strong> {st.measured}
+                        </span>
+                        <span>
+                          <strong>Hurdle:</strong> {st.threshold}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -961,10 +966,12 @@ function GovernanceContent() {
                         🔑 Autonomy Token Granted: {simResult.issued_token.token_id}
                       </div>
                       <div style={{ fontSize: 11, color: "#cbd5e1" }}>
-                        Scope: <strong>{simResult.issued_token.scope}</strong> · Fingerprint: {simResult.issued_token.sha256_fingerprint} · TTL: 60s
+                        Scope: <strong>{simResult.issued_token.scope}</strong> · Fingerprint:{" "}
+                        {simResult.issued_token.sha256_fingerprint} · TTL: 60s
                       </div>
                       <div style={{ fontSize: 10, color: "#818cf8", marginTop: 4 }}>
-                        Safe View: Cryptographic signature verified; nonces protected. Order authorized for PaperBroker simulated fill.
+                        Safe View: Cryptographic signature verified; nonces protected. Order authorized for PaperBroker
+                        simulated fill.
                       </div>
                     </div>
                   )}
@@ -981,10 +988,12 @@ function GovernanceContent() {
                       }}
                     >
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399", marginBottom: 4 }}>
-                        ⚡ Simulated Execution (PaperBroker): Filled at ₹{simResult.execution_preview.fill_price.toLocaleString()}
+                        ⚡ Simulated Execution (PaperBroker): Filled at ₹
+                        {simResult.execution_preview.fill_price.toLocaleString()}
                       </div>
                       <div style={{ fontSize: 11, color: "#cbd5e1" }}>
-                        Margin Reserved: ₹{simResult.execution_preview.margin_reserved.toLocaleString()} · Remaining Available: ₹{simResult.execution_preview.available_capital_after.toLocaleString()}
+                        Margin Reserved: ₹{simResult.execution_preview.margin_reserved.toLocaleString()} · Remaining
+                        Available: ₹{simResult.execution_preview.available_capital_after.toLocaleString()}
                       </div>
                     </div>
                   )}
@@ -1007,7 +1016,15 @@ function GovernanceContent() {
               padding: 24,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 16,
+              }}
+            >
               <div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#34d399", letterSpacing: "0.05em" }}>
                   OPERATIONAL AUTONOMY TIER
@@ -1016,7 +1033,8 @@ function GovernanceContent() {
                   A2_PAPER: Autonomous Paper Execution
                 </h2>
                 <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", maxWidth: 650 }}>
-                  {autonomy?.description || "Full autonomous multi-agent pipeline operating exclusively within the PaperBroker simulation boundary. Automated candidate evaluation, risk gating, and position tracking with zero live capital exposure."}
+                  {autonomy?.description ||
+                    "Full autonomous multi-agent pipeline operating exclusively within the PaperBroker simulation boundary. Automated candidate evaluation, risk gating, and position tracking with zero live capital exposure."}
                 </p>
               </div>
 
@@ -1034,9 +1052,7 @@ function GovernanceContent() {
                 >
                   ✓ KILL-SWITCH ARMED & NORMAL
                 </span>
-                <span style={{ fontSize: 11, color: "#64748b" }}>
-                  Hardware Lock: LIVE_MONEY = False
-                </span>
+                <span style={{ fontSize: 11, color: "#64748b" }}>Hardware Lock: LIVE_MONEY = False</span>
               </div>
             </div>
 
@@ -1154,9 +1170,7 @@ function GovernanceContent() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
-                  Governed Policy Registry
-                </h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#f8fafc" }}>Governed Policy Registry</h3>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
                   Formal risk and boundary policies enforcing strategy constraints.
                 </p>
@@ -1189,7 +1203,9 @@ function GovernanceContent() {
                     padding: 16,
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}
+                  >
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8" }}>{p.policy_id}</span>
                     <span
                       style={{
@@ -1205,9 +1221,7 @@ function GovernanceContent() {
                     </span>
                   </div>
 
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#f1f5f9", marginBottom: 12 }}>
-                    {p.name}
-                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#f1f5f9", marginBottom: 12 }}>{p.name}</div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11 }}>
                     <div style={{ color: "#94a3b8" }}>
@@ -1315,9 +1329,15 @@ function GovernanceContent() {
                     </div>
 
                     <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-                      <span>Price: <strong>₹{c.entry_price.toLocaleString()}</strong></span>
-                      <span>Edge R: <strong>{c.expected_edge_r}R</strong></span>
-                      <span>P(win): <strong>{c.calibrated_prob}</strong></span>
+                      <span>
+                        Price: <strong>₹{c.entry_price.toLocaleString()}</strong>
+                      </span>
+                      <span>
+                        Edge R: <strong>{c.expected_edge_r}R</strong>
+                      </span>
+                      <span>
+                        P(win): <strong>{c.calibrated_prob}</strong>
+                      </span>
                     </div>
 
                     {c.rejection_reason && (
@@ -1337,14 +1357,9 @@ function GovernanceContent() {
                         c.status === "EXECUTED"
                           ? "rgba(16, 185, 129, 0.2)"
                           : c.status === "APPROVED"
-                          ? "rgba(99, 102, 241, 0.2)"
-                          : "rgba(239, 68, 68, 0.2)",
-                      color:
-                        c.status === "EXECUTED"
-                          ? "#34d399"
-                          : c.status === "APPROVED"
-                          ? "#a5b4fc"
-                          : "#f87171",
+                            ? "rgba(99, 102, 241, 0.2)"
+                            : "rgba(239, 68, 68, 0.2)",
+                      color: c.status === "EXECUTED" ? "#34d399" : c.status === "APPROVED" ? "#a5b4fc" : "#f87171",
                     }}
                   >
                     {c.status}
@@ -1404,14 +1419,14 @@ function GovernanceContent() {
                       a.severity === "CRITICAL"
                         ? "rgba(239, 68, 68, 0.12)"
                         : a.severity === "WARNING"
-                        ? "rgba(245, 158, 11, 0.1)"
-                        : "rgba(56, 189, 248, 0.08)",
+                          ? "rgba(245, 158, 11, 0.1)"
+                          : "rgba(56, 189, 248, 0.08)",
                     border: `1px solid ${
                       a.severity === "CRITICAL"
                         ? "rgba(239, 68, 68, 0.3)"
                         : a.severity === "WARNING"
-                        ? "rgba(245, 158, 11, 0.3)"
-                        : "rgba(56, 189, 248, 0.25)"
+                          ? "rgba(245, 158, 11, 0.3)"
+                          : "rgba(56, 189, 248, 0.25)"
                     }`,
                   }}
                 >
@@ -1425,11 +1440,7 @@ function GovernanceContent() {
                             padding: "2px 6px",
                             borderRadius: 4,
                             background:
-                              a.severity === "CRITICAL"
-                                ? "#ef4444"
-                                : a.severity === "WARNING"
-                                ? "#f59e0b"
-                                : "#0284c7",
+                              a.severity === "CRITICAL" ? "#ef4444" : a.severity === "WARNING" ? "#f59e0b" : "#0284c7",
                             color: "#ffffff",
                           }}
                         >
@@ -1441,9 +1452,7 @@ function GovernanceContent() {
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", margin: "6px 0 4px" }}>
                         {a.title}
                       </div>
-                      <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.4 }}>
-                        {a.message}
-                      </div>
+                      <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.4 }}>{a.message}</div>
                       <div style={{ fontSize: 12, color: "#38bdf8", marginTop: 6, fontWeight: 600 }}>
                         ↳ Recommendation: {a.recommendation}
                       </div>

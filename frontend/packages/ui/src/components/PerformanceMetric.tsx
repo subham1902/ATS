@@ -34,7 +34,9 @@ export function PerformanceMetric({
         minWidth: 80,
       }}
     >
-      <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+      <div
+        style={{ fontSize: 10, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}
+      >
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
@@ -48,13 +50,9 @@ export function PerformanceMetric({
         >
           {value}
         </span>
-        {unit && (
-          <span style={{ fontSize: 10, color: "#6b7280", fontWeight: 500 }}>{unit}</span>
-        )}
+        {unit && <span style={{ fontSize: 10, color: "#6b7280", fontWeight: 500 }}>{unit}</span>}
         {trendIcon && (
-          <span style={{ fontSize: 9, color: trendColor, fontWeight: 700, marginLeft: 2 }}>
-            {trendIcon}
-          </span>
+          <span style={{ fontSize: 9, color: trendColor, fontWeight: 700, marginLeft: 2 }}>{trendIcon}</span>
         )}
       </div>
     </div>

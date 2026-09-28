@@ -153,18 +153,7 @@ interface LabStrategy {
   leaderboard_score?: number;
 }
 
-const AGENT_ORDER = [
-  "Alpha",
-  "Bravo",
-  "Charlie",
-  "Delta",
-  "Echo",
-  "Foxtrot",
-  "Golf",
-  "Hotel",
-  "India",
-  "Juliet",
-];
+const AGENT_ORDER = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet"];
 
 const INITIAL_AGENTS_CACHE: Record<string, Agent> = {
   Alpha: {
@@ -834,7 +823,7 @@ export default function AgentsPlaygroundPage() {
   const [savingCardAgent, setSavingCardAgent] = useState<string | null>(null);
 
   // Direction filter for trade history display on cards
-  const [cardHistoryFilter, setCardHistoryFilter] = useState<Record<string, string>>({});
+  const [cardHistoryFilter, _setCardHistoryFilter] = useState<Record<string, string>>({});
   const [expandedCardHistory, setExpandedCardHistory] = useState<Record<string, boolean>>({});
 
   const showToast = (msg: string) => {
@@ -895,8 +884,16 @@ export default function AgentsPlaygroundPage() {
       setStudioProfitTarget(g?.profit_target_pts ?? 0);
       setStudioStopLoss(g?.stop_loss_pts ?? 0);
       setStudioMaxRiskPct(g?.max_risk_pct_per_trade ?? 2.0);
-      setStudioHorizon(g?.horizon ?? ag.horizon ?? (selectedAgentName === "Echo" || selectedAgentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"));
-      setStudioTargetNetPnL(g?.target_net_pnl_increment ?? ag.target_net_pnl_increment ?? (selectedAgentName === "Echo" || selectedAgentName === "Juliet" ? 50000 : 25000));
+      setStudioHorizon(
+        g?.horizon ??
+          ag.horizon ??
+          (selectedAgentName === "Echo" || selectedAgentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
+      );
+      setStudioTargetNetPnL(
+        g?.target_net_pnl_increment ??
+          ag.target_net_pnl_increment ??
+          (selectedAgentName === "Echo" || selectedAgentName === "Juliet" ? 50000 : 25000),
+      );
       setHasInitialized(true);
     }
   }, [state, hasInitialized, selectedAgentName]);
@@ -920,8 +917,14 @@ export default function AgentsPlaygroundPage() {
       setStudioProfitTarget(g?.profit_target_pts ?? 0);
       setStudioStopLoss(g?.stop_loss_pts ?? 0);
       setStudioMaxRiskPct(g?.max_risk_pct_per_trade ?? 2.0);
-      setStudioHorizon(g?.horizon ?? ag.horizon ?? (name === "Echo" || name === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"));
-      setStudioTargetNetPnL(g?.target_net_pnl_increment ?? ag.target_net_pnl_increment ?? (name === "Echo" || name === "Juliet" ? 50000 : 25000));
+      setStudioHorizon(
+        g?.horizon ?? ag.horizon ?? (name === "Echo" || name === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
+      );
+      setStudioTargetNetPnL(
+        g?.target_net_pnl_increment ??
+          ag.target_net_pnl_increment ??
+          (name === "Echo" || name === "Juliet" ? 50000 : 25000),
+      );
     }
   };
 
@@ -935,10 +938,10 @@ export default function AgentsPlaygroundPage() {
       const stratName = isDelta
         ? "Price × OI × Volume State Machine"
         : selectedStratObj
-        ? selectedStratObj.name
-        : stratId === "AUTO"
-        ? "Auto-Selected Strategy"
-        : stratId;
+          ? selectedStratObj.name
+          : stratId === "AUTO"
+            ? "Auto-Selected Strategy"
+            : stratId;
 
       const payload = {
         mode: studioMode,
@@ -966,7 +969,9 @@ export default function AgentsPlaygroundPage() {
       });
 
       if (res.ok) {
-        showToast(`✅ Agent ${selectedAgentName} configured: Mode ${studioMode} · Principal ₹${Number(studioPrincipal).toLocaleString()} · Lot Ceiling: ${studioAllowedLotSize} Lot`);
+        showToast(
+          `✅ Agent ${selectedAgentName} configured: Mode ${studioMode} · Principal ₹${Number(studioPrincipal).toLocaleString()} · Lot Ceiling: ${studioAllowedLotSize} Lot`,
+        );
         fetchState();
       } else {
         const err = await res.json();
@@ -1039,7 +1044,9 @@ export default function AgentsPlaygroundPage() {
       setSettingGoals(true);
       const res = await fetch("/v1/agents/goals/set-success", { method: "POST" });
       if (res.ok) {
-        showToast("🎯 All 10 Agents configured to Unified Goal: Success & Max Net P&L Increment! (Echo & Juliet: Long-Term Swing, 8 Agents: Tactical Intraday)");
+        showToast(
+          "🎯 All 10 Agents configured to Unified Goal: Success & Max Net P&L Increment! (Echo & Juliet: Long-Term Swing, 8 Agents: Tactical Intraday)",
+        );
         fetchState();
       } else {
         const err = await res.json();
@@ -1057,7 +1064,7 @@ export default function AgentsPlaygroundPage() {
   const handleResetAllAgents = async () => {
     if (
       !confirm(
-        "🔄 Reset ALL 10 Agents to 0 numbers?\n\nThis will immediately:\n• Set realized P&L to ₹0.00 across all agents\n• Set win rates to 0.0% and completed tests to 0\n• Close all active open positions and release margins\n• Reset strategy retest counters and edge statuses to candidate\n• Clear trade history & Upstox ledger\n\nAll agents will start completely fresh. Proceed?"
+        "🔄 Reset ALL 10 Agents to 0 numbers?\n\nThis will immediately:\n• Set realized P&L to ₹0.00 across all agents\n• Set win rates to 0.0% and completed tests to 0\n• Close all active open positions and release margins\n• Reset strategy retest counters and edge statuses to candidate\n• Clear trade history & Upstox ledger\n\nAll agents will start completely fresh. Proceed?",
       )
     )
       return;
@@ -1089,7 +1096,7 @@ export default function AgentsPlaygroundPage() {
   const handleResetSingleAgent = async (agentName: string) => {
     if (
       !confirm(
-        `🔄 Reset Agent ${agentName} to 0 numbers?\n\nThis will reset P&L to ₹0.00, win rate to 0%, completed tests to 0, close any open position, and clear its trade history to start fresh.`
+        `🔄 Reset Agent ${agentName} to 0 numbers?\n\nThis will reset P&L to ₹0.00, win rate to 0%, completed tests to 0, close any open position, and clear its trade history to start fresh.`,
       )
     )
       return;
@@ -1111,7 +1118,7 @@ export default function AgentsPlaygroundPage() {
   };
 
   // Alias for backward compatibility
-  const handleResetAllHistory = handleResetAllAgents;
+  const _handleResetAllHistory = handleResetAllAgents;
 
   // Set Global Playground Market
   const handleSelectMarket = async (mkt: string) => {
@@ -1152,8 +1159,14 @@ export default function AgentsPlaygroundPage() {
             profit_target_pts: g?.profit_target_pts ?? 0,
             stop_loss_pts: g?.stop_loss_pts ?? 0,
             max_risk_pct_per_trade: g?.max_risk_pct_per_trade ?? 2.0,
-            horizon: g?.horizon ?? ag.horizon ?? (agentName === "Echo" || agentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
-            target_net_pnl_increment: g?.target_net_pnl_increment ?? ag.target_net_pnl_increment ?? (agentName === "Echo" || agentName === "Juliet" ? 50000 : 25000),
+            horizon:
+              g?.horizon ??
+              ag.horizon ??
+              (agentName === "Echo" || agentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
+            target_net_pnl_increment:
+              g?.target_net_pnl_increment ??
+              ag.target_net_pnl_increment ??
+              (agentName === "Echo" || agentName === "Juliet" ? 50000 : 25000),
           },
         }));
       }
@@ -1167,15 +1180,15 @@ export default function AgentsPlaygroundPage() {
     try {
       setSavingCardAgent(agentName);
       const isDelta = agentName === "Delta";
-      const stratId = isDelta ? "S17_OI_VOLUME_MACHINE" : (draft.strategy_id || "AUTO");
+      const stratId = isDelta ? "S17_OI_VOLUME_MACHINE" : draft.strategy_id || "AUTO";
       const selectedStratObj = labStrategies.find((s) => s.id === stratId);
       const stratName = isDelta
         ? "Price × OI × Volume State Machine"
         : selectedStratObj
-        ? selectedStratObj.name
-        : stratId === "AUTO"
-        ? "Auto-Selected Strategy"
-        : stratId;
+          ? selectedStratObj.name
+          : stratId === "AUTO"
+            ? "Auto-Selected Strategy"
+            : stratId;
 
       const payload = {
         mode: draft.mode || "AUTO",
@@ -1189,7 +1202,8 @@ export default function AgentsPlaygroundPage() {
         profit_target_pts: Number(draft.profit_target_pts || 0),
         stop_loss_pts: Number(draft.stop_loss_pts || 0),
         max_risk_pct_per_trade: Number(draft.max_risk_pct_per_trade || 2.0),
-        horizon: draft.horizon || (agentName === "Echo" || agentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
+        horizon:
+          draft.horizon || (agentName === "Echo" || agentName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY"),
         target_net_pnl_increment: Number(draft.target_net_pnl_increment || 25000),
         retest_winning_strategies: true,
         condition_gated_entry: true,
@@ -1264,12 +1278,17 @@ export default function AgentsPlaygroundPage() {
             <div>
               <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Autonomous Agents Playground</h2>
               <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: 13 }}>
-                Live multi-agent execution with manual configuration tuning, dynamic principal bounds, and allowed lot ceilings.
+                Live multi-agent execution with manual configuration tuning, dynamic principal bounds, and allowed lot
+                ceilings.
               </p>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#38bdf8", fontWeight: 700, fontSize: 14 }}>
-            <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: "#38bdf8" }} />
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 10, color: "#38bdf8", fontWeight: 700, fontSize: 14 }}
+          >
+            <span
+              style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: "#38bdf8" }}
+            />
             Ready · Initializing High-Speed Agents Engine...
           </div>
         </div>
@@ -1321,7 +1340,15 @@ export default function AgentsPlaygroundPage() {
           gap: 20,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <span
               style={{
@@ -1369,7 +1396,8 @@ export default function AgentsPlaygroundPage() {
                 </span>
               </div>
               <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: 13 }}>
-                Live multi-agent execution with manual configuration tuning, dynamic principal bounds, and allowed lot ceilings.
+                Live multi-agent execution with manual configuration tuning, dynamic principal bounds, and allowed lot
+                ceilings.
               </p>
             </div>
           </div>
@@ -1486,23 +1514,41 @@ export default function AgentsPlaygroundPage() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px #22c55e" }} />
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#22c55e",
+                  boxShadow: "0 0 10px #22c55e",
+                }}
+              />
               <span style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0" }}>
                 {session.contract_name || session.market_name || "MCX Gold Mini"} ({session.mode})
               </span>
               <span style={{ fontSize: 12, color: "#94a3b8" }}>·</span>
               <span style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: "#38bdf8" }}>
-                {session.currency_symbol || "₹"}{(session.live_price || 75420.0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                {session.currency_symbol || "₹"}
+                {(session.live_price || 75420.0).toLocaleString("en-IN", {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 2,
+                })}
               </span>
               <span style={{ fontSize: 12, color: "#64748b" }}>
-                (Bid: ₹{session.bid_price != null ? session.bid_price.toFixed(1) : "--"} / Ask: ₹{session.ask_price != null ? session.ask_price.toFixed(1) : "--"})
+                (Bid: ₹{session.bid_price != null ? session.bid_price.toFixed(1) : "--"} / Ask: ₹
+                {session.ask_price != null ? session.ask_price.toFixed(1) : "--"})
               </span>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a5b4fc" }}>
               <span>📡 Feed: {session.source}</span>
               <span>·</span>
-              <span>🕒 {mounted && session.last_tick_time ? new Date(session.last_tick_time).toLocaleTimeString() : "--:--:--"} IST</span>
+              <span>
+                🕒{" "}
+                {mounted && session.last_tick_time ? new Date(session.last_tick_time).toLocaleTimeString() : "--:--:--"}{" "}
+                IST
+              </span>
             </div>
           </div>
         )}
@@ -1510,7 +1556,8 @@ export default function AgentsPlaygroundPage() {
         {/* Unified Goal Success Banner */}
         <div
           style={{
-            background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 50%, rgba(139, 92, 246, 0.15) 100%)",
+            background:
+              "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 50%, rgba(139, 92, 246, 0.15) 100%)",
             borderRadius: 16,
             padding: "16px 20px",
             border: "2px solid #10b981",
@@ -1520,7 +1567,15 @@ export default function AgentsPlaygroundPage() {
             gap: 12,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 26 }}>🎯</span>
               <div>
@@ -1528,12 +1583,23 @@ export default function AgentsPlaygroundPage() {
                   <span style={{ fontSize: 15, fontWeight: 900, color: "#ffffff", letterSpacing: "0.01em" }}>
                     UNIFIED OBJECTIVE: DISCOVER WINNING STRATEGIES & MAXIMIZE NET P&L INCREMENT
                   </span>
-                  <span style={{ background: "#059669", color: "#ecfdf5", padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 900 }}>
+                  <span
+                    style={{
+                      background: "#059669",
+                      color: "#ecfdf5",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      fontSize: 10,
+                      fontWeight: 900,
+                    }}
+                  >
                     ACTIVE ACROSS ALL 10 AGENTS
                   </span>
                 </div>
                 <p style={{ margin: "3px 0 0 0", color: "#cbd5e1", fontSize: 12 }}>
-                  Every agent scans Strategy Lab for candidates, condition-gates entries to right market regimes, trails stops to breakeven after +40% target progress, and repeatedly retests confirmed winning edges for maximum incremental Net P&L.
+                  Every agent scans Strategy Lab for candidates, condition-gates entries to right market regimes, trails
+                  stops to breakeven after +40% target progress, and repeatedly retests confirmed winning edges for
+                  maximum incremental Net P&L.
                 </p>
               </div>
             </div>
@@ -1562,18 +1628,46 @@ export default function AgentsPlaygroundPage() {
 
           {/* Horizon Split Badges */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
-            <div style={{ background: "rgba(15, 23, 42, 0.7)", padding: "10px 14px", borderRadius: 10, border: "1px solid #a855f7", display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                background: "rgba(15, 23, 42, 0.7)",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #a855f7",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
               <span style={{ fontSize: 20 }}>⏳</span>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#d8b4fe" }}>LONG-TERM SWING HORIZON (2 AGENTS: ECHO & JULIET)</div>
-                <div style={{ fontSize: 10, color: "#94a3b8" }}>Target Net Increment: ₹50,000 · 60 Hold Cycles · Multi-Cycle Macro Trend & Institutional Hedging</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#d8b4fe" }}>
+                  LONG-TERM SWING HORIZON (2 AGENTS: ECHO & JULIET)
+                </div>
+                <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                  Target Net Increment: ₹50,000 · 60 Hold Cycles · Multi-Cycle Macro Trend & Institutional Hedging
+                </div>
               </div>
             </div>
-            <div style={{ background: "rgba(15, 23, 42, 0.7)", padding: "10px 14px", borderRadius: 10, border: "1px solid #38bdf8", display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                background: "rgba(15, 23, 42, 0.7)",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #38bdf8",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
               <span style={{ fontSize: 20 }}>⚡</span>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#7dd3fc" }}>TACTICAL INTRADAY HORIZON (8 AGENTS: ALPHA - HOTEL)</div>
-                <div style={{ fontSize: 10, color: "#94a3b8" }}>Target Net Increment: ₹25,000 · High-Velocity Micro Breakout & VWAP Mean Reversion</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#7dd3fc" }}>
+                  TACTICAL INTRADAY HORIZON (8 AGENTS: ALPHA - HOTEL)
+                </div>
+                <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                  Target Net Increment: ₹25,000 · High-Velocity Micro Breakout & VWAP Mean Reversion
+                </div>
               </div>
             </div>
           </div>
@@ -1581,34 +1675,91 @@ export default function AgentsPlaygroundPage() {
 
         {/* Aggregate KPI Badges */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: 14, border: "1px solid #334155" }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Total Pool Capital</div>
+          <div
+            style={{
+              background: "rgba(30, 41, 59, 0.6)",
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid #334155",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
+              Total Pool Capital
+            </div>
             <div style={{ fontSize: 20, fontWeight: 900, color: "#ffffff", marginTop: 2, fontFamily: "monospace" }}>
               ₹{((totalPrincipal || 1200000) / 100000).toFixed(1)} Lac
             </div>
             <div style={{ fontSize: 10, color: "#38bdf8" }}>8 @ ₹1L · 2 @ ₹2L</div>
           </div>
 
-          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: 14, border: "1px solid #334155" }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Collective Realized P&L</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: totalPnL >= 0 ? "#4ade80" : "#f87171", marginTop: 2, fontFamily: "monospace" }}>
-              {totalPnL >= 0 ? "+" : ""}₹{(totalPnL || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div
+            style={{
+              background: "rgba(30, 41, 59, 0.6)",
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid #334155",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
+              Collective Realized P&L
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 900,
+                color: totalPnL >= 0 ? "#4ade80" : "#f87171",
+                marginTop: 2,
+                fontFamily: "monospace",
+              }}
+            >
+              {totalPnL >= 0 ? "+" : ""}₹
+              {(totalPnL || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8" }}>Across all 10 agents</div>
           </div>
 
-          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: 14, border: "1px solid #334155" }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Completed Trades</div>
+          <div
+            style={{
+              background: "rgba(30, 41, 59, 0.6)",
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid #334155",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
+              Completed Trades
+            </div>
             <div style={{ fontSize: 20, fontWeight: 900, color: "#38bdf8", marginTop: 2, fontFamily: "monospace" }}>
               {totalTradesCount} Trades
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8" }}>Fresh session data</div>
           </div>
 
-          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: 14, border: "1px solid #334155" }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Upstox Ledger Stats</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: (ledgerSummary?.net_pnl || 0) >= 0 ? "#4ade80" : "#f87171", marginTop: 2, fontFamily: "monospace" }}>
-              {(ledgerSummary?.net_pnl || 0) >= 0 ? "+" : ""}₹{(ledgerSummary?.net_pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+          <div
+            style={{
+              background: "rgba(30, 41, 59, 0.6)",
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid #334155",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
+              Upstox Ledger Stats
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 900,
+                color: (ledgerSummary?.net_pnl || 0) >= 0 ? "#4ade80" : "#f87171",
+                marginTop: 2,
+                fontFamily: "monospace",
+              }}
+            >
+              {(ledgerSummary?.net_pnl || 0) >= 0 ? "+" : ""}₹
+              {(ledgerSummary?.net_pnl || 0).toLocaleString("en-IN", {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8" }}>{ledgerSummary?.total_trades || 0} Trades Traded</div>
           </div>
@@ -1692,9 +1843,25 @@ export default function AgentsPlaygroundPage() {
         }}
       >
         {/* Studio Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: 14,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 28, background: "#1e293b", padding: "8px 12px", borderRadius: 14, border: "1px solid #3b82f6" }}>
+            <span
+              style={{
+                fontSize: 28,
+                background: "#1e293b",
+                padding: "8px 12px",
+                borderRadius: 14,
+                border: "1px solid #3b82f6",
+              }}
+            >
               🎛️
             </span>
             <div>
@@ -1804,7 +1971,8 @@ export default function AgentsPlaygroundPage() {
             const isSelected = selectedAgentName === name;
             const ag = agentsMap[name] || INITIAL_AGENTS_CACHE[name];
             const isCustom = ag?.guidelines?.mode === "CUSTOM";
-            const lotCeiling = ag?.guidelines?.allowed_lot_size ?? (ag?.max_principal && ag.max_principal >= 200000 ? 2.0 : 1.0);
+            const lotCeiling =
+              ag?.guidelines?.allowed_lot_size ?? (ag?.max_principal && ag.max_principal >= 200000 ? 2.0 : 1.0);
             return (
               <button
                 key={name}
@@ -1814,11 +1982,7 @@ export default function AgentsPlaygroundPage() {
                   background: isSelected
                     ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
                     : "rgba(15, 23, 42, 0.7)",
-                  border: isSelected
-                    ? "2px solid #60a5fa"
-                    : isCustom
-                    ? "2px solid #a855f7"
-                    : "1px solid #334155",
+                  border: isSelected ? "2px solid #60a5fa" : isCustom ? "2px solid #a855f7" : "1px solid #334155",
                   borderRadius: 12,
                   padding: "8px 12px",
                   color: "#ffffff",
@@ -2024,7 +2188,9 @@ export default function AgentsPlaygroundPage() {
                 }}
               >
                 <span>👑 S17: Price × OI × Volume</span>
-                <span style={{ fontSize: 9, background: "#78350f", color: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>
+                <span
+                  style={{ fontSize: 9, background: "#78350f", color: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}
+                >
                   #1 RANKED
                 </span>
               </div>
@@ -2057,7 +2223,24 @@ export default function AgentsPlaygroundPage() {
                 <option value="S15_MACRO_GOLD_DXY">S15: Macro Gold-USD Flow Divergence</option>
                 <option value="S34_REGIME_ROUTER">S34: Regime Adaptive Router</option>
                 {labStrategies
-                  .filter((s) => !["AUTO", "S17_OI_VOLUME_MACHINE", "S01_ORB_NR7", "S02_VWAP_MEAN_REVERSION", "S03_GAP_FILL", "S04_VOL_TARGET", "S05_MEAN_REV", "S06_REGIME_FILTER", "S08_MTF_CONSOL", "S09_VWAP_IMBALANCE", "S10_INST_FLOW", "S15_MACRO_GOLD_DXY", "S34_REGIME_ROUTER"].includes(s.id))
+                  .filter(
+                    (s) =>
+                      ![
+                        "AUTO",
+                        "S17_OI_VOLUME_MACHINE",
+                        "S01_ORB_NR7",
+                        "S02_VWAP_MEAN_REVERSION",
+                        "S03_GAP_FILL",
+                        "S04_VOL_TARGET",
+                        "S05_MEAN_REV",
+                        "S06_REGIME_FILTER",
+                        "S08_MTF_CONSOL",
+                        "S09_VWAP_IMBALANCE",
+                        "S10_INST_FLOW",
+                        "S15_MACRO_GOLD_DXY",
+                        "S34_REGIME_ROUTER",
+                      ].includes(s.id),
+                  )
                   .map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.id}: {s.name}
@@ -2066,7 +2249,9 @@ export default function AgentsPlaygroundPage() {
               </select>
             )}
             <div style={{ fontSize: 10, color: selectedAgentName === "Delta" ? "#fbbf24" : "#94a3b8" }}>
-              {selectedAgentName === "Delta" ? "🔒 Pinned to #1 Price × OI × Volume" : "Fully customizable strategy directive"}
+              {selectedAgentName === "Delta"
+                ? "🔒 Pinned to #1 Price × OI × Volume"
+                : "Fully customizable strategy directive"}
             </div>
           </div>
 
@@ -2138,7 +2323,9 @@ export default function AgentsPlaygroundPage() {
               </button>
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8" }}>
-              {studioHorizon === "LONG_TERM_SWING" ? "Multi-cycle trend (60 hold cycles)" : "Fast intraday velocity (15 cycles)"}
+              {studioHorizon === "LONG_TERM_SWING"
+                ? "Multi-cycle trend (60 hold cycles)"
+                : "Fast intraday velocity (15 cycles)"}
             </div>
           </div>
 
@@ -2165,7 +2352,7 @@ export default function AgentsPlaygroundPage() {
                     cursor: "pointer",
                   }}
                 >
-                  ₹{inc >= 100000 ? "1L" : `${inc/1000}k`}
+                  ₹{inc >= 100000 ? "1L" : `${inc / 1000}k`}
                 </button>
               ))}
             </div>
@@ -2192,9 +2379,14 @@ export default function AgentsPlaygroundPage() {
         </div>
 
         {/* Studio Action Buttons */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}
+        >
           <div style={{ fontSize: 12, color: "#93c5fd" }}>
-            Active Tuning Target: <b>Agent {selectedAgentName}</b> · Principal: <b>₹{Number(studioPrincipal).toLocaleString()}</b> · Lot Ceiling: <b>{studioAllowedLotSize} Lot Max</b> · Horizon: <b>{studioHorizon === "LONG_TERM_SWING" ? "⏳ Long-Term Swing" : "⚡ Tactical Intraday"}</b> · Target Increment: <b>₹{Number(studioTargetNetPnL).toLocaleString()}</b>
+            Active Tuning Target: <b>Agent {selectedAgentName}</b> · Principal:{" "}
+            <b>₹{Number(studioPrincipal).toLocaleString()}</b> · Lot Ceiling: <b>{studioAllowedLotSize} Lot Max</b> ·
+            Horizon: <b>{studioHorizon === "LONG_TERM_SWING" ? "⏳ Long-Term Swing" : "⚡ Tactical Intraday"}</b> ·
+            Target Increment: <b>₹{Number(studioTargetNetPnL).toLocaleString()}</b>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2340,10 +2532,10 @@ export default function AgentsPlaygroundPage() {
                 border: agent.position
                   ? "2px solid #22c55e"
                   : isCustomMode
-                  ? "2px solid #a855f7"
-                  : isTwoLacTier
-                  ? "2px solid #f59e0b"
-                  : "1px solid #e2e8f0",
+                    ? "2px solid #a855f7"
+                    : isTwoLacTier
+                      ? "2px solid #f59e0b"
+                      : "1px solid #e2e8f0",
                 borderRadius: 20,
                 padding: "24px",
                 boxShadow: agent.position
@@ -2356,7 +2548,15 @@ export default function AgentsPlaygroundPage() {
               }}
             >
               {/* Card Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #f1f5f9", paddingBottom: "14px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  borderBottom: "1px solid #f1f5f9",
+                  paddingBottom: "14px",
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span
                     style={{
@@ -2371,9 +2571,7 @@ export default function AgentsPlaygroundPage() {
                   </span>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <h2 style={{ margin: 0, fontSize: 21, fontWeight: 900, color: "#0f172a" }}>
-                        Agent {agent.name}
-                      </h2>
+                      <h2 style={{ margin: 0, fontSize: 21, fontWeight: 900, color: "#0f172a" }}>Agent {agent.name}</h2>
                       {/* Capital Tier */}
                       <span
                         style={{
@@ -2386,7 +2584,8 @@ export default function AgentsPlaygroundPage() {
                           border: `1px solid ${isTwoLacTier ? "#fde68a" : "#bfdbfe"}`,
                         }}
                       >
-                        ₹{(((agent.max_principal || 100000)) / 100000).toFixed(1)}L {isTwoLacTier ? "Institutional" : "Standard"}
+                        ₹{((agent.max_principal || 100000) / 100000).toFixed(1)}L{" "}
+                        {isTwoLacTier ? "Institutional" : "Standard"}
                       </span>
                       {/* Mode Badge */}
                       <span
@@ -2472,7 +2671,14 @@ export default function AgentsPlaygroundPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 10, color: isDelta ? "#854d0e" : "#64748b", fontWeight: 800, textTransform: "uppercase" }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: isDelta ? "#854d0e" : "#64748b",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {isDelta ? "👑 SOLE DEDICATED #1 STRATEGY TESTER" : "ACTIVE STRATEGY DIRECTIVE"}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 900, color: isDelta ? "#854d0e" : "#0f172a" }}>
@@ -2481,9 +2687,7 @@ export default function AgentsPlaygroundPage() {
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800 }}>DIRECTION BIAS</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#2563eb" }}>
-                    {g?.direction_bias || "BOTH"}
-                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#2563eb" }}>{g?.direction_bias || "BOTH"}</div>
                 </div>
               </div>
 
@@ -2509,9 +2713,7 @@ export default function AgentsPlaygroundPage() {
                       {agent.condition_status.matched ? "CONDITION MATCHED" : "OBSERVING REGIME"}
                     </span>
                     <span style={{ color: "#64748b" }}>·</span>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      {agent.condition_status.condition_label}
-                    </span>
+                    <span style={{ fontWeight: 700, color: "#0f172a" }}>{agent.condition_status.condition_label}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>
@@ -2568,46 +2770,70 @@ export default function AgentsPlaygroundPage() {
                         agent.strategy_edge_status === "CONFIRMED_EDGE"
                           ? "#dcfce7"
                           : agent.strategy_edge_status === "PROVING_EDGE"
-                          ? "#dbeafe"
-                          : agent.strategy_edge_status === "ROTATING_STRATEGY"
-                          ? "#fef3c7"
-                          : "#f1f5f9",
+                            ? "#dbeafe"
+                            : agent.strategy_edge_status === "ROTATING_STRATEGY"
+                              ? "#fef3c7"
+                              : "#f1f5f9",
                       color:
                         agent.strategy_edge_status === "CONFIRMED_EDGE"
                           ? "#166534"
                           : agent.strategy_edge_status === "PROVING_EDGE"
-                          ? "#1e40af"
-                          : agent.strategy_edge_status === "ROTATING_STRATEGY"
-                          ? "#92400e"
-                          : "#475569",
+                            ? "#1e40af"
+                            : agent.strategy_edge_status === "ROTATING_STRATEGY"
+                              ? "#92400e"
+                              : "#475569",
                       border: `1px solid ${
                         agent.strategy_edge_status === "CONFIRMED_EDGE"
                           ? "#86efac"
                           : agent.strategy_edge_status === "PROVING_EDGE"
-                          ? "#93c5fd"
-                          : agent.strategy_edge_status === "ROTATING_STRATEGY"
-                          ? "#fde68a"
-                          : "#cbd5e1"
+                            ? "#93c5fd"
+                            : agent.strategy_edge_status === "ROTATING_STRATEGY"
+                              ? "#fde68a"
+                              : "#cbd5e1"
                       }`,
                     }}
                   >
                     {agent.strategy_edge_status || "EXPLORING"}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 900, fontFamily: "monospace", color: (agent.strategy_net_pnl || 0) >= 0 ? "#16a34a" : "#dc2626" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      fontFamily: "monospace",
+                      color: (agent.strategy_net_pnl || 0) >= 0 ? "#16a34a" : "#dc2626",
+                    }}
+                  >
                     {(agent.strategy_net_pnl || 0) >= 0 ? "+" : ""}₹{(agent.strategy_net_pnl || 0).toFixed(1)}
                   </span>
                 </div>
               </div>
 
               {/* Net P&L Increment & Goal Progress Bar */}
-              <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: 10, border: "1px solid #f1f5f9" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div
+                style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: 10, border: "1px solid #f1f5f9" }}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}
+                >
                   <span style={{ fontSize: 11, fontWeight: 800, color: "#334155" }}>
-                    🎯 Goal Net Increment: ₹{(agent.target_net_pnl_increment || (agent.horizon === "LONG_TERM_SWING" ? 50000 : 25000)).toLocaleString()}
+                    🎯 Goal Net Increment: ₹
+                    {(
+                      agent.target_net_pnl_increment || (agent.horizon === "LONG_TERM_SWING" ? 50000 : 25000)
+                    ).toLocaleString()}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 900, fontFamily: "monospace", color: (agent.net_pnl_increment || agent.pnl || 0) >= 0 ? "#16a34a" : "#dc2626" }}>
-                    {(agent.net_pnl_increment || agent.pnl || 0) >= 0 ? "+" : ""}₹{(agent.net_pnl_increment || agent.pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                    {" "}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      fontFamily: "monospace",
+                      color: (agent.net_pnl_increment || agent.pnl || 0) >= 0 ? "#16a34a" : "#dc2626",
+                    }}
+                  >
+                    {(agent.net_pnl_increment || agent.pnl || 0) >= 0 ? "+" : ""}₹
+                    {(agent.net_pnl_increment || agent.pnl || 0).toLocaleString("en-IN", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })}{" "}
                     <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>
                       ({Math.min(100, Math.max(0, agent.goal_progress_pct || 0)).toFixed(0)}%)
                     </span>
@@ -2618,7 +2844,10 @@ export default function AgentsPlaygroundPage() {
                     style={{
                       width: `${Math.min(100, Math.max(0, agent.goal_progress_pct || ((agent.pnl || 0) > 0 ? ((agent.pnl || 0) / (agent.target_net_pnl_increment || 25000)) * 100 : 0)))}%`,
                       height: "100%",
-                      background: agent.horizon === "LONG_TERM_SWING" ? "linear-gradient(90deg, #8b5cf6 0%, #a855f7 100%)" : "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
+                      background:
+                        agent.horizon === "LONG_TERM_SWING"
+                          ? "linear-gradient(90deg, #8b5cf6 0%, #a855f7 100%)"
+                          : "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
                       borderRadius: 999,
                       transition: "width 0.3s ease",
                     }}
@@ -2627,9 +2856,19 @@ export default function AgentsPlaygroundPage() {
               </div>
 
               {/* Live Activity & Hypothesis */}
-              <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 12, border: "1px solid #f1f5f9" }}>
+              <div
+                style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 12, border: "1px solid #f1f5f9" }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: agent.position ? "#22c55e" : "#3b82f6", display: "inline-block" }} />
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: agent.position ? "#22c55e" : "#3b82f6",
+                      display: "inline-block",
+                    }}
+                  />
                   <span style={{ fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase" }}>
                     Live Market State
                   </span>
@@ -2674,7 +2913,9 @@ export default function AgentsPlaygroundPage() {
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, fontFamily: "monospace" }}>
-                      Entry: ₹{agent.position.entry_price != null ? agent.position.entry_price.toFixed(1) : "--"} · Target: ₹{agent.position.target_price != null ? agent.position.target_price.toFixed(1) : "--"} · Stop: ₹{agent.position.stop_loss != null ? agent.position.stop_loss.toFixed(1) : "--"}
+                      Entry: ₹{agent.position.entry_price != null ? agent.position.entry_price.toFixed(1) : "--"} ·
+                      Target: ₹{agent.position.target_price != null ? agent.position.target_price.toFixed(1) : "--"} ·
+                      Stop: ₹{agent.position.stop_loss != null ? agent.position.stop_loss.toFixed(1) : "--"}
                     </div>
                   </div>
 
@@ -2688,44 +2929,99 @@ export default function AgentsPlaygroundPage() {
                         color: (agent.position.unrealized_pnl ?? 0) >= 0 ? "#16a34a" : "#dc2626",
                       }}
                     >
-                      {(agent.position.unrealized_pnl ?? 0) >= 0 ? "+" : ""}₹{(agent.position.unrealized_pnl ?? 0).toFixed(2)}
+                      {(agent.position.unrealized_pnl ?? 0) >= 0 ? "+" : ""}₹
+                      {(agent.position.unrealized_pnl ?? 0).toFixed(2)}
                     </div>
                     <div style={{ fontSize: 10, color: "#64748b" }}>Hold: {(agent.position.hold_cycles || 0) * 2}s</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: 10, border: "1px dashed #cbd5e1", textAlign: "center", fontSize: 11, color: "#64748b" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px dashed #cbd5e1",
+                    textAlign: "center",
+                    fontSize: 11,
+                    color: "#64748b",
+                  }}
+                >
                   📡 No active position · Monitoring real-time price action & quantitative triggers
                 </div>
               )}
 
               {/* Performance Metrics */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-                <div style={{ background: "#f8fafc", padding: "10px", borderRadius: 10, textAlign: "center", border: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 10,
+                    textAlign: "center",
+                    border: "1px solid #f1f5f9",
+                  }}
+                >
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>NET REALIZED P&L</div>
-                  <div style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: (agent.pnl || 0) >= 0 ? "#16a34a" : "#dc2626" }}>
-                    {(agent.pnl || 0) >= 0 ? "+" : ""}₹{(agent.pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  <div
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 900,
+                      fontFamily: "monospace",
+                      color: (agent.pnl || 0) >= 0 ? "#16a34a" : "#dc2626",
+                    }}
+                  >
+                    {(agent.pnl || 0) >= 0 ? "+" : ""}₹
+                    {(agent.pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </div>
                 </div>
 
-                <div style={{ background: "#f8fafc", padding: "10px", borderRadius: 10, textAlign: "center", border: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 10,
+                    textAlign: "center",
+                    border: "1px solid #f1f5f9",
+                  }}
+                >
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>WIN RATE</div>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: (agent.win_rate || 0) >= 50 ? "#16a34a" : "#dc2626" }}>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 900,
+                      color: (agent.win_rate || 0) >= 50 ? "#16a34a" : "#dc2626",
+                    }}
+                  >
                     {agent.win_rate || 0}%
                   </div>
                 </div>
 
-                <div style={{ background: "#f8fafc", padding: "10px", borderRadius: 10, textAlign: "center", border: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 10,
+                    textAlign: "center",
+                    border: "1px solid #f1f5f9",
+                  }}
+                >
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>COMPLETED TESTS</div>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>
-                    {agent.total_tests || 0}
-                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>{agent.total_tests || 0}</div>
                 </div>
 
-                <div style={{ background: "#f8fafc", padding: "10px", borderRadius: 10, textAlign: "center", border: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 10,
+                    textAlign: "center",
+                    border: "1px solid #f1f5f9",
+                  }}
+                >
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>AVAILABLE CAPITAL</div>
                   <div style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: "#0284c7" }}>
-                    ₹{(((agent.available_capital ?? agent.max_principal ?? 100000)) / 1000).toFixed(0)}k
+                    ₹{((agent.available_capital ?? agent.max_principal ?? 100000) / 1000).toFixed(0)}k
                   </div>
                 </div>
               </div>
@@ -2761,7 +3057,9 @@ export default function AgentsPlaygroundPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {/* Execution Mode */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Execution Mode:
                       </label>
                       <select
@@ -2790,7 +3088,9 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Allowed Lot Size Ceiling */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Allowed Lot Ceiling:
                       </label>
                       <input
@@ -2822,7 +3122,9 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Principal Amount */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Max Principal (₹ INR):
                       </label>
                       <input
@@ -2853,7 +3155,9 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Strategy Directive */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Strategy Assignment:
                       </label>
                       {isDelta ? (
@@ -2909,7 +3213,9 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Direction Bias */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Direction Bias:
                       </label>
                       <select
@@ -2939,7 +3245,9 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Target Market */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Target Contract:
                       </label>
                       <select
@@ -2970,11 +3278,16 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Horizon Duration */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Horizon Strategy:
                       </label>
                       <select
-                        value={cardDraft.horizon || (agent.name === "Echo" || agent.name === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY")}
+                        value={
+                          cardDraft.horizon ||
+                          (agent.name === "Echo" || agent.name === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY")
+                        }
                         onChange={(e) =>
                           setCardDrafts((prev) => ({
                             ...prev,
@@ -2999,18 +3312,26 @@ export default function AgentsPlaygroundPage() {
 
                     {/* Target Net Increment */}
                     <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}>
+                      <label
+                        style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#c084fc", marginBottom: 4 }}
+                      >
                         Target Net Increment (₹):
                       </label>
                       <input
                         type="number"
                         step="5000"
                         min="5000"
-                        value={cardDraft.target_net_pnl_increment ?? (agent.name === "Echo" || agent.name === "Juliet" ? 50000 : 25000)}
+                        value={
+                          cardDraft.target_net_pnl_increment ??
+                          (agent.name === "Echo" || agent.name === "Juliet" ? 50000 : 25000)
+                        }
                         onChange={(e) =>
                           setCardDrafts((prev) => ({
                             ...prev,
-                            [agent.name]: { ...prev[agent.name], target_net_pnl_increment: parseFloat(e.target.value) || 25000 },
+                            [agent.name]: {
+                              ...prev[agent.name],
+                              target_net_pnl_increment: parseFloat(e.target.value) || 25000,
+                            },
                           }))
                         }
                         style={{
@@ -3113,7 +3434,15 @@ export default function AgentsPlaygroundPage() {
                     }}
                   >
                     <span>{isHistoryExpanded ? "▼ Hide Recent Trade History" : "▶ View Recent Trades"}</span>
-                    <span style={{ background: "#eff6ff", color: "#1d4ed8", padding: "1px 6px", borderRadius: 999, fontSize: 11 }}>
+                    <span
+                      style={{
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        padding: "1px 6px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                      }}
+                    >
                       {(agent.history || []).length}
                     </span>
                   </button>

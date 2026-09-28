@@ -65,7 +65,7 @@ export default function ImportedStrategiesPage() {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [includeNative, setIncludeNative] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -108,28 +108,42 @@ export default function ImportedStrategiesPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1400 }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>
               Multi-Session Prospective Shadow Validation (ATS-BIN-03)
             </h1>
-            <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 8px", borderRadius: 4, background: "#dc2626", color: "#ffffff" }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                padding: "3px 8px",
+                borderRadius: 4,
+                background: "#dc2626",
+                color: "#ffffff",
+              }}
+            >
               SHADOW ONLY
             </span>
           </div>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#6b7280" }}>
-            Operating 9 frozen imported strategy versions and native research candidates (S17) against genuine live GOLDM data over MarketDataFabric.
+            Operating 9 frozen imported strategy versions and native research candidates (S17) against genuine live
+            GOLDM data over MarketDataFabric.
           </p>
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={includeNative}
-              onChange={(e) => setIncludeNative(e.target.checked)}
-            />
+            <input type="checkbox" checked={includeNative} onChange={(e) => setIncludeNative(e.target.checked)} />
             Include Native Candidates (S17)
           </label>
           <button
@@ -154,22 +168,76 @@ export default function ImportedStrategiesPage() {
 
       {/* Safety Invariant Badges */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#fef3c7", color: "#92400e" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#fef3c7",
+            color: "#92400e",
+          }}
+        >
           AUTHORITY: RESEARCH_ONLY
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#dcfce7", color: "#166534" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#dcfce7",
+            color: "#166534",
+          }}
+        >
           LIVE_MONEY: FALSE
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#dcfce7", color: "#166534" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#dcfce7",
+            color: "#166534",
+          }}
+        >
           REAL ORDERS: 0
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#dbeafe", color: "#1e40af" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#dbeafe",
+            color: "#1e40af",
+          }}
+        >
           A04: ACTIVE
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#ede9fe", color: "#5b21b6" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#ede9fe",
+            color: "#5b21b6",
+          }}
+        >
           PAPERBROKER: ISOLATED (NO ORDERS)
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: "#fee2e2", color: "#991b1b" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "#fee2e2",
+            color: "#991b1b",
+          }}
+        >
           PROSPECTIVE SUPPORT TARGET: 20 TRADES
         </span>
       </div>
@@ -223,7 +291,9 @@ export default function ImportedStrategiesPage() {
                         <span style={{ fontWeight: 700, fontFamily: "monospace" }}>
                           {t.support_count || t.resolved_trajectories}/20
                         </span>
-                        <div style={{ width: 40, height: 6, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}>
+                        <div
+                          style={{ width: 40, height: 6, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}
+                        >
                           <div
                             style={{
                               width: `${Math.min(100, ((t.support_count || t.resolved_trajectories) / 20) * 100)}%`,
@@ -234,12 +304,16 @@ export default function ImportedStrategiesPage() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: "8px 10px" }}>{t.wins} / {t.losses}</td>
+                    <td style={{ padding: "8px 10px" }}>
+                      {t.wins} / {t.losses}
+                    </td>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace" }}>
                       ₹{parseFloat(t.gross_pnl || "0").toFixed(2)}
                     </td>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 11, color: "#4b5563" }}>
-                      ₹{parseFloat(t.cost_stress_base || t.costs || "0").toFixed(0)} / ₹{parseFloat(t.cost_stress_1_5x || "0").toFixed(0)} / ₹{parseFloat(t.cost_stress_2_0x || "0").toFixed(0)}
+                      ₹{parseFloat(t.cost_stress_base || t.costs || "0").toFixed(0)} / ₹
+                      {parseFloat(t.cost_stress_1_5x || "0").toFixed(0)} / ₹
+                      {parseFloat(t.cost_stress_2_0x || "0").toFixed(0)}
                     </td>
                     <td
                       style={{
@@ -251,14 +325,34 @@ export default function ImportedStrategiesPage() {
                     >
                       ₹{parseFloat(t.net_pnl || "0").toFixed(2)}
                     </td>
-                    <td style={{ padding: "8px 10px", fontFamily: "monospace" }}>{(t.profit_factor || 0).toFixed(2)}</td>
+                    <td style={{ padding: "8px 10px", fontFamily: "monospace" }}>
+                      {(t.profit_factor || 0).toFixed(2)}
+                    </td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "#f3f4f6", color: "#374151" }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: "#f3f4f6",
+                          color: "#374151",
+                        }}
+                      >
                         {t.regime || "UNKNOWN"}
                       </span>
                     </td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "#fdf4ff", color: "#86198f" }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: "#fdf4ff",
+                          color: "#86198f",
+                        }}
+                      >
                         {t.jev_state || "RESEARCH_ONLY"}
                       </span>
                     </td>
@@ -288,8 +382,18 @@ export default function ImportedStrategiesPage() {
                           fontWeight: 700,
                           padding: "2px 6px",
                           borderRadius: 4,
-                          background: t.status === "SHADOW_RUNNING" ? "#dcfce7" : (t.status === "REVIEW_REQUIRED" ? "#fef08a" : "#e0e7ff"),
-                          color: t.status === "SHADOW_RUNNING" ? "#15803d" : (t.status === "REVIEW_REQUIRED" ? "#854d0e" : "#3730a3"),
+                          background:
+                            t.status === "SHADOW_RUNNING"
+                              ? "#dcfce7"
+                              : t.status === "REVIEW_REQUIRED"
+                                ? "#fef08a"
+                                : "#e0e7ff",
+                          color:
+                            t.status === "SHADOW_RUNNING"
+                              ? "#15803d"
+                              : t.status === "REVIEW_REQUIRED"
+                                ? "#854d0e"
+                                : "#3730a3",
                         }}
                       >
                         {t.status || "SHADOW_READY"}
@@ -338,12 +442,30 @@ export default function ImportedStrategiesPage() {
                     <td style={{ padding: "8px 10px" }}>{s.timeframes.join(", ")}</td>
                     <td style={{ padding: "8px 10px" }}>{s.required_features.join(", ")}</td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#166534" }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 4,
+                          background: "#dcfce7",
+                          color: "#166534",
+                        }}
+                      >
                         {s.compatibility_state}
                       </span>
                     </td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "#fef3c7", color: "#92400e" }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: "#fef3c7",
+                          color: "#92400e",
+                        }}
+                      >
                         FROZEN_RULE_IMMUTABLE
                       </span>
                     </td>

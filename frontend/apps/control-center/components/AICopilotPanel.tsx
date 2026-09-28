@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card } from "@ats/ui";
 
 type AIMode =
   | "Market Analyst"
@@ -21,8 +20,16 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
   const [response, setResponse] = useState<any | null>(null);
 
   const quickPrompts = [
-    { label: "💰 ₹30k Capital Feasibility", q: "I have ₹30,000. Show me available opportunities.", m: "Capital Advisor" as AIMode },
-    { label: "⚡ Live Coach: What is happening?", q: "What is happening right now with my trades?", m: "Live Coach" as AIMode },
+    {
+      label: "💰 ₹30k Capital Feasibility",
+      q: "I have ₹30,000. Show me available opportunities.",
+      m: "Capital Advisor" as AIMode,
+    },
+    {
+      label: "⚡ Live Coach: What is happening?",
+      q: "What is happening right now with my trades?",
+      m: "Live Coach" as AIMode,
+    },
     { label: "🛑 Why aren't we trading?", q: "Why aren't we trading right now?", m: "Live Coach" as AIMode },
     { label: "🏆 What supports this Gold move?", q: "What supports this Gold move?", m: "Gold Analyst" as AIMode },
     { label: "🛡️ What is my current risk?", q: "What is my current risk?", m: "Live Coach" as AIMode },
@@ -74,7 +81,15 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
       }}
     >
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "1px solid #334155",
+          paddingBottom: 12,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 20 }}>🤖</span>
           <div>
@@ -126,7 +141,16 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
 
       {/* Capital Advisor Controls */}
       {mode === "Capital Advisor" && (
-        <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#1e293b", padding: 12, borderRadius: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            background: "#1e293b",
+            padding: 12,
+            borderRadius: 8,
+          }}
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>ACCOUNT CAPITAL (₹)</span>
             <input
@@ -265,14 +289,36 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8" }}>Deterministic Sizing Matrix:</span>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
                 {response.capital_advisory.eligible_candidates.map((c: any) => (
-                  <div key={c.instrument} style={{ background: "#132338", border: "1px solid #0369a1", borderRadius: 6, padding: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <div
+                    key={c.instrument}
+                    style={{ background: "#132338", border: "1px solid #0369a1", borderRadius: 6, padding: 10 }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 4,
+                      }}
+                    >
                       <span style={{ fontWeight: 700, fontSize: 12, color: "#4ade80" }}>{c.symbol_name}</span>
-                      <span style={{ fontSize: 10, background: "#064e3b", color: "#6ee7b7", padding: "1px 5px", borderRadius: 4 }}>FEASIBLE</span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: "#064e3b",
+                          color: "#6ee7b7",
+                          padding: "1px 5px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        FEASIBLE
+                      </span>
                     </div>
                     <div style={{ fontSize: 11, color: "#94a3b8", display: "flex", flexDirection: "column", gap: 2 }}>
                       <span>Req Margin: ₹{c.required_capital.toLocaleString()}</span>
-                      <span>Calibrated Prob: <strong>{(c.calibrated_win_prob * 100).toFixed(1)}%</strong></span>
+                      <span>
+                        Calibrated Prob: <strong>{(c.calibrated_win_prob * 100).toFixed(1)}%</strong>
+                      </span>
                       <span>Max Est Loss: ₹{c.estimated_max_loss.toLocaleString()}</span>
                       <span>R:R: {c.risk_reward_ratio}</span>
                     </div>

@@ -13,11 +13,16 @@ export function RatingBar({
 
   // Color gradient: red → orange → yellow → green → emerald
   let barColor: string;
-  if (clamped >= 85) barColor = "#059669"; // emerald
-  else if (clamped >= 70) barColor = "#16a34a"; // green
-  else if (clamped >= 55) barColor = "#ca8a04"; // yellow
-  else if (clamped >= 40) barColor = "#ea580c"; // orange
-  else if (clamped >= 25) barColor = "#dc2626"; // red
+  if (clamped >= 85)
+    barColor = "#059669"; // emerald
+  else if (clamped >= 70)
+    barColor = "#16a34a"; // green
+  else if (clamped >= 55)
+    barColor = "#ca8a04"; // yellow
+  else if (clamped >= 40)
+    barColor = "#ea580c"; // orange
+  else if (clamped >= 25)
+    barColor = "#dc2626"; // red
   else barColor = "#991b1b"; // dark red
 
   const gradeColors: Record<string, string> = {

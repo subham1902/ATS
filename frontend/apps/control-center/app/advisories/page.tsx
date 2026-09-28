@@ -19,7 +19,7 @@ interface SupervisorAdvisory {
 export default function AdvisoriesPage() {
   const [advisories, setAdvisories] = useState<SupervisorAdvisory[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/v1/governance/advisories")
@@ -33,9 +33,7 @@ export default function AdvisoriesPage() {
     try {
       const res = await fetch(`/v1/governance/advisories/${id}/acknowledge`, { method: "POST" });
       if (res.ok) {
-        setAdvisories((prev) =>
-          prev.map((a) => (a.advisory_id === id ? { ...a, acknowledged: true } : a))
-        );
+        setAdvisories((prev) => prev.map((a) => (a.advisory_id === id ? { ...a, acknowledged: true } : a)));
       }
     } catch (e) {
       console.error("Failed to acknowledge", e);
@@ -95,7 +93,8 @@ export default function AdvisoriesPage() {
             </span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            Autonomous supervisor notices highlighting market regime transitions, capital allocation stress, and portfolio correlations.
+            Autonomous supervisor notices highlighting market regime transitions, capital allocation stress, and
+            portfolio correlations.
           </p>
         </div>
 
@@ -158,14 +157,14 @@ export default function AdvisoriesPage() {
                 a.severity === "CRITICAL"
                   ? "rgba(239, 68, 68, 0.1)"
                   : a.severity === "WARNING"
-                  ? "rgba(245, 158, 11, 0.08)"
-                  : "rgba(15, 23, 42, 0.75)",
+                    ? "rgba(245, 158, 11, 0.08)"
+                    : "rgba(15, 23, 42, 0.75)",
               border: `1px solid ${
                 a.severity === "CRITICAL"
                   ? "rgba(239, 68, 68, 0.35)"
                   : a.severity === "WARNING"
-                  ? "rgba(245, 158, 11, 0.3)"
-                  : "rgba(51, 65, 85, 0.5)"
+                    ? "rgba(245, 158, 11, 0.3)"
+                    : "rgba(51, 65, 85, 0.5)"
               }`,
             }}
           >
@@ -179,11 +178,7 @@ export default function AdvisoriesPage() {
                       padding: "2px 8px",
                       borderRadius: 4,
                       background:
-                        a.severity === "CRITICAL"
-                          ? "#ef4444"
-                          : a.severity === "WARNING"
-                          ? "#f59e0b"
-                          : "#0284c7",
+                        a.severity === "CRITICAL" ? "#ef4444" : a.severity === "WARNING" ? "#f59e0b" : "#0284c7",
                       color: "#ffffff",
                     }}
                   >
@@ -193,13 +188,9 @@ export default function AdvisoriesPage() {
                   <span style={{ fontSize: 11, color: "#64748b" }}>· {a.advisory_id}</span>
                 </div>
 
-                <h2 style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc", margin: "8px 0 6px" }}>
-                  {a.title}
-                </h2>
+                <h2 style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc", margin: "8px 0 6px" }}>{a.title}</h2>
 
-                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.5 }}>
-                  {a.message}
-                </p>
+                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.5 }}>{a.message}</p>
 
                 <div
                   style={{

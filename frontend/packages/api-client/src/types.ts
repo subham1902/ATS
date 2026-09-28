@@ -12,23 +12,9 @@ export type LossState = "NORMAL" | "CAUTION" | "COOLDOWN" | "HALTED";
 export type AutonomyLevel = "A0" | "A1" | "A2";
 export type PolicyStatus = "VALIDATED" | "ACTIVE" | "RETIRED";
 export type CampaignStatus =
-  | "DRAFT"
-  | "VALIDATED"
-  | "ACTIVE"
-  | "PAUSED"
-  | "COMPLETED"
-  | "HALTED"
-  | "EXPIRED"
-  | "REJECTED";
+  "DRAFT" | "VALIDATED" | "ACTIVE" | "PAUSED" | "COMPLETED" | "HALTED" | "EXPIRED" | "REJECTED";
 export type CandidateStatus =
-  | "CREATED"
-  | "ELIGIBLE"
-  | "RISK_EVALUATED"
-  | "ADVISED"
-  | "AUTHORIZED"
-  | "REJECTED"
-  | "EXPIRED"
-  | "CONSUMED";
+  "CREATED" | "ELIGIBLE" | "RISK_EVALUATED" | "ADVISED" | "AUTHORIZED" | "REJECTED" | "EXPIRED" | "CONSUMED";
 export type StrategyExecutionMode = "CHAMPION_ONLY" | "ISOLATED_CHALLENGER_PAPER";
 export type RiskDirection = "INCREASE" | "REDUCE" | "NEUTRAL";
 export type RiskOutcome = "ALLOW" | "DENY" | "UNKNOWN";
@@ -389,7 +375,6 @@ export interface RuntimeSessionView {
   is_halted: boolean;
 }
 
-
 export interface RuntimeStatusReadModel {
   session: RuntimeSessionView;
   trading_mode: RuntimeTradingMode;
@@ -411,38 +396,15 @@ export interface RuntimeStatusReadModel {
 // Strategy Performance Registry types
 // ---------------------------------------------------------------------------
 
-export type StrategyBadge =
-  | "SCALPING"
-  | "INTRADAY"
-  | "SWING"
-  | "POSITIONAL"
-  | "LONG_TERM"
-  | "META_ROUTER"
-  | "BASELINE";
+export type StrategyBadge = "SCALPING" | "INTRADAY" | "SWING" | "POSITIONAL" | "LONG_TERM" | "META_ROUTER" | "BASELINE";
 
-export type ExecutionContext =
-  | "BACKTEST"
-  | "PAPER_TRADE"
-  | "SHADOW"
-  | "LIVE_FORWARD"
-  | "REAL_ACCOUNT";
+export type ExecutionContext = "BACKTEST" | "PAPER_TRADE" | "SHADOW" | "LIVE_FORWARD" | "REAL_ACCOUNT";
 
 export type StrategyClassification =
-  | "REJECTED"
-  | "BLOCKED"
-  | "VALIDATED"
-  | "DATA_EVALUABLE"
-  | "BACKTESTABLE"
-  | "RESEARCH_ONLY"
-  | "SURVIVOR";
+  "REJECTED" | "BLOCKED" | "VALIDATED" | "DATA_EVALUABLE" | "BACKTESTABLE" | "RESEARCH_ONLY" | "SURVIVOR";
 
 export type EvidenceTier =
-  | "ROBUST_FORWARD_CANDIDATE"
-  | "PROSPECTIVE_SHADOW"
-  | "RESEARCH_ACTIVE"
-  | "DATA_BLOCKED"
-  | "REJECTED"
-  | "BASELINE";
+  "ROBUST_FORWARD_CANDIDATE" | "PROSPECTIVE_SHADOW" | "RESEARCH_ACTIVE" | "DATA_BLOCKED" | "REJECTED" | "BASELINE";
 
 export type StrategyGrade = "S" | "A" | "B" | "C" | "D" | "F";
 
@@ -614,5 +576,3 @@ export const ROUTES = {
   strategyReport: (id: string) => `/v1/strategies/registry/${id}/report`,
   strategyReload: "/v1/strategies/registry/reload",
 } as const;
-
-

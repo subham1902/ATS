@@ -33,7 +33,13 @@ interface StrategyItem {
 
 interface LedgerEvent {
   timestamp: string;
-  event_type: "PROMOTED_TO_STORE" | "TRADE_SETTLED" | "ELIMINATED_PRUNED" | "NEW_CANDIDATE_INTRODUCED" | "TESTING_CLAIMED" | "RE_INCUBATED";
+  event_type:
+    | "PROMOTED_TO_STORE"
+    | "TRADE_SETTLED"
+    | "ELIMINATED_PRUNED"
+    | "NEW_CANDIDATE_INTRODUCED"
+    | "TESTING_CLAIMED"
+    | "RE_INCUBATED";
   strategy_id: string;
   strategy_name: string;
   agent?: string;
@@ -117,18 +123,7 @@ interface TestInLiveMarketModalState {
   directionBias: "BOTH" | "LONG_ONLY" | "SHORT_ONLY";
 }
 
-const AGENT_ORDER = [
-  "Alpha",
-  "Bravo",
-  "Charlie",
-  "Delta",
-  "Echo",
-  "Foxtrot",
-  "Golf",
-  "Hotel",
-  "India",
-  "Juliet",
-];
+const AGENT_ORDER = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet"];
 
 export function StrategyLabView() {
   const [data, setData] = useState<LabState | null>(null);
@@ -226,7 +221,11 @@ export function StrategyLabView() {
     const defaultPrincipal = params.principal ?? g?.max_principal ?? ag?.max_principal ?? 100000;
     const defaultMarket = params.market || g?.target_market || targetMarket || "AUTO";
     const defaultLot = params.allowedLotSize ?? g?.allowed_lot_size ?? (defaultPrincipal >= 200000 ? 2.0 : 1.0);
-    const defaultHorizon = params.horizon || g?.horizon || ag?.horizon || (chosenAgent === "Echo" || chosenAgent === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY");
+    const defaultHorizon =
+      params.horizon ||
+      g?.horizon ||
+      ag?.horizon ||
+      (chosenAgent === "Echo" || chosenAgent === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY");
 
     setTestModal({
       open: true,
@@ -246,7 +245,8 @@ export function StrategyLabView() {
     if (!testModal) return;
     try {
       setDeployingToLive(true);
-      const { agentName, strategyId, strategyName, market, principal, allowedLotSize, horizon, directionBias } = testModal;
+      const { agentName, strategyId, strategyName, market, principal, allowedLotSize, horizon, directionBias } =
+        testModal;
 
       const payload = {
         mode: "CUSTOM",
@@ -279,7 +279,9 @@ export function StrategyLabView() {
       }
 
       if (res.ok) {
-        setDeployedSuccess(`🚀 Agent ${agentName} successfully configured & running in Live Market! Market: ${market} · Strategy: ${strategyName} · Principal: ₹${Number(principal).toLocaleString()} · Lot Ceiling: ${allowedLotSize} Lot`);
+        setDeployedSuccess(
+          `🚀 Agent ${agentName} successfully configured & running in Live Market! Market: ${market} · Strategy: ${strategyName} · Principal: ₹${Number(principal).toLocaleString()} · Lot Ceiling: ${allowedLotSize} Lot`,
+        );
         fetchAgentsStatus();
         fetchLabData();
       } else {
@@ -307,11 +309,13 @@ export function StrategyLabView() {
           archetype: newArchetype,
           description: newDesc || `Candidate strategy ${newName} for gold breakout validation.`,
           hypothesis: newHypothesis || `Testing ${newArchetype} edge on live tick stream.`,
-          params: { lookback: 18, z_threshold: 2.1, vol_window: 24, risk_factor: 0.025 }
-        })
+          params: { lookback: 18, z_threshold: 2.1, vol_window: 24, risk_factor: 0.025 },
+        }),
       });
       if (res.ok) {
-        setActionMsg(`✅ Strategy "${newName}" successfully queued into Untested Incubator! Agents will begin live testing.`);
+        setActionMsg(
+          `✅ Strategy "${newName}" successfully queued into Untested Incubator! Agents will begin live testing.`,
+        );
         setNewName("");
         setNewDesc("");
         setNewHypothesis("");
@@ -333,7 +337,7 @@ export function StrategyLabView() {
       const res = await fetch("/v1/strategies/lab/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy_id: strategyId, action: "retest" })
+        body: JSON.stringify({ strategy_id: strategyId, action: "retest" }),
       });
       if (res.ok) {
         setActionMsg(`🔄 Strategy ${strategyId} re-incubated into Untested queue for fresh agent evaluation.`);
@@ -350,33 +354,46 @@ export function StrategyLabView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Top Banner & Control Deck */}
-      <div style={{
-        background: "linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #eff6ff 100%)",
-        border: "2px solid #bfdbfe",
-        borderRadius: 20,
-        padding: "24px 28px",
-        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+      <div
+        style={{
+          background: "linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #eff6ff 100%)",
+          border: "2px solid #bfdbfe",
+          borderRadius: 20,
+          padding: "24px 28px",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <h2 style={{ margin: 0, fontSize: 30, fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
                 Strategy Lab & Best-in-Store Engine
               </h2>
-              <span style={{
-                background: "#dcfce7",
-                color: "#15803d",
-                padding: "4px 12px",
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: 800,
-                border: "1px solid #86efac"
-              }}>
+              <span
+                style={{
+                  background: "#dcfce7",
+                  color: "#15803d",
+                  padding: "4px 12px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  border: "1px solid #86efac",
+                }}
+              >
                 ⚡ AUTONOMOUS AGENT INCUBATOR ACTIVE
               </span>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 15, color: "#475569", fontWeight: 500 }}>
-              Untested strategies are dispatched to autonomous agents trading live market ticks. Positive results promote to the Best Store; underperformers are systematically eliminated.
+              Untested strategies are dispatched to autonomous agents trading live market ticks. Positive results
+              promote to the Best Store; underperformers are systematically eliminated.
             </p>
           </div>
 
@@ -394,14 +411,14 @@ export function StrategyLabView() {
                 fontSize: 13,
                 fontWeight: 800,
                 textDecoration: "none",
-                border: "1px solid #cbd5e1"
+                border: "1px solid #cbd5e1",
               }}
             >
               🤖 View Agents Playground →
             </Link>
 
             <button
-              onClick={() => setShowIntroduceModal(prev => !prev)}
+              onClick={() => setShowIntroduceModal((prev) => !prev)}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -414,7 +431,7 @@ export function StrategyLabView() {
                 fontWeight: 800,
                 border: "none",
                 cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)"
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
               }}
             >
               <span>+</span>
@@ -425,33 +442,38 @@ export function StrategyLabView() {
 
         {/* Global Action Message Banner */}
         {actionMsg && (
-          <div style={{
-            marginTop: 16,
-            padding: "12px 18px",
-            background: "#eff6ff",
-            border: "1px solid #93c5fd",
-            borderRadius: 12,
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#1e40af"
-          }}>
+          <div
+            style={{
+              marginTop: 16,
+              padding: "12px 18px",
+              background: "#eff6ff",
+              border: "1px solid #93c5fd",
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#1e40af",
+            }}
+          >
             {actionMsg}
           </div>
         )}
 
         {/* Introduce Strategy Inline Drawer */}
         {showIntroduceModal && (
-          <form onSubmit={handleIntroduce} style={{
-            marginTop: 20,
-            padding: "20px 24px",
-            background: "#ffffff",
-            borderRadius: 16,
-            border: "2px solid #3b82f6",
-            boxShadow: "0 8px 24px rgba(59, 130, 246, 0.12)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 16
-          }}>
+          <form
+            onSubmit={handleIntroduce}
+            style={{
+              marginTop: 20,
+              padding: "20px 24px",
+              background: "#ffffff",
+              borderRadius: 16,
+              border: "2px solid #3b82f6",
+              boxShadow: "0 8px 24px rgba(59, 130, 246, 0.12)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>
                 🧪 Introduce New Quantitative Strategy Candidate
@@ -476,7 +498,14 @@ export function StrategyLabView() {
                   placeholder="e.g. Volatility Spike Mean-Reversion AI"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, outline: "none" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
                 />
               </div>
 
@@ -487,7 +516,15 @@ export function StrategyLabView() {
                 <select
                   value={newArchetype}
                   onChange={(e) => setNewArchetype(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, outline: "none", background: "#ffffff" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    outline: "none",
+                    background: "#ffffff",
+                  }}
                 >
                   <option value="Breakout">Breakout</option>
                   <option value="Trend Following">Trend Following</option>
@@ -514,7 +551,14 @@ export function StrategyLabView() {
                   placeholder="e.g. Fast tick compression trigger on live gold feeds"
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, outline: "none" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
                 />
               </div>
 
@@ -527,7 +571,14 @@ export function StrategyLabView() {
                   placeholder="e.g. Exploits rapid post-session volume absorption targeting 1:2 risk/reward"
                   value={newHypothesis}
                   onChange={(e) => setNewHypothesis(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, outline: "none" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
                 />
               </div>
             </div>
@@ -536,7 +587,15 @@ export function StrategyLabView() {
               <button
                 type="button"
                 onClick={() => setShowIntroduceModal(false)}
-                style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
               >
                 Cancel
               </button>
@@ -551,7 +610,7 @@ export function StrategyLabView() {
                   color: "#ffffff",
                   fontWeight: 800,
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)"
+                  boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)",
                 }}
               >
                 {submitting ? "Deploying..." : "🚀 Submit & Deploy to Agent Testing Queue"}
@@ -572,11 +631,13 @@ export function StrategyLabView() {
             borderRadius: 16,
             padding: "16px 20px",
             cursor: "pointer",
-            transition: "all 0.2s ease"
+            transition: "all 0.2s ease",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 800, textTransform: "uppercase" }}>🏆 Best In Store</span>
+            <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 800, textTransform: "uppercase" }}>
+              🏆 Best In Store
+            </span>
             <span style={{ fontSize: 18 }}>⭐</span>
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#15803d", marginTop: 4 }}>
@@ -596,11 +657,13 @@ export function StrategyLabView() {
             borderRadius: 16,
             padding: "16px 20px",
             cursor: "pointer",
-            transition: "all 0.2s ease"
+            transition: "all 0.2s ease",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 800, textTransform: "uppercase" }}>⚡ Under Testing</span>
+            <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 800, textTransform: "uppercase" }}>
+              ⚡ Under Testing
+            </span>
             <span style={{ fontSize: 18 }}>🤖</span>
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#1d4ed8", marginTop: 4 }}>
@@ -620,19 +683,19 @@ export function StrategyLabView() {
             borderRadius: 16,
             padding: "16px 20px",
             cursor: "pointer",
-            transition: "all 0.2s ease"
+            transition: "all 0.2s ease",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#9333ea", fontWeight: 800, textTransform: "uppercase" }}>🆕 Untested Incubator</span>
+            <span style={{ fontSize: 12, color: "#9333ea", fontWeight: 800, textTransform: "uppercase" }}>
+              🆕 Untested Incubator
+            </span>
             <span style={{ fontSize: 18 }}>🌱</span>
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#7e22ce", marginTop: 4 }}>
             {summary?.untested_incubator ?? 0}
           </div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-            Awaiting agent pickup & live market trial
-          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Awaiting agent pickup & live market trial</div>
         </div>
 
         {/* Eliminated Archive */}
@@ -644,19 +707,19 @@ export function StrategyLabView() {
             borderRadius: 16,
             padding: "16px 20px",
             cursor: "pointer",
-            transition: "all 0.2s ease"
+            transition: "all 0.2s ease",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 800, textTransform: "uppercase" }}>❌ Eliminated / Pruned</span>
+            <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 800, textTransform: "uppercase" }}>
+              ❌ Eliminated / Pruned
+            </span>
             <span style={{ fontSize: 18 }}>🛡️</span>
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#b91c1c", marginTop: 4 }}>
             {summary?.eliminated_archive ?? 0}
           </div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-            Pruned from store on negative expectancy
-          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Pruned from store on negative expectancy</div>
         </div>
       </div>
 
@@ -676,9 +739,19 @@ export function StrategyLabView() {
           gap: 16,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 26, background: "rgba(59, 130, 246, 0.2)", padding: "8px 12px", borderRadius: 14, border: "1px solid #3b82f6" }}>
+            <span
+              style={{
+                fontSize: 26,
+                background: "rgba(59, 130, 246, 0.2)",
+                padding: "8px 12px",
+                borderRadius: 14,
+                border: "1px solid #3b82f6",
+              }}
+            >
               🤖
             </span>
             <div>
@@ -686,12 +759,22 @@ export function StrategyLabView() {
                 <h3 style={{ margin: 0, fontSize: 19, fontWeight: 900, color: "#ffffff", letterSpacing: "-0.01em" }}>
                   Top Performing Autonomous Agents (Live Edge Ranking)
                 </h3>
-                <span style={{ background: "#059669", color: "#ecfdf5", padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 900 }}>
+                <span
+                  style={{
+                    background: "#059669",
+                    color: "#ecfdf5",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    fontSize: 10,
+                    fontWeight: 900,
+                  }}
+                >
                   {bestAgentsList.length} AGENTS ACTIVE
                 </span>
               </div>
               <p style={{ margin: "3px 0 0 0", color: "#94a3b8", fontSize: 12 }}>
-                Autonomous agents actively proving strategies against real-time live market ticks. Click <b>"Test in Live Market"</b> on any agent to customize markets & principal.
+                Autonomous agents actively proving strategies against real-time live market ticks. Click{" "}
+                <b>"Test in Live Market"</b> on any agent to customize markets & principal.
               </p>
             </div>
           </div>
@@ -730,7 +813,7 @@ export function StrategyLabView() {
         {/* Agent Cards Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
           {filteredBestAgents.map((ag) => {
-            const isTwoLac = (ag.max_principal || 100000) >= 200000;
+            const _isTwoLac = (ag.max_principal || 100000) >= 200000;
             const isSwing = ag.horizon === "LONG_TERM_SWING";
             const isMatched = ag.condition_status?.matched ?? false;
 
@@ -751,14 +834,20 @@ export function StrategyLabView() {
                 {/* Card Top */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 24, background: "#1e293b", padding: "6px", borderRadius: 10, border: "1px solid #475569" }}>
+                    <span
+                      style={{
+                        fontSize: 24,
+                        background: "#1e293b",
+                        padding: "6px",
+                        borderRadius: 10,
+                        border: "1px solid #475569",
+                      }}
+                    >
                       {ag.avatar || "🤖"}
                     </span>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 15, fontWeight: 900, color: "#ffffff" }}>
-                          Agent {ag.name}
-                        </span>
+                        <span style={{ fontSize: 15, fontWeight: 900, color: "#ffffff" }}>Agent {ag.name}</span>
                         {ag.name === "Delta" && <span title="#1 Ranked Strategy Specialist">👑</span>}
                         <span
                           style={{
@@ -783,24 +872,67 @@ export function StrategyLabView() {
 
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>NET P&L</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: (ag.pnl || 0) >= 0 ? "#4ade80" : "#f87171" }}>
-                      {(ag.pnl || 0) >= 0 ? "+" : ""}₹{(ag.pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 900,
+                        fontFamily: "monospace",
+                        color: (ag.pnl || 0) >= 0 ? "#4ade80" : "#f87171",
+                      }}
+                    >
+                      {(ag.pnl || 0) >= 0 ? "+" : ""}₹
+                      {(ag.pnl || 0).toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     </div>
                   </div>
                 </div>
 
                 {/* Active Strategy & Condition Match */}
-                <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "8px 10px", borderRadius: 8, border: "1px solid #334155", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div
+                  style={{
+                    background: "rgba(30, 41, 59, 0.6)",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #334155",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
                   <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase" }}>
                     TESTING STRATEGY
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#38bdf8",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {ag.active_strategy}: {ag.active_strategy_name}
                   </div>
 
                   {ag.condition_status && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, fontSize: 10 }}>
-                      <span style={{ color: isMatched ? "#4ade80" : "#fbbf24", fontWeight: 800, display: "flex", alignItems: "center", gap: 4 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginTop: 2,
+                        fontSize: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: isMatched ? "#4ade80" : "#fbbf24",
+                          fontWeight: 800,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
                         <span>{isMatched ? "🟢" : "🟡"}</span>
                         <span>{isMatched ? "Condition Matched" : "Observing"}</span>
                       </span>
@@ -810,7 +942,15 @@ export function StrategyLabView() {
                 </div>
 
                 {/* Mini Stats Bar */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, textAlign: "center", fontSize: 11 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: 6,
+                    textAlign: "center",
+                    fontSize: 11,
+                  }}
+                >
                   <div style={{ background: "#1e293b", padding: "6px", borderRadius: 6 }}>
                     <div style={{ fontSize: 9, color: "#94a3b8" }}>WIN RATE</div>
                     <div style={{ fontWeight: 900, color: (ag.win_rate || 0) >= 50 ? "#4ade80" : "#f87171" }}>
@@ -832,13 +972,15 @@ export function StrategyLabView() {
                 {/* ACTION BUTTON: TEST IN LIVE MARKET */}
                 <button
                   type="button"
-                  onClick={() => handleOpenTestModal({
-                    agentName: ag.name,
-                    strategyId: ag.active_strategy,
-                    strategyName: ag.active_strategy_name,
-                    principal: ag.max_principal,
-                    horizon: ag.horizon,
-                  })}
+                  onClick={() =>
+                    handleOpenTestModal({
+                      agentName: ag.name,
+                      strategyId: ag.active_strategy,
+                      strategyName: ag.active_strategy_name,
+                      principal: ag.max_principal,
+                      horizon: ag.horizon,
+                    })
+                  }
                   style={{
                     padding: "10px",
                     borderRadius: 10,
@@ -866,7 +1008,15 @@ export function StrategyLabView() {
       </div>
 
       {/* Navigation Filter Tabs */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #e2e8f0", paddingBottom: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "2px solid #e2e8f0",
+          paddingBottom: 10,
+        }}
+      >
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => setActiveTab("store")}
@@ -878,7 +1028,7 @@ export function StrategyLabView() {
               cursor: "pointer",
               border: "none",
               background: activeTab === "store" ? "#16a34a" : "#f1f5f9",
-              color: activeTab === "store" ? "#ffffff" : "#475569"
+              color: activeTab === "store" ? "#ffffff" : "#475569",
             }}
           >
             🏆 Best in Store ({summary?.best_in_store ?? 0})
@@ -894,7 +1044,7 @@ export function StrategyLabView() {
               cursor: "pointer",
               border: "none",
               background: activeTab === "testing" ? "#2563eb" : "#f1f5f9",
-              color: activeTab === "testing" ? "#ffffff" : "#475569"
+              color: activeTab === "testing" ? "#ffffff" : "#475569",
             }}
           >
             ⚡ Under Agent Testing ({summary?.under_testing ?? 0})
@@ -910,7 +1060,7 @@ export function StrategyLabView() {
               cursor: "pointer",
               border: "none",
               background: activeTab === "incubator" ? "#9333ea" : "#f1f5f9",
-              color: activeTab === "incubator" ? "#ffffff" : "#475569"
+              color: activeTab === "incubator" ? "#ffffff" : "#475569",
             }}
           >
             🆕 Untested Incubator ({summary?.untested_incubator ?? 0})
@@ -926,7 +1076,7 @@ export function StrategyLabView() {
               cursor: "pointer",
               border: "none",
               background: activeTab === "eliminated" ? "#dc2626" : "#f1f5f9",
-              color: activeTab === "eliminated" ? "#ffffff" : "#475569"
+              color: activeTab === "eliminated" ? "#ffffff" : "#475569",
             }}
           >
             ❌ Eliminated Archive ({summary?.eliminated_archive ?? 0})
@@ -942,99 +1092,116 @@ export function StrategyLabView() {
               cursor: "pointer",
               border: "none",
               background: activeTab === "ledger" ? "#0f172a" : "#f1f5f9",
-              color: activeTab === "ledger" ? "#ffffff" : "#475569"
+              color: activeTab === "ledger" ? "#ffffff" : "#475569",
             }}
           >
             📜 Live Strategy Ledger ({data?.ledger.length ?? 0} events)
           </button>
         </div>
 
-        <div style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>
-          Auto-updated on every live market tick
-        </div>
+        <div style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>Auto-updated on every live market tick</div>
       </div>
 
       {/* TAB 1: BEST IN STORE (SURVIVORS) */}
       {activeTab === "store" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            background: "#f0fdf4",
-            padding: "12px 18px",
-            borderRadius: 12,
-            border: "1px solid #bbf7d0",
-            fontSize: 13,
-            color: "#166534",
-            fontWeight: 700
-          }}>
-            🌟 THE STORE CURATION: Only strategies with verified statistical edge, win rate ≥ 50%, profit factor ≥ 1.05, and positive net PnL are admitted into the store.
+          <div
+            style={{
+              background: "#f0fdf4",
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #bbf7d0",
+              fontSize: 13,
+              color: "#166534",
+              fontWeight: 700,
+            }}
+          >
+            🌟 THE STORE CURATION: Only strategies with verified statistical edge, win rate ≥ 50%, profit factor ≥ 1.05,
+            and positive net PnL are admitted into the store.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
             {data?.best_store.map((s) => (
-              <div key={s.id} style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: "20px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12
-              }}>
+              <div
+                key={s.id}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  padding: "20px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{
-                        background: "#fef3c7",
-                        color: "#92400e",
-                        fontWeight: 900,
-                        fontSize: 12,
-                        padding: "2px 8px",
-                        borderRadius: 6,
-                        border: "1px solid #fde68a"
-                      }}>
-                        #{s.store_rank} STORE RANK
-                      </span>
-                      {s.leaderboard_rank && (
-                        <span style={{
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
-                          fontWeight: 800,
+                      <span
+                        style={{
+                          background: "#fef3c7",
+                          color: "#92400e",
+                          fontWeight: 900,
                           fontSize: 12,
                           padding: "2px 8px",
                           borderRadius: 6,
-                          border: "1px solid #bfdbfe",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}>
-                          🏆 Leaderboard #{s.leaderboard_rank} · Score: {s.leaderboard_score ? s.leaderboard_score.toFixed(1) : "92.0"} [{s.leaderboard_grade || "S-TIER"}]
+                          border: "1px solid #fde68a",
+                        }}
+                      >
+                        #{s.store_rank} STORE RANK
+                      </span>
+                      {s.leaderboard_rank && (
+                        <span
+                          style={{
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            fontWeight: 800,
+                            fontSize: 12,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #bfdbfe",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          🏆 Leaderboard #{s.leaderboard_rank} · Score:{" "}
+                          {s.leaderboard_score ? s.leaderboard_score.toFixed(1) : "92.0"} [
+                          {s.leaderboard_grade || "S-TIER"}]
                         </span>
                       )}
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{s.id}</span>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>
-                      {s.name}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{s.name}</div>
                   </div>
-                  <span style={{
-                    background: "#dcfce7",
-                    color: "#15803d",
-                    padding: "4px 10px",
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 800
-                  }}>
+                  <span
+                    style={{
+                      background: "#dcfce7",
+                      color: "#15803d",
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
                     {s.archetype}
                   </span>
                 </div>
 
-                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>
-                  {s.description}
-                </div>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{s.description}</div>
 
                 {/* Performance Metrics Bar */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, background: "#f8fafc", padding: "10px", borderRadius: 10 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 8,
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 10,
+                  }}
+                >
                   <div>
                     <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>NET P&L</div>
                     <div style={{ fontSize: 15, fontWeight: 900, color: "#16a34a" }}>
@@ -1043,37 +1210,45 @@ export function StrategyLabView() {
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>WIN RATE</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: "#2563eb" }}>
-                      {s.win_rate}%
-                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: "#2563eb" }}>{s.win_rate}%</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>PROFIT FACTOR</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: "#0284c7" }}>
-                      {s.profit_factor}
-                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: "#0284c7" }}>{s.profit_factor}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>LIVE TRADES</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>
-                      {s.total_trades}
-                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>{s.total_trades}</div>
                   </div>
                 </div>
 
                 {/* Tuned Hyperparameters */}
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: "#64748b", background: "#f1f5f9", padding: "6px 10px", borderRadius: 6 }}>
-                  Active Parameters: {Object.entries(s.parameters || {}).map(([k, v]) => `${k}:${v}`).join(", ")}
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    color: "#64748b",
+                    background: "#f1f5f9",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                  }}
+                >
+                  Active Parameters:{" "}
+                  {Object.entries(s.parameters || {})
+                    .map(([k, v]) => `${k}:${v}`)
+                    .join(", ")}
                 </div>
 
                 {/* Test in Live Market Button */}
                 <button
                   type="button"
-                  onClick={() => handleOpenTestModal({
-                    strategyId: s.id,
-                    strategyName: s.name,
-                    agentName: s.assigned_agent?.replace("Agent ", "") || "Delta",
-                  })}
+                  onClick={() =>
+                    handleOpenTestModal({
+                      strategyId: s.id,
+                      strategyName: s.name,
+                      agentName: s.assigned_agent?.replace("Agent ", "") || "Delta",
+                    })
+                  }
                   style={{
                     marginTop: 4,
                     padding: "10px 14px",
@@ -1104,66 +1279,86 @@ export function StrategyLabView() {
       {/* TAB 2: UNDER AGENT TESTING */}
       {activeTab === "testing" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            background: "#eff6ff",
-            padding: "12px 18px",
-            borderRadius: 12,
-            border: "1px solid #bfdbfe",
-            fontSize: 13,
-            color: "#1e40af",
-            fontWeight: 700
-          }}>
-            ⚡ ACTIVE AGENT VALIDATION: Autonomous agents trade these strategies against genuine live streaming ticks to establish empirical statistical significance.
+          <div
+            style={{
+              background: "#eff6ff",
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #bfdbfe",
+              fontSize: 13,
+              color: "#1e40af",
+              fontWeight: 700,
+            }}
+          >
+            ⚡ ACTIVE AGENT VALIDATION: Autonomous agents trade these strategies against genuine live streaming ticks to
+            establish empirical statistical significance.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
             {data?.under_testing.map((s) => (
-              <div key={s.id} style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: "20px",
-                border: "2px solid #93c5fd",
-                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.06)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12
-              }}>
+              <div
+                key={s.id}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  padding: "20px",
+                  border: "2px solid #93c5fd",
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.06)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{
-                        background: "#dbeafe",
-                        color: "#1d4ed8",
-                        fontWeight: 900,
-                        fontSize: 12,
-                        padding: "2px 8px",
-                        borderRadius: 6
-                      }}>
-                        ⚡ UNDER TEST
-                      </span>
-                      {s.leaderboard_rank && (
-                        <span style={{
-                          background: "#eff6ff",
+                      <span
+                        style={{
+                          background: "#dbeafe",
                           color: "#1d4ed8",
-                          fontWeight: 800,
+                          fontWeight: 900,
                           fontSize: 12,
                           padding: "2px 8px",
                           borderRadius: 6,
-                          border: "1px solid #bfdbfe",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}>
-                          🏆 Leaderboard #{s.leaderboard_rank} · Score: {s.leaderboard_score ? s.leaderboard_score.toFixed(1) : "88.0"} [{s.leaderboard_grade || "A-TIER"}]
+                        }}
+                      >
+                        ⚡ UNDER TEST
+                      </span>
+                      {s.leaderboard_rank && (
+                        <span
+                          style={{
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            fontWeight: 800,
+                            fontSize: 12,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #bfdbfe",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          🏆 Leaderboard #{s.leaderboard_rank} · Score:{" "}
+                          {s.leaderboard_score ? s.leaderboard_score.toFixed(1) : "88.0"} [
+                          {s.leaderboard_grade || "A-TIER"}]
                         </span>
                       )}
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{s.id}</span>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>
-                      {s.name}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{s.name}</div>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "#2563eb", background: "#f0fdf4", padding: "4px 10px", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#2563eb",
+                      background: "#f0fdf4",
+                      padding: "4px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
                     {s.assigned_agent || "Assigned to Agent"}
                   </span>
                 </div>
@@ -1171,7 +1366,17 @@ export function StrategyLabView() {
                 <div style={{ fontSize: 12, color: "#475569" }}>{s.description}</div>
 
                 {/* Hypothesis Box */}
-                <div style={{ background: "#f8fafc", padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, color: "#0f766e", fontWeight: 600 }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    fontSize: 12,
+                    color: "#0f766e",
+                    fontWeight: 600,
+                  }}
+                >
                   💡 Hypothesis: {s.hypothesis}
                 </div>
 
@@ -1199,23 +1404,41 @@ export function StrategyLabView() {
 
                 {/* Progress to Promotion Gate */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      marginBottom: 4,
+                    }}
+                  >
                     <span>Promotion Gate Sample Progress</span>
                     <span>{Math.min(100, Math.round((s.total_trades / 20) * 100))}%</span>
                   </div>
                   <div style={{ height: 6, background: "#e2e8f0", borderRadius: 999, overflow: "hidden" }}>
-                    <div style={{ width: `${Math.min(100, (s.total_trades / 20) * 100)}%`, height: "100%", background: "#2563eb", transition: "width 0.4s" }} />
+                    <div
+                      style={{
+                        width: `${Math.min(100, (s.total_trades / 20) * 100)}%`,
+                        height: "100%",
+                        background: "#2563eb",
+                        transition: "width 0.4s",
+                      }}
+                    />
                   </div>
                 </div>
 
                 {/* Test in Live Market Button */}
                 <button
                   type="button"
-                  onClick={() => handleOpenTestModal({
-                    strategyId: s.id,
-                    strategyName: s.name,
-                    agentName: s.assigned_agent?.replace("Agent ", "") || "Alpha",
-                  })}
+                  onClick={() =>
+                    handleOpenTestModal({
+                      strategyId: s.id,
+                      strategyName: s.name,
+                      agentName: s.assigned_agent?.replace("Agent ", "") || "Alpha",
+                    })
+                  }
                   style={{
                     marginTop: 4,
                     padding: "10px 14px",
@@ -1246,58 +1469,99 @@ export function StrategyLabView() {
       {/* TAB 3: UNTESTED INCUBATOR */}
       {activeTab === "incubator" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            background: "#faf5ff",
-            padding: "12px 18px",
-            borderRadius: 12,
-            border: "1px solid #e9d5ff",
-            fontSize: 13,
-            color: "#6b21a8",
-            fontWeight: 700
-          }}>
-            🌱 UNTESTED INCUBATOR: Newly introduced strategies wait here. Available autonomous agents automatically prioritize and claim these candidates for live execution testing.
+          <div
+            style={{
+              background: "#faf5ff",
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #e9d5ff",
+              fontSize: 13,
+              color: "#6b21a8",
+              fontWeight: 700,
+            }}
+          >
+            🌱 UNTESTED INCUBATOR: Newly introduced strategies wait here. Available autonomous agents automatically
+            prioritize and claim these candidates for live execution testing.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
             {data?.untested_incubator.map((s) => (
-              <div key={s.id} style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: "20px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12
-              }}>
+              <div
+                key={s.id}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  padding: "20px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#9333ea", background: "#f3e8ff", padding: "2px 8px", borderRadius: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#9333ea",
+                        background: "#f3e8ff",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                      }}
+                    >
                       🆕 QUEUED IN INCUBATOR
                     </span>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 6 }}>
-                      {s.name}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 6 }}>{s.name}</div>
                   </div>
-                  <span style={{ background: "#f1f5f9", color: "#475569", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                  <span
+                    style={{
+                      background: "#f1f5f9",
+                      color: "#475569",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
                     {s.archetype}
                   </span>
                 </div>
 
                 <div style={{ fontSize: 12, color: "#475569" }}>{s.description}</div>
 
-                <div style={{ background: "#fdf4ff", padding: "10px", borderRadius: 8, border: "1px solid #f5d0fe", fontSize: 12, color: "#86198f" }}>
+                <div
+                  style={{
+                    background: "#fdf4ff",
+                    padding: "10px",
+                    borderRadius: 8,
+                    border: "1px solid #f5d0fe",
+                    fontSize: 12,
+                    color: "#86198f",
+                  }}
+                >
                   🔬 Initial Hypothesis: {s.hypothesis}
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: "1px solid #f1f5f9",
+                    paddingTop: 10,
+                  }}
+                >
                   <span style={{ fontSize: 11, color: "#64748b" }}>Queued for agent claim</span>
                   <button
                     type="button"
-                    onClick={() => handleOpenTestModal({
-                      strategyId: s.id,
-                      strategyName: s.name,
-                    })}
+                    onClick={() =>
+                      handleOpenTestModal({
+                        strategyId: s.id,
+                        strategyName: s.name,
+                      })
+                    }
                     style={{
                       padding: "6px 12px",
                       borderRadius: 8,
@@ -1325,50 +1589,91 @@ export function StrategyLabView() {
       {/* TAB 4: ELIMINATED ARCHIVE */}
       {activeTab === "eliminated" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            background: "#fef2f2",
-            padding: "12px 18px",
-            borderRadius: 12,
-            border: "1px solid #fecaca",
-            fontSize: 13,
-            color: "#991b1b",
-            fontWeight: 700
-          }}>
-            🛡️ ZERO COMPROMISE RISK ELIMINATION: Strategies that fail live market execution (negative PnL, degrading win rate, or slippage stress) are immediately pruned from the store.
+          <div
+            style={{
+              background: "#fef2f2",
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #fecaca",
+              fontSize: 13,
+              color: "#991b1b",
+              fontWeight: 700,
+            }}
+          >
+            🛡️ ZERO COMPROMISE RISK ELIMINATION: Strategies that fail live market execution (negative PnL, degrading win
+            rate, or slippage stress) are immediately pruned from the store.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
             {data?.eliminated_archive.map((s) => (
-              <div key={s.id} style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: "20px",
-                border: "1px solid #fecaca",
-                boxShadow: "0 4px 12px rgba(220, 38, 38, 0.04)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12
-              }}>
+              <div
+                key={s.id}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  padding: "20px",
+                  border: "1px solid #fecaca",
+                  boxShadow: "0 4px 12px rgba(220, 38, 38, 0.04)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 800,
+                        color: "#dc2626",
+                        background: "#fee2e2",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                      }}
+                    >
                       ❌ PRUNED FROM STORE
                     </span>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 6 }}>
-                      {s.name}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", marginTop: 6 }}>{s.name}</div>
                   </div>
-                  <span style={{ background: "#f1f5f9", color: "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                  <span
+                    style={{
+                      background: "#f1f5f9",
+                      color: "#64748b",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
                     {s.archetype}
                   </span>
                 </div>
 
                 {/* Rejection Diagnostics */}
-                <div style={{ background: "#fef2f2", padding: "10px", borderRadius: 8, border: "1px solid #fca5a5", fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    padding: "10px",
+                    borderRadius: 8,
+                    border: "1px solid #fca5a5",
+                    fontSize: 12,
+                    color: "#991b1b",
+                    fontWeight: 600,
+                  }}
+                >
                   ⚠️ {s.rejection_reason || "Eliminated due to negative expectancy under live tick spreads."}
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, background: "#f8fafc", padding: "8px", borderRadius: 8 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: 8,
+                    background: "#f8fafc",
+                    padding: "8px",
+                    borderRadius: 8,
+                  }}
+                >
                   <div>
                     <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>NET LOSS</div>
                     <div style={{ fontSize: 14, fontWeight: 900, color: "#dc2626" }}>₹{s.net_pnl.toFixed(1)}</div>
@@ -1398,10 +1703,10 @@ export function StrategyLabView() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 6
+                    gap: 6,
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#e2e8f0"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#f8fafc"}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#e2e8f0")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#f8fafc")}
                 >
                   <span>🔄</span>
                   <span>Re-test Strategy in Incubator</span>
@@ -1415,19 +1720,30 @@ export function StrategyLabView() {
       {/* TAB 5: LIVE STRATEGY LEDGER */}
       {activeTab === "ledger" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            background: "#f8fafc",
-            padding: "12px 18px",
-            borderRadius: 12,
-            border: "1px solid #e2e8f0",
-            fontSize: 13,
-            color: "#334155",
-            fontWeight: 700
-          }}>
-            📜 REAL-TIME STRATEGY LEDGER: Complete chronological record of every candidate introduced, test trade settled, strategy promoted to Best Store, and failure elimination.
+          <div
+            style={{
+              background: "#f8fafc",
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              fontSize: 13,
+              color: "#334155",
+              fontWeight: 700,
+            }}
+          >
+            📜 REAL-TIME STRATEGY LEDGER: Complete chronological record of every candidate introduced, test trade
+            settled, strategy promoted to Best Store, and failure elimination.
           </div>
 
-          <div style={{ maxHeight: 600, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 16, background: "#ffffff" }}>
+          <div
+            style={{
+              maxHeight: 600,
+              overflowY: "auto",
+              border: "1px solid #e2e8f0",
+              borderRadius: 16,
+              background: "#ffffff",
+            }}
+          >
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
               <thead style={{ position: "sticky", top: 0, background: "#f1f5f9", zIndex: 2 }}>
                 <tr style={{ borderBottom: "2px solid #e2e8f0", color: "#475569" }}>
@@ -1451,21 +1767,46 @@ export function StrategyLabView() {
                       key={idx}
                       style={{
                         borderBottom: "1px solid #f1f5f9",
-                        background: isPromotion ? "#f0fdf4" : isElimination ? "#fef2f2" : "transparent"
+                        background: isPromotion ? "#f0fdf4" : isElimination ? "#fef2f2" : "transparent",
                       }}
                     >
-                      <td style={{ padding: "12px 14px", color: "#64748b", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                      <td
+                        style={{
+                          padding: "12px 14px",
+                          color: "#64748b",
+                          fontFamily: "monospace",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {new Date(ev.timestamp).toLocaleTimeString()}
                       </td>
                       <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                        <span style={{
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 800,
-                          background: isPromotion ? "#dcfce7" : isElimination ? "#fee2e2" : isNew ? "#f3e8ff" : isClaimed ? "#dbeafe" : "#f1f5f9",
-                          color: isPromotion ? "#15803d" : isElimination ? "#b91c1c" : isNew ? "#7e22ce" : isClaimed ? "#1d4ed8" : "#475569"
-                        }}>
+                        <span
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: isPromotion
+                              ? "#dcfce7"
+                              : isElimination
+                                ? "#fee2e2"
+                                : isNew
+                                  ? "#f3e8ff"
+                                  : isClaimed
+                                    ? "#dbeafe"
+                                    : "#f1f5f9",
+                            color: isPromotion
+                              ? "#15803d"
+                              : isElimination
+                                ? "#b91c1c"
+                                : isNew
+                                  ? "#7e22ce"
+                                  : isClaimed
+                                    ? "#1d4ed8"
+                                    : "#475569",
+                          }}
+                        >
                           {ev.event_type}
                         </span>
                       </td>
@@ -1476,20 +1817,24 @@ export function StrategyLabView() {
                       <td style={{ padding: "12px 14px", color: "#334155", fontWeight: 600 }}>
                         {ev.agent || "System"}
                       </td>
-                      <td style={{ padding: "12px 14px", fontWeight: 800, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                      <td
+                        style={{ padding: "12px 14px", fontWeight: 800, fontFamily: "monospace", whiteSpace: "nowrap" }}
+                      >
                         {ev.pnl_change !== undefined ? (
                           <span style={{ color: ev.pnl_change >= 0 ? "#16a34a" : "#dc2626" }}>
-                            {ev.pnl_change >= 0 ? "+" : ""}{ev.currency_symbol || "₹"}{ev.pnl_change.toFixed(2)}
+                            {ev.pnl_change >= 0 ? "+" : ""}
+                            {ev.currency_symbol || "₹"}
+                            {ev.pnl_change.toFixed(2)}
                           </span>
                         ) : ev.net_pnl !== undefined ? (
                           <span style={{ color: ev.net_pnl >= 0 ? "#16a34a" : "#dc2626" }}>
                             {ev.net_pnl >= 0 ? "+" : ""}₹{ev.net_pnl.toFixed(1)}
                           </span>
-                        ) : "—"}
+                        ) : (
+                          "—"
+                        )}
                       </td>
-                      <td style={{ padding: "12px 14px", color: "#475569", fontSize: 12 }}>
-                        {ev.details}
-                      </td>
+                      <td style={{ padding: "12px 14px", color: "#475569", fontSize: 12 }}>{ev.details}</td>
                     </tr>
                   );
                 })}
@@ -1533,9 +1878,25 @@ export function StrategyLabView() {
             }}
           >
             {/* Modal Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #334155", paddingBottom: 14 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                borderBottom: "1px solid #334155",
+                paddingBottom: 14,
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 32, background: "#1e293b", padding: "8px", borderRadius: 14, border: "1px solid #3b82f6" }}>
+                <span
+                  style={{
+                    fontSize: 32,
+                    background: "#1e293b",
+                    padding: "8px",
+                    borderRadius: 14,
+                    border: "1px solid #3b82f6",
+                  }}
+                >
                   🚀
                 </span>
                 <div>
@@ -1543,7 +1904,16 @@ export function StrategyLabView() {
                     <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#ffffff" }}>
                       Test in Live Market: Agent {testModal.agentName}
                     </h3>
-                    <span style={{ background: "#2563eb", color: "#dbeafe", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800 }}>
+                    <span
+                      style={{
+                        background: "#2563eb",
+                        color: "#dbeafe",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
                       {testModal.strategyId}
                     </span>
                   </div>
@@ -1555,7 +1925,19 @@ export function StrategyLabView() {
               <button
                 type="button"
                 onClick={() => setTestModal(null)}
-                style={{ background: "#1e293b", border: "1px solid #475569", color: "#cbd5e1", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{
+                  background: "#1e293b",
+                  border: "1px solid #475569",
+                  color: "#cbd5e1",
+                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  cursor: "pointer",
+                  fontSize: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 ✕
               </button>
@@ -1576,9 +1958,7 @@ export function StrategyLabView() {
                 }}
               >
                 <div style={{ fontSize: 28 }}>🎉</div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: "#4ade80" }}>
-                  {deployedSuccess}
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#4ade80" }}>{deployedSuccess}</div>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 6 }}>
                   <button
                     type="button"
@@ -1637,7 +2017,7 @@ export function StrategyLabView() {
                         <button
                           key={mkt.id}
                           type="button"
-                          onClick={() => setTestModal((prev) => prev ? { ...prev, market: mkt.id } : null)}
+                          onClick={() => setTestModal((prev) => (prev ? { ...prev, market: mkt.id } : null))}
                           style={{
                             background: isSel ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" : "#1e293b",
                             border: isSel ? "2px solid #60a5fa" : "1px solid #334155",
@@ -1650,7 +2030,9 @@ export function StrategyLabView() {
                           }}
                         >
                           <div style={{ fontWeight: 900, fontSize: 13 }}>{mkt.label}</div>
-                          <div style={{ fontSize: 10, color: isSel ? "#e0f2fe" : "#94a3b8", marginTop: 2 }}>{mkt.sub}</div>
+                          <div style={{ fontSize: 10, color: isSel ? "#e0f2fe" : "#94a3b8", marginTop: 2 }}>
+                            {mkt.sub}
+                          </div>
                         </button>
                       );
                     })}
@@ -1672,7 +2054,7 @@ export function StrategyLabView() {
                       <button
                         key={pVal}
                         type="button"
-                        onClick={() => setTestModal((prev) => prev ? { ...prev, principal: pVal } : null)}
+                        onClick={() => setTestModal((prev) => (prev ? { ...prev, principal: pVal } : null))}
                         style={{
                           flex: 1,
                           background: testModal.principal === pVal ? "#15803d" : "#1e293b",
@@ -1696,7 +2078,7 @@ export function StrategyLabView() {
                     value={testModal.principal}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || 100000;
-                      setTestModal((prev) => prev ? { ...prev, principal: val } : null);
+                      setTestModal((prev) => (prev ? { ...prev, principal: val } : null));
                     }}
                     style={{
                       background: "#0f172a",
@@ -1724,7 +2106,7 @@ export function StrategyLabView() {
                         <button
                           key={lVal}
                           type="button"
-                          onClick={() => setTestModal((prev) => prev ? { ...prev, allowedLotSize: lVal } : null)}
+                          onClick={() => setTestModal((prev) => (prev ? { ...prev, allowedLotSize: lVal } : null))}
                           style={{
                             flex: 1,
                             background: testModal.allowedLotSize === lVal ? "#0284c7" : "#1e293b",
@@ -1749,7 +2131,7 @@ export function StrategyLabView() {
                       value={testModal.allowedLotSize}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0.1;
-                        setTestModal((prev) => prev ? { ...prev, allowedLotSize: val } : null);
+                        setTestModal((prev) => (prev ? { ...prev, allowedLotSize: val } : null));
                       }}
                       style={{
                         background: "#0f172a",
@@ -1773,7 +2155,9 @@ export function StrategyLabView() {
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         type="button"
-                        onClick={() => setTestModal((prev) => prev ? { ...prev, horizon: "TACTICAL_INTRADAY" } : null)}
+                        onClick={() =>
+                          setTestModal((prev) => (prev ? { ...prev, horizon: "TACTICAL_INTRADAY" } : null))
+                        }
                         style={{
                           flex: 1,
                           padding: "8px",
@@ -1790,7 +2174,7 @@ export function StrategyLabView() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setTestModal((prev) => prev ? { ...prev, horizon: "LONG_TERM_SWING" } : null)}
+                        onClick={() => setTestModal((prev) => (prev ? { ...prev, horizon: "LONG_TERM_SWING" } : null))}
                         style={{
                           flex: 1,
                           padding: "8px",
@@ -1807,7 +2191,9 @@ export function StrategyLabView() {
                       </button>
                     </div>
                     <div style={{ fontSize: 10, color: "#94a3b8" }}>
-                      {testModal.horizon === "LONG_TERM_SWING" ? "60 hold cycles, asymmetric target" : "15 hold cycles, fast velocity"}
+                      {testModal.horizon === "LONG_TERM_SWING"
+                        ? "60 hold cycles, asymmetric target"
+                        : "15 hold cycles, fast velocity"}
                     </div>
                   </div>
                 </div>
@@ -1822,13 +2208,18 @@ export function StrategyLabView() {
                     onChange={(e) => {
                       const newName = e.target.value;
                       const ag = agentsState[newName];
-                      setTestModal((prev) => prev ? {
-                        ...prev,
-                        agentName: newName,
-                        principal: ag?.max_principal ?? prev.principal,
-                        allowedLotSize: ag?.guidelines?.allowed_lot_size ?? prev.allowedLotSize,
-                        horizon: (newName === "Echo" || newName === "Juliet") ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY",
-                      } : null);
+                      setTestModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              agentName: newName,
+                              principal: ag?.max_principal ?? prev.principal,
+                              allowedLotSize: ag?.guidelines?.allowed_lot_size ?? prev.allowedLotSize,
+                              horizon:
+                                newName === "Echo" || newName === "Juliet" ? "LONG_TERM_SWING" : "TACTICAL_INTRADAY",
+                            }
+                          : null,
+                      );
                     }}
                     style={{
                       background: "#0f172a",
@@ -1845,7 +2236,9 @@ export function StrategyLabView() {
                       const ag = agentsState[name];
                       return (
                         <option key={name} value={name}>
-                          {ag ? `${ag.avatar} Agent ${ag.name} · ${ag.specialization} (₹${((ag.max_principal || 100000) / 100000).toFixed(1)}L)` : `Agent ${name}`}
+                          {ag
+                            ? `${ag.avatar} Agent ${ag.name} · ${ag.specialization} (₹${((ag.max_principal || 100000) / 100000).toFixed(1)}L)`
+                            : `Agent ${name}`}
                         </option>
                       );
                     })}
@@ -1891,7 +2284,11 @@ export function StrategyLabView() {
                     }}
                   >
                     <span>🚀</span>
-                    <span>{deployingToLive ? "Deploying to Live Market..." : `Run in Live Market (Agent ${testModal.agentName})`}</span>
+                    <span>
+                      {deployingToLive
+                        ? "Deploying to Live Market..."
+                        : `Run in Live Market (Agent ${testModal.agentName})`}
+                    </span>
                   </button>
                 </div>
               </div>

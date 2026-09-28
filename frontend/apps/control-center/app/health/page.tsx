@@ -40,7 +40,9 @@ export default function HealthPage() {
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: isLive ? "#166534" : isStale ? "#854d0e" : "#991b1b" }}>
+            <span
+              style={{ fontSize: 18, fontWeight: 800, color: isLive ? "#166534" : isStale ? "#854d0e" : "#991b1b" }}
+            >
               STATE: {health?.state || "NO_FEED"}
             </span>
             <span

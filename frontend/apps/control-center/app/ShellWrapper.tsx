@@ -22,7 +22,11 @@ function ShellContent({ children }: { children: ReactNode }) {
     return () => window.clearInterval(interval);
   }, [checkState]);
 
-  return <Shell systemState={systemState} sseStatus={status as SseStatus}>{children}</Shell>;
+  return (
+    <Shell systemState={systemState} sseStatus={status as SseStatus}>
+      {children}
+    </Shell>
+  );
 }
 
 export function ShellWrapper({ children }: { children: ReactNode }) {

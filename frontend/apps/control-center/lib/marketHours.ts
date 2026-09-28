@@ -1,12 +1,12 @@
 /**
  * Indian Exchange Market Hours and Session Evaluator.
- * 
+ *
  * Supports:
  * - NSE / BSE (Cash Equity, Equity Derivatives, NIFTY 50, BANKNIFTY, FINNIFTY, SENSEX)
  *   Trading Hours: Monday to Friday 09:15 to 15:30 IST.
  * - MCX (Commodities: GOLDM, SILVERM, CRUDEOIL, NATURALGAS, COPPER)
  *   Trading Hours: Monday to Friday 09:00 to 23:30 IST (extended to 23:55 IST in winter).
- * 
+ *
  * Accurately handles IST timezone conversion regardless of local browser timezone.
  */
 

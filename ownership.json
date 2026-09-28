@@ -9,20 +9,12 @@
     {
       "name": "Data / Forecast / Kronos",
       "owner_stream": "B",
-      "paths": [
-        "backend/src/ats/market/**",
-        "backend/src/ats/forecast/**",
-        "backend/src/ats/kronos_worker/**"
-      ]
+      "paths": ["backend/src/ats/market/**", "backend/src/ats/forecast/**", "backend/src/ats/kronos_worker/**"]
     },
     {
       "name": "Execution / Portfolio / Events",
       "owner_stream": "C",
-      "paths": [
-        "backend/src/ats/execution/**",
-        "backend/src/ats/portfolio/**",
-        "backend/src/ats/events/**"
-      ]
+      "paths": ["backend/src/ats/execution/**", "backend/src/ats/portfolio/**", "backend/src/ats/events/**"]
     },
     {
       "name": "Intelligence",

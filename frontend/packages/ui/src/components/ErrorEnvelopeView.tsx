@@ -8,14 +8,20 @@ export interface ErrorEnvelopeShape {
 export function ErrorEnvelopeView({ envelope, status }: { envelope: ErrorEnvelopeShape | null; status?: number }) {
   if (!envelope) {
     return (
-      <div role="alert" style={{ padding: 12, border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8, color: "#7f1d1d" }}>
+      <div
+        role="alert"
+        style={{ padding: 12, border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8, color: "#7f1d1d" }}
+      >
         <strong>Request failed{status ? ` (${status})` : ""}</strong>
         <div style={{ fontSize: 13, marginTop: 4 }}>No typed error envelope returned.</div>
       </div>
     );
   }
   return (
-    <div role="alert" style={{ padding: 12, border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8, color: "#7f1d1d" }}>
+    <div
+      role="alert"
+      style={{ padding: 12, border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8, color: "#7f1d1d" }}
+    >
       <div style={{ fontWeight: 700 }}>
         {envelope.code} {status ? `· ${status}` : ""}
       </div>
@@ -28,7 +34,11 @@ export function ErrorEnvelopeView({ envelope, status }: { envelope: ErrorEnvelop
         <ul style={{ marginTop: 8, paddingLeft: 16, fontSize: 13 }}>
           {envelope.details.map((d: { field: string | null; issue: string }, i: number) => (
             <li key={i}>
-              {d.field ? <><code>{d.field}</code>: </> : null}
+              {d.field ? (
+                <>
+                  <code>{d.field}</code>:{" "}
+                </>
+              ) : null}
               {d.issue}
             </li>
           ))}

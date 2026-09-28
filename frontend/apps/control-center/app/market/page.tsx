@@ -72,8 +72,8 @@ export default function MarketPage() {
     prediction,
     candles,
     interval,
-    error,
-    reconnect,
+    error: _error,
+    reconnect: _reconnect,
     setInterval,
   } = useMarketFeed();
 
@@ -110,7 +110,9 @@ export default function MarketPage() {
           }));
           setStrategies(strats);
         }
-      } catch {}
+      } catch {
+        // A failed refresh keeps the previous snapshot; the 4s interval retries.
+      }
     }
     loadStrategies();
   }, []);
@@ -141,7 +143,9 @@ export default function MarketPage() {
           const c = await cRes.json();
           setCompareData(c);
         }
-      } catch {}
+      } catch {
+        // A failed refresh keeps the previous snapshot; the 4s interval retries.
+      }
     }
 
     fetchSupplementalData();
@@ -202,20 +206,36 @@ export default function MarketPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1400, margin: "0 auto" }}>
       {/* Workspace Header & Preset Bar */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        flexWrap: "wrap", gap: 12, padding: "14px 18px", background: "#ffffff",
-        border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 12,
+          padding: "14px 18px",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        }}
+      >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
               Live Market & Intelligence Terminal
             </h1>
-            <span style={{
-              fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 4,
-              background: "#dbeafe", color: "#1e40af", border: "1px solid #bfdbfe"
-            }}>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                padding: "2px 8px",
+                borderRadius: 4,
+                background: "#dbeafe",
+                color: "#1e40af",
+                border: "1px solid #bfdbfe",
+              }}
+            >
               FABRIC V2
             </span>
           </div>
@@ -229,41 +249,55 @@ export default function MarketPage() {
           <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginRight: 4 }}>
             Layout:
           </span>
-          {(["Gold Trader", "Gold Macro", "Commodity Overview", "Research Desk", "Risk Desk"] as WorkspacePreset[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => handlePresetChange(p)}
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "1px solid",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                background: activePreset === p ? "#0f172a" : "#f8fafc",
-                color: activePreset === p ? "#f8fafc" : "#475569",
-                borderColor: activePreset === p ? "#0f172a" : "#cbd5e1",
-              }}
-            >
-              {p}
-            </button>
-          ))}
+          {(["Gold Trader", "Gold Macro", "Commodity Overview", "Research Desk", "Risk Desk"] as WorkspacePreset[]).map(
+            (p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => handlePresetChange(p)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: activePreset === p ? "#0f172a" : "#f8fafc",
+                  color: activePreset === p ? "#f8fafc" : "#475569",
+                  borderColor: activePreset === p ? "#0f172a" : "#cbd5e1",
+                }}
+              >
+                {p}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
       {/* Widget Control Switcher */}
-      <div style={{
-        display: "flex", gap: 10, alignItems: "center", padding: "8px 14px",
-        background: "#f1f5f9", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#475569"
-      }}>
-        <span style={{ color: "#64748b", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.05em" }}>Widgets:</span>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          padding: "8px 14px",
+          background: "#f1f5f9",
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#475569",
+        }}
+      >
+        <span style={{ color: "#64748b", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.05em" }}>
+          Widgets:
+        </span>
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
           <input type="checkbox" checked={showChart} onChange={(e) => setShowChart(e.target.checked)} /> Chart
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-          <input type="checkbox" checked={showProbability} onChange={(e) => setShowProbability(e.target.checked)} /> Probabilities
+          <input type="checkbox" checked={showProbability} onChange={(e) => setShowProbability(e.target.checked)} />{" "}
+          Probabilities
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
           <input type="checkbox" checked={showDepth} onChange={(e) => setShowDepth(e.target.checked)} /> Level 2 Depth
@@ -275,23 +309,48 @@ export default function MarketPage() {
           <input type="checkbox" checked={showCompare} onChange={(e) => setShowCompare(e.target.checked)} /> Feed Parity
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-          <input type="checkbox" checked={showFabric} onChange={(e) => setShowFabric(e.target.checked)} /> Fabric Telemetry
+          <input type="checkbox" checked={showFabric} onChange={(e) => setShowFabric(e.target.checked)} /> Fabric
+          Telemetry
         </label>
       </div>
 
       {/* Strategy Selector Bar */}
-      <div style={{
-        display: "flex", gap: 16, alignItems: "center", padding: "12px 18px",
-        background: "#0f172a", borderRadius: 10, color: "white", flexWrap: "wrap"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          alignItems: "center",
+          padding: "12px 18px",
+          background: "#0f172a",
+          borderRadius: 10,
+          color: "white",
+          flexWrap: "wrap",
+        }}
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Active Strategy</span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#94a3b8",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+            }}
+          >
+            Active Strategy
+          </span>
           <select
             value={selectedStrategy}
             onChange={(e) => setSelectedStrategy(e.target.value)}
             style={{
-              background: "#1e293b", color: "#f1f5f9", border: "1px solid #334155",
-              borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, minWidth: 260
+              background: "#1e293b",
+              color: "#f1f5f9",
+              border: "1px solid #334155",
+              borderRadius: 6,
+              padding: "6px 12px",
+              fontSize: 13,
+              fontWeight: 600,
+              minWidth: 260,
             }}
           >
             <option value="A04_PROBABILISTIC">A04 Probabilistic (Default)</option>
@@ -361,7 +420,15 @@ export default function MarketPage() {
                   <span style={{ fontWeight: 700 }}>{(probLong * 100).toFixed(1)}%</span>
                 </div>
                 <div style={{ height: 8, borderRadius: 4, background: "#f1f5f9", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${probLong * 100}%`, background: "#16a34a", borderRadius: 4, transition: "width 0.3s" }} />
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${probLong * 100}%`,
+                      background: "#16a34a",
+                      borderRadius: 4,
+                      transition: "width 0.3s",
+                    }}
+                  />
                 </div>
               </div>
               <div>
@@ -370,15 +437,30 @@ export default function MarketPage() {
                   <span style={{ fontWeight: 700 }}>{(probShort * 100).toFixed(1)}%</span>
                 </div>
                 <div style={{ height: 8, borderRadius: 4, background: "#f1f5f9", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${probShort * 100}%`, background: "#dc2626", borderRadius: 4, transition: "width 0.3s" }} />
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${probShort * 100}%`,
+                      background: "#dc2626",
+                      borderRadius: 4,
+                      transition: "width 0.3s",
+                    }}
+                  />
                 </div>
               </div>
-              <div style={{
-                background: "#f8fafc", padding: "8px 10px", borderRadius: 6,
-                border: "1px solid #e2e8f0", fontSize: 11, color: "#64748b"
-              }}>
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  fontSize: 11,
+                  color: "#64748b",
+                }}
+              >
                 <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>PROBABILITY GOVERNANCE RULE:</div>
-                Probabilities strictly derived from statistical walk-forward calibration registry (N=1,240 samples). Win probabilities are <strong>never</strong> fabricated or estimated by LLMs.
+                Probabilities strictly derived from statistical walk-forward calibration registry (N=1,240 samples). Win
+                probabilities are <strong>never</strong> fabricated or estimated by LLMs.
               </div>
             </div>
           </Card>
@@ -388,7 +470,14 @@ export default function MarketPage() {
         {showDepth && (
           <Card title="Market Depth (Level 2 OrderBook)">
             <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 4 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  borderBottom: "1px solid #e2e8f0",
+                  paddingBottom: 4,
+                }}
+              >
                 <span style={{ fontWeight: 700, color: "#16a34a" }}>BIDS (Qty / Price)</span>
                 <span style={{ fontWeight: 700, color: "#dc2626" }}>ASKS (Price / Qty)</span>
               </div>
@@ -397,22 +486,57 @@ export default function MarketPage() {
                   {depthData.bids.slice(0, 5).map((b, idx) => {
                     const ask = depthData.asks[idx] || { price: 0, quantity: 0, orders: 0 };
                     return (
-                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontFamily: "monospace" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", background: "#f0fdf4", padding: "2px 6px", borderRadius: 4 }}>
+                      <div
+                        key={idx}
+                        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontFamily: "monospace" }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            background: "#f0fdf4",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                          }}
+                        >
                           <span style={{ color: "#16a34a", fontWeight: 700 }}>{b.quantity}</span>
                           <span style={{ fontWeight: 600 }}>₹{fmtNum(b.price, 2)}</span>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", background: "#fef2f2", padding: "2px 6px", borderRadius: 4 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            background: "#fef2f2",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                          }}
+                        >
                           <span style={{ fontWeight: 600 }}>₹{fmtNum(ask.price, 2)}</span>
                           <span style={{ color: "#dc2626", fontWeight: 700 }}>{ask.quantity}</span>
                         </div>
                       </div>
                     );
                   })}
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", marginTop: 6, paddingTop: 4, borderTop: "1px solid #f1f5f9" }}>
-                    <span>Total Bid Qty: <strong>{depthData.total_bid_quantity}</strong></span>
-                    <span>Spread: <strong>₹{fmtNum(depthData.spread, 2)}</strong></span>
-                    <span>Total Ask Qty: <strong>{depthData.total_ask_quantity}</strong></span>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      color: "#64748b",
+                      marginTop: 6,
+                      paddingTop: 4,
+                      borderTop: "1px solid #f1f5f9",
+                    }}
+                  >
+                    <span>
+                      Total Bid Qty: <strong>{depthData.total_bid_quantity}</strong>
+                    </span>
+                    <span>
+                      Spread: <strong>₹{fmtNum(depthData.spread, 2)}</strong>
+                    </span>
+                    <span>
+                      Total Ask Qty: <strong>{depthData.total_ask_quantity}</strong>
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -430,17 +554,28 @@ export default function MarketPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 6 }}>
                 {intelData?.items.map((item) => (
-                  <div key={item.symbol} style={{
-                    background: "#f8fafc", padding: "6px 8px", borderRadius: 6,
-                    border: "1px solid #e2e8f0", display: "flex", flexDirection: "column"
-                  }}>
+                  <div
+                    key={item.symbol}
+                    style={{
+                      background: "#f8fafc",
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
                     <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>{item.symbol}</span>
                     <span style={{ fontSize: 13, fontWeight: 800, fontFamily: "monospace", color: "#0f172a" }}>
-                      {item.unit === "$" ? `$${fmtNum(item.last_price, 2)}` :
-                       item.unit === "pts" ? fmtNum(item.last_price, 2) :
-                       item.unit === "%" ? `${fmtNum(item.last_price, 2)}%` :
-                       item.unit === "INR" ? `₹${fmtNum(item.last_price, 2)}` :
-                       fmtNum(item.last_price, 2)}
+                      {item.unit === "$"
+                        ? `$${fmtNum(item.last_price, 2)}`
+                        : item.unit === "pts"
+                          ? fmtNum(item.last_price, 2)
+                          : item.unit === "%"
+                            ? `${fmtNum(item.last_price, 2)}%`
+                            : item.unit === "INR"
+                              ? `₹${fmtNum(item.last_price, 2)}`
+                              : fmtNum(item.last_price, 2)}
                     </span>
                     <span style={{ fontSize: 9, color: "#94a3b8" }}>{item.authority_class}</span>
                   </div>
@@ -455,13 +590,29 @@ export default function MarketPage() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {intelData.events.slice(0, 2).map((ev, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", background: "#f1f5f9", padding: "4px 8px", borderRadius: 4 }}>
-                        <span style={{ fontWeight: 600 }}>{ev.event} ({ev.country})</span>
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                          background: ev.impact === "HIGH" ? "#fee2e2" : "#fef3c7",
-                          color: ev.impact === "HIGH" ? "#991b1b" : "#92400e"
-                        }}>
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          background: "#f1f5f9",
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>
+                          {ev.event} ({ev.country})
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "1px 6px",
+                            borderRadius: 4,
+                            background: ev.impact === "HIGH" ? "#fee2e2" : "#fef3c7",
+                            color: ev.impact === "HIGH" ? "#991b1b" : "#92400e",
+                          }}
+                        >
                           {ev.impact}
                         </span>
                       </div>
@@ -499,10 +650,15 @@ export default function MarketPage() {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "#64748b" }}>Arbitrage Spread Check</span>
-                    <span style={{
-                      fontWeight: 700, padding: "2px 6px", borderRadius: 4,
-                      background: "#dcfce7", color: "#166534"
-                    }}>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "#dcfce7",
+                        color: "#166534",
+                      }}
+                    >
                       {compareData.arbitrage_spread_check}
                     </span>
                   </div>
@@ -511,9 +667,7 @@ export default function MarketPage() {
                   </div>
                 </>
               ) : (
-                <div style={{ color: "#94a3b8", fontStyle: "italic" }}>
-                  Calculating parity diagnostics...
-                </div>
+                <div style={{ color: "#94a3b8", fontStyle: "italic" }}>Calculating parity diagnostics...</div>
               )}
             </div>
           </Card>
@@ -538,8 +692,7 @@ export default function MarketPage() {
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#6b7280" }}>Dropped (Dup / OOO / Stale)</span>
                 <span style={{ fontFamily: "monospace" }}>
-                  {health?.dropped_duplicate ?? 0} / {health?.dropped_out_of_order ?? 0} /{" "}
-                  {health?.dropped_stale ?? 0}
+                  {health?.dropped_duplicate ?? 0} / {health?.dropped_out_of_order ?? 0} / {health?.dropped_stale ?? 0}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -548,9 +701,7 @@ export default function MarketPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#6b7280" }}>Freshness State</span>
-                <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#16a34a" }}>
-                  STREAMING / LIVE
-                </span>
+                <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#16a34a" }}>STREAMING / LIVE</span>
               </div>
             </div>
           </Card>

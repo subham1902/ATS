@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules
+.next
+dist
+out
+coverage
+
+# Generated lockfiles: never reformat these.
+pnpm-lock.yaml
+uv.lock
+
+# Machine-consumed data and fixtures.
+#
+# These are parsed by tests and several are hashed for provenance, so their
+# bytes are part of the contract. Style is irrelevant here; a reformat would
+# silently change digests and golden comparisons.
+tests/**/*.json
+backend/src/ats/market/fixtures/*.json
+data/**/*.json

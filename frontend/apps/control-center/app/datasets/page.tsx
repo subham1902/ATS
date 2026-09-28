@@ -40,7 +40,7 @@ export interface DatasetItem {
 export default function DatasetsPage() {
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -118,11 +118,7 @@ export default function DatasetsPage() {
 
     let startIdx = 0;
     const firstLineLower = lines[0].toLowerCase();
-    if (
-      firstLineLower.includes("time") ||
-      firstLineLower.includes("date") ||
-      firstLineLower.includes("open")
-    ) {
+    if (firstLineLower.includes("time") || firstLineLower.includes("date") || firstLineLower.includes("open")) {
       startIdx = 1;
     }
 
@@ -130,11 +126,7 @@ export default function DatasetsPage() {
       const line = lines[i].trim();
       if (!line) continue;
 
-      const parts = line.includes("\t")
-        ? line.split("\t")
-        : line.includes(",")
-        ? line.split(",")
-        : line.split(/\s+/);
+      const parts = line.includes("\t") ? line.split("\t") : line.includes(",") ? line.split(",") : line.split(/\s+/);
 
       if (parts.length < 5) {
         errors.push(`Line ${i + 1}: expected at least 5 columns (time, open, high, low, close)`);
@@ -181,7 +173,10 @@ export default function DatasetsPage() {
     if (!file) return;
 
     if (!feederId) {
-      const baseName = file.name.replace(/\.[^/.]+$/, "").toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+      const baseName = file.name
+        .replace(/\.[^/.]+$/, "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9_]/g, "_");
       setFeederId(baseName);
       setFeederName(file.name);
     }
@@ -229,7 +224,7 @@ export default function DatasetsPage() {
         throw new Error(err.detail || "Failed to create dataset");
       }
 
-      const data = await res.json();
+      const _data = await res.json();
       setActionStatus(`✨ Successfully ingested and proved dataset '${id}' with ${parsedPreview.validCount} bars!`);
       setShowFeeder(false);
       setRawText("");
@@ -248,7 +243,9 @@ export default function DatasetsPage() {
 
   // Delete Dataset via DELETE /v1/datasets/{id}
   const handleDeleteDataset = async (id: string) => {
-    if (!confirm(`Are you sure you want to permanently delete dataset '${id}'? This will remove all files from disk.`)) {
+    if (
+      !confirm(`Are you sure you want to permanently delete dataset '${id}'? This will remove all files from disk.`)
+    ) {
       return;
     }
 
@@ -318,8 +315,10 @@ export default function DatasetsPage() {
         throw new Error(err.detail || "Merge failed");
       }
 
-      const data = await res.json();
-      setActionStatus(`🔗 Successfully merged ${selectedForMerge.length} datasets into '${targetId}' with immediate proving!`);
+      const _data = await res.json();
+      setActionStatus(
+        `🔗 Successfully merged ${selectedForMerge.length} datasets into '${targetId}' with immediate proving!`,
+      );
       setShowMerger(false);
       setSelectedForMerge([]);
       setMergeTargetId("");
@@ -369,7 +368,9 @@ export default function DatasetsPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 1280, margin: "0 auto", paddingBottom: 40 }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 1280, margin: "0 auto", paddingBottom: 40 }}
+    >
       {/* 1. TOP COMMAND HEADER & CONTROL RIBBON */}
       <div
         style={{
@@ -387,7 +388,15 @@ export default function DatasetsPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 32, background: "rgba(59, 130, 246, 0.2)", padding: "10px 14px", borderRadius: 14, border: "1px solid #60a5fa" }}>
+          <span
+            style={{
+              fontSize: 32,
+              background: "rgba(59, 130, 246, 0.2)",
+              padding: "10px 14px",
+              borderRadius: 14,
+              border: "1px solid #60a5fa",
+            }}
+          >
             💾
           </span>
           <div>
@@ -423,7 +432,8 @@ export default function DatasetsPage() {
               </span>
             </div>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
-              Dynamic market corpora configuration: Add, delete, merge, and certify dataset integrity immediately in the system.
+              Dynamic market corpora configuration: Add, delete, merge, and certify dataset integrity immediately in the
+              system.
             </p>
           </div>
         </div>
@@ -476,7 +486,11 @@ export default function DatasetsPage() {
               alignItems: "center",
               gap: 6,
             }}
-            title={datasets.length < 2 ? "Requires at least 2 datasets to merge" : "Merge multiple datasets into a synthesized continuous series"}
+            title={
+              datasets.length < 2
+                ? "Requires at least 2 datasets to merge"
+                : "Merge multiple datasets into a synthesized continuous series"
+            }
           >
             <span>🔗 Merge Datasets</span>
             {selectedForMerge.length > 0 && (
@@ -508,7 +522,14 @@ export default function DatasetsPage() {
           <span>{actionStatus}</span>
           <button
             onClick={() => setActionStatus(null)}
-            style={{ background: "none", border: "none", color: "#16a34a", cursor: "pointer", fontSize: 15, fontWeight: 900 }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#16a34a",
+              cursor: "pointer",
+              fontSize: 15,
+              fontWeight: 900,
+            }}
           >
             ✕
           </button>
@@ -533,7 +554,14 @@ export default function DatasetsPage() {
           <span>❌ {actionError}</span>
           <button
             onClick={() => setActionError(null)}
-            style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 15, fontWeight: 900 }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#dc2626",
+              cursor: "pointer",
+              fontSize: 15,
+              fontWeight: 900,
+            }}
           >
             ✕
           </button>
@@ -555,13 +583,22 @@ export default function DatasetsPage() {
             boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
             <div>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#ffffff" }}>
                 📥 Dynamic Dataset Ingestion & Proving Console
               </h2>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                Upload or paste fresh historical market candles. The engine verifies geometry, chronology, and creates split manifests.
+                Upload or paste fresh historical market candles. The engine verifies geometry, chronology, and creates
+                split manifests.
               </p>
             </div>
             {/* Quick Sample Presets */}
@@ -613,7 +650,16 @@ export default function DatasetsPage() {
                 placeholder="e.g. MCX_GOLDM_5M_OCT26"
                 value={feederId}
                 onChange={(e) => setFeederId(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_"))}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12, fontWeight: 800 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
               />
             </div>
             <div>
@@ -625,7 +671,15 @@ export default function DatasetsPage() {
                 placeholder="e.g. MCX Gold Mini Oct 2026 Feed"
                 value={feederName}
                 onChange={(e) => setFeederName(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                }}
               />
             </div>
             <div>
@@ -637,7 +691,15 @@ export default function DatasetsPage() {
                 placeholder="e.g. MCX:GOLDM FUT"
                 value={feederSymbol}
                 onChange={(e) => setFeederSymbol(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                }}
               />
             </div>
             <div>
@@ -647,7 +709,16 @@ export default function DatasetsPage() {
               <select
                 value={feederTimeframe}
                 onChange={(e) => setFeederTimeframe(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12, fontWeight: 800 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
               >
                 <option value="1s">1s (Tick Aggregation)</option>
                 <option value="5s">5s (Sub-Minute Micro)</option>
@@ -665,7 +736,15 @@ export default function DatasetsPage() {
               <select
                 value={feederAuthority}
                 onChange={(e) => setFeederAuthority(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                }}
               >
                 <option value="ADMITTED_OPERATOR_FEED">ADMITTED_OPERATOR_FEED (Verified)</option>
                 <option value="VERIFIED_PRODUCTION">VERIFIED_PRODUCTION (Production Safe)</option>
@@ -692,7 +771,18 @@ export default function DatasetsPage() {
               style={{ display: "none" }}
               id="dataset-file-input"
             />
-            <label htmlFor="dataset-file-input" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, color: "#38bdf8", fontWeight: 800, fontSize: 13 }}>
+            <label
+              htmlFor="dataset-file-input"
+              style={{
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                color: "#38bdf8",
+                fontWeight: 800,
+                fontSize: 13,
+              }}
+            >
               📁 Click to Browse or Drop CSV File (time, open, high, low, close, volume)
             </label>
           </div>
@@ -704,7 +794,13 @@ export default function DatasetsPage() {
                 OR PASTE RAW CSV / TABULAR DATA DIRECTLY:
               </label>
               {parsedPreview && (
-                <span style={{ fontSize: 11, color: parsedPreview.ohlcViolations === 0 ? "#4ade80" : "#f87171", fontWeight: 800 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: parsedPreview.ohlcViolations === 0 ? "#4ade80" : "#f87171",
+                    fontWeight: 800,
+                  }}
+                >
                   Parsed {parsedPreview.validCount} rows ({parsedPreview.ohlcViolations} OHLC violations)
                 </span>
               )}
@@ -729,8 +825,25 @@ export default function DatasetsPage() {
           </div>
 
           {/* Actions & Immediate Proving Checkbox */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cbd5e1", cursor: "pointer" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                color: "#cbd5e1",
+                cursor: "pointer",
+              }}
+            >
               <input
                 type="checkbox"
                 checked={autoProve}
@@ -738,14 +851,25 @@ export default function DatasetsPage() {
                 style={{ width: 16, height: 16, cursor: "pointer" }}
               />
               <span style={{ fontWeight: 800, color: "#38bdf8" }}>Immediately Prove in System upon Ingestion</span>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>(Validates chronology, invariants, and issues proof certificate)</span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                (Validates chronology, invariants, and issues proof certificate)
+              </span>
             </label>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setShowFeeder(false)}
-                style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#cbd5e1", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#cbd5e1",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
               >
                 Cancel
               </button>
@@ -792,7 +916,8 @@ export default function DatasetsPage() {
               🔗 Dynamic Dataset Merging Studio
             </h2>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
-              Synthesize 2 or more datasets into a unified, continuous series with automatic timestamp sorting, deduplication, and immediate proving.
+              Synthesize 2 or more datasets into a unified, continuous series with automatic timestamp sorting,
+              deduplication, and immediate proving.
             </p>
           </div>
 
@@ -856,7 +981,16 @@ export default function DatasetsPage() {
                 placeholder="e.g. MCX_GOLDM_SYNTHESIZED_FULL"
                 value={mergeTargetId}
                 onChange={(e) => setMergeTargetId(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_"))}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12, fontWeight: 800 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
               />
             </div>
             <div>
@@ -868,7 +1002,15 @@ export default function DatasetsPage() {
                 placeholder="e.g. Synthesized Full Series"
                 value={mergeTargetName}
                 onChange={(e) => setMergeTargetName(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                }}
               />
             </div>
             <div>
@@ -878,7 +1020,16 @@ export default function DatasetsPage() {
               <select
                 value={mergeStrategy}
                 onChange={(e) => setMergeStrategy(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#ffffff", fontSize: 12, fontWeight: 800 }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
               >
                 <option value="CHRONOLOGICAL">Strict Chronological Sort & Stitch</option>
                 <option value="OVERLAY">Priority Overlay (First Source Baseline)</option>
@@ -886,8 +1037,25 @@ export default function DatasetsPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cbd5e1", cursor: "pointer" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                color: "#cbd5e1",
+                cursor: "pointer",
+              }}
+            >
               <input
                 type="checkbox"
                 checked={mergeDeduplicate}
@@ -895,14 +1063,25 @@ export default function DatasetsPage() {
                 style={{ width: 16, height: 16, cursor: "pointer" }}
               />
               <span style={{ fontWeight: 800, color: "#c084fc" }}>Deduplicate Identical Timestamps</span>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>(Prevents duplicate bars across overlapping datasets)</span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                (Prevents duplicate bars across overlapping datasets)
+              </span>
             </label>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setShowMerger(false)}
-                style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#cbd5e1", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #475569",
+                  background: "#1e293b",
+                  color: "#cbd5e1",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
               >
                 Cancel
               </button>
@@ -914,7 +1093,10 @@ export default function DatasetsPage() {
                   padding: "8px 20px",
                   borderRadius: 8,
                   border: "none",
-                  background: isMerging || selectedForMerge.length < 2 ? "#475569" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                  background:
+                    isMerging || selectedForMerge.length < 2
+                      ? "#475569"
+                      : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
                   color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 900,
@@ -945,11 +1127,10 @@ export default function DatasetsPage() {
           }}
         >
           <span style={{ fontSize: 44 }}>✨</span>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
-            Fresh Clean Dataset Canvas
-          </h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#0f172a" }}>Fresh Clean Dataset Canvas</h2>
           <p style={{ margin: 0, fontSize: 13, color: "#64748b", maxWidth: 520, lineHeight: 1.5 }}>
-            All 3 legacy datasets have been removed as requested. You can now provide and upload your fresh high-potency market datasets, prove their integrity, and merge them dynamically.
+            All 3 legacy datasets have been removed as requested. You can now provide and upload your fresh high-potency
+            market datasets, prove their integrity, and merge them dynamically.
           </p>
           <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap", justifyContent: "center" }}>
             <button
@@ -1067,7 +1248,18 @@ export default function DatasetsPage() {
                 </div>
 
                 {/* Card Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11, background: "#f8fafc", padding: "10px", borderRadius: 8, border: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 8,
+                    fontSize: 11,
+                    background: "#f8fafc",
+                    padding: "10px",
+                    borderRadius: 8,
+                    border: "1px solid #f1f5f9",
+                  }}
+                >
                   <div>
                     <span style={{ color: "#64748b" }}>CANDLE COUNT:</span>
                     <div style={{ fontWeight: 900, color: "#0f172a", fontFamily: "monospace", fontSize: 13 }}>
@@ -1076,14 +1268,30 @@ export default function DatasetsPage() {
                   </div>
                   <div>
                     <span style={{ color: "#64748b" }}>TIME SPAN:</span>
-                    <div style={{ fontWeight: 700, color: "#334155", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: "#334155",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {d.range || "Custom Series"}
                     </div>
                   </div>
                 </div>
 
                 {/* Card Action Buttons */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: "1px solid #f1f5f9",
+                    paddingTop: 10,
+                  }}
+                >
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       type="button"
@@ -1159,7 +1367,10 @@ export default function DatasetsPage() {
             {/* Proving Badge Banner */}
             <div
               style={{
-                background: selected.proving_status === "PROVEN_PRISTINE" ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" : "#fffbeb",
+                background:
+                  selected.proving_status === "PROVEN_PRISTINE"
+                    ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+                    : "#fffbeb",
                 border: `1px solid ${selected.proving_status === "PROVEN_PRISTINE" ? "#86efac" : "#fde68a"}`,
                 borderRadius: 12,
                 padding: "16px 20px",
@@ -1173,13 +1384,21 @@ export default function DatasetsPage() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 20 }}>{selected.proving_status === "PROVEN_PRISTINE" ? "🛡️" : "⚠️"}</span>
-                  <span style={{ fontWeight: 900, fontSize: 15, color: selected.proving_status === "PROVEN_PRISTINE" ? "#166534" : "#92400e" }}>
+                  <span
+                    style={{
+                      fontWeight: 900,
+                      fontSize: 15,
+                      color: selected.proving_status === "PROVEN_PRISTINE" ? "#166534" : "#92400e",
+                    }}
+                  >
                     SYSTEM PROVING STATUS: {selected.proving_status || "UNPROVEN"}
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                   {selected.proof_report?.certificate_id || `CERT-PROVE-${selected.id}`} · SHA-256:{" "}
-                  <code style={{ fontFamily: "monospace", fontSize: 11 }}>{selected.sha256_hash?.slice(0, 16) || "hash-pending"}...</code>
+                  <code style={{ fontFamily: "monospace", fontSize: 11 }}>
+                    {selected.sha256_hash?.slice(0, 16) || "hash-pending"}...
+                  </code>
                 </div>
               </div>
 
@@ -1207,16 +1426,34 @@ export default function DatasetsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
               <div style={{ background: "#f8fafc", padding: "12px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
                 <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>OHLC GEOMETRY AUDIT</span>
-                <div style={{ fontSize: 15, fontWeight: 900, color: (selected.proof_report?.ohlc_violations ?? 0) === 0 ? "#16a34a" : "#dc2626", marginTop: 2 }}>
-                  {(selected.proof_report?.ohlc_violations ?? 0) === 0 ? "✅ 0 Violations (PASS)" : `❌ ${selected.proof_report?.ohlc_violations} Violations`}
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 900,
+                    color: (selected.proof_report?.ohlc_violations ?? 0) === 0 ? "#16a34a" : "#dc2626",
+                    marginTop: 2,
+                  }}
+                >
+                  {(selected.proof_report?.ohlc_violations ?? 0) === 0
+                    ? "✅ 0 Violations (PASS)"
+                    : `❌ ${selected.proof_report?.ohlc_violations} Violations`}
                 </div>
                 <div style={{ fontSize: 10, color: "#94a3b8" }}>Low ≤ Open,Close ≤ High</div>
               </div>
 
               <div style={{ background: "#f8fafc", padding: "12px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
                 <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>TIMESTAMP MONOTONICITY</span>
-                <div style={{ fontSize: 15, fontWeight: 900, color: (selected.proof_report?.chronological_inversions ?? 0) === 0 ? "#16a34a" : "#dc2626", marginTop: 2 }}>
-                  {(selected.proof_report?.chronological_inversions ?? 0) === 0 ? "✅ Monotonic Order" : `❌ ${selected.proof_report?.chronological_inversions} Inversions`}
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 900,
+                    color: (selected.proof_report?.chronological_inversions ?? 0) === 0 ? "#16a34a" : "#dc2626",
+                    marginTop: 2,
+                  }}
+                >
+                  {(selected.proof_report?.chronological_inversions ?? 0) === 0
+                    ? "✅ Monotonic Order"
+                    : `❌ ${selected.proof_report?.chronological_inversions} Inversions`}
                 </div>
                 <div style={{ fontSize: 10, color: "#94a3b8" }}>0 Inversions, 0 Duplicate Timestamps</div>
               </div>
@@ -1224,9 +1461,12 @@ export default function DatasetsPage() {
               <div style={{ background: "#f8fafc", padding: "12px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
                 <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>PRICE CONTINUITY</span>
                 <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a", marginTop: 2, fontFamily: "monospace" }}>
-                  ₹{(selected.proof_report?.min_price ?? 0).toFixed(1)} → ₹{(selected.proof_report?.max_price ?? 0).toFixed(1)}
+                  ₹{(selected.proof_report?.min_price ?? 0).toFixed(1)} → ₹
+                  {(selected.proof_report?.max_price ?? 0).toFixed(1)}
                 </div>
-                <div style={{ fontSize: 10, color: "#94a3b8" }}>Volatility: {selected.proof_report?.price_volatility_pct ?? 0}%</div>
+                <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                  Volatility: {selected.proof_report?.price_volatility_pct ?? 0}%
+                </div>
               </div>
 
               <div style={{ background: "#f8fafc", padding: "12px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
@@ -1240,7 +1480,9 @@ export default function DatasetsPage() {
 
             {/* Proof Report Notes */}
             {selected.proof_report?.notes && selected.proof_report.notes.length > 0 && (
-              <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+              <div
+                style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: 10, border: "1px solid #e2e8f0" }}
+              >
                 <div style={{ fontSize: 11, fontWeight: 800, color: "#475569", marginBottom: 4 }}>
                   SYSTEM VERIFICATION NOTES:
                 </div>
@@ -1253,7 +1495,15 @@ export default function DatasetsPage() {
             )}
 
             {/* Detailed Properties List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                borderTop: "1px solid #f1f5f9",
+                paddingTop: 12,
+              }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#64748b" }}>Source Provenance</span>
                 <span style={{ fontWeight: 600 }}>{selected.source}</span>
@@ -1275,7 +1525,9 @@ export default function DatasetsPage() {
             {/* Sample Bar Data Preview */}
             {selected.sampleData && selected.sampleData.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}
+                >
                   <div style={{ fontWeight: 800, fontSize: 12, color: "#475569" }}>
                     SAMPLE BAR DATA PREVIEW ({selected.sampleData.length} ROWS SHOWN)
                   </div>
@@ -1307,7 +1559,9 @@ export default function DatasetsPage() {
                           <td style={{ padding: "8px 12px", color: "#16a34a" }}>{Number(row.high).toFixed(2)}</td>
                           <td style={{ padding: "8px 12px", color: "#dc2626" }}>{Number(row.low).toFixed(2)}</td>
                           <td style={{ padding: "8px 12px", fontWeight: 800 }}>{Number(row.close).toFixed(2)}</td>
-                          <td style={{ padding: "8px 12px", color: "#64748b" }}>{Number(row.volume).toLocaleString()}</td>
+                          <td style={{ padding: "8px 12px", color: "#64748b" }}>
+                            {Number(row.volume).toLocaleString()}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

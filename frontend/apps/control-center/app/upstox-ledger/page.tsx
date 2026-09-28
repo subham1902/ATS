@@ -101,7 +101,11 @@ export default function UpstoxLedgerPage() {
   }, [autoRefreshInterval, limit]);
 
   const handleClearLedger = async () => {
-    if (!confirm("Are you sure you want to clear the Upstox live trades ledger? This resets all trades in this 1,000 capacity buffer.")) {
+    if (
+      !confirm(
+        "Are you sure you want to clear the Upstox live trades ledger? This resets all trades in this 1,000 capacity buffer.",
+      )
+    ) {
       return;
     }
     try {
@@ -182,7 +186,15 @@ export default function UpstoxLedgerPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 32, background: "#065f46", padding: "10px", borderRadius: 16, border: "1px solid #34d399" }}>
+          <span
+            style={{
+              fontSize: 32,
+              background: "#065f46",
+              padding: "10px",
+              borderRadius: 16,
+              border: "1px solid #34d399",
+            }}
+          >
             ⚡
           </span>
           <div>
@@ -205,7 +217,8 @@ export default function UpstoxLedgerPage() {
               </span>
             </div>
             <p style={{ margin: "4px 0 0 0", color: "#a7f3d0", fontSize: 13, fontWeight: 500 }}>
-              Authentic exchange executions with exact lot sizes, micro-gram metrics, Upstox brokerage, STT, and tax breakdowns.
+              Authentic exchange executions with exact lot sizes, micro-gram metrics, Upstox brokerage, STT, and tax
+              breakdowns.
             </p>
           </div>
         </div>
@@ -272,19 +285,37 @@ export default function UpstoxLedgerPage() {
       {/* Summary KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14 }}>
         {/* Ring Buffer */}
-        <div style={{ background: "#ffffff", padding: "16px 20px", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.03)" }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Ring Buffer Capacity</div>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+            Ring Buffer Capacity
+          </div>
           <div style={{ fontSize: 26, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>
             {summary?.total_trades ?? trades.length} / 1,000
           </div>
-          <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginTop: 2 }}>
-            ● Upstox Live Ledger
-          </div>
+          <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginTop: 2 }}>● Upstox Live Ledger</div>
         </div>
 
         {/* Net Settled PnL */}
-        <div style={{ background: "#ffffff", padding: "16px 20px", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.03)" }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Net Settled P&L</div>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+            Net Settled P&L
+          </div>
           <div
             style={{
               fontSize: 26,
@@ -293,7 +324,8 @@ export default function UpstoxLedgerPage() {
               marginTop: 4,
             }}
           >
-            {(summary?.net_pnl ?? 0) >= 0 ? "+" : ""}₹{(summary?.net_pnl ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {(summary?.net_pnl ?? 0) >= 0 ? "+" : ""}₹
+            {(summary?.net_pnl ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
             Gross: ₹{(summary?.gross_pnl ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 1 })}
@@ -301,35 +333,75 @@ export default function UpstoxLedgerPage() {
         </div>
 
         {/* Total Lots Traded */}
-        <div style={{ background: "#ffffff", padding: "16px 20px", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.03)" }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Total Lots Traded</div>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+            Total Lots Traded
+          </div>
           <div style={{ fontSize: 26, fontWeight: 900, color: "#2563eb", marginTop: 4 }}>
             {summary?.total_lots_traded ?? 0} Lots
           </div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-            Turnover: ₹{(((summary?.total_turnover ?? 0)) / 100000).toFixed(1)} Lac
+            Turnover: ₹{((summary?.total_turnover ?? 0) / 100000).toFixed(1)} Lac
           </div>
         </div>
 
         {/* Upstox Charges & Taxes */}
-        <div style={{ background: "#ffffff", padding: "16px 20px", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.03)" }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Total Fees & Taxes</div>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+            Total Fees & Taxes
+          </div>
           <div style={{ fontSize: 26, fontWeight: 900, color: "#d97706", marginTop: 4 }}>
-            ₹{(summary?.total_upstox_charges ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₹
+            {(summary?.total_upstox_charges ?? 0).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-            Brokerage, STT, GST & SEBI
-          </div>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Brokerage, STT, GST & SEBI</div>
         </div>
 
         {/* Win Rate */}
-        <div style={{ background: "#ffffff", padding: "16px 20px", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.03)" }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Win Rate & Factor</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: (summary?.win_rate ?? 0) >= 50 ? "#16a34a" : "#dc2626", marginTop: 4 }}>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+            Win Rate & Factor
+          </div>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              color: (summary?.win_rate ?? 0) >= 50 ? "#16a34a" : "#dc2626",
+              marginTop: 4,
+            }}
+          >
             {summary?.win_rate ?? 0}%
           </div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-            Profit Factor: {summary?.profit_factor ?? "0.00"} ({summary?.winning_trades ?? 0}W / {summary?.losing_trades ?? 0}L)
+            Profit Factor: {summary?.profit_factor ?? "0.00"} ({summary?.winning_trades ?? 0}W /{" "}
+            {summary?.losing_trades ?? 0}L)
           </div>
         </div>
       </div>
@@ -382,11 +454,13 @@ export default function UpstoxLedgerPage() {
             }}
           >
             <option value="ALL">All 10 Agents</option>
-            {["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet"].map((name) => (
-              <option key={name} value={name}>
-                Agent {name}
-              </option>
-            ))}
+            {["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet"].map(
+              (name) => (
+                <option key={name} value={name}>
+                  Agent {name}
+                </option>
+              ),
+            )}
           </select>
 
           {/* Direction Filter */}
@@ -430,7 +504,9 @@ export default function UpstoxLedgerPage() {
 
         {/* Auto Refresh & Limit Controls */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#64748b" }}>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#64748b" }}
+          >
             <span>Auto Refresh:</span>
             <select
               value={autoRefreshInterval}
@@ -451,7 +527,9 @@ export default function UpstoxLedgerPage() {
             </select>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#64748b" }}>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#64748b" }}
+          >
             <span>Fetch Limit:</span>
             <select
               value={limit}
@@ -503,7 +581,14 @@ export default function UpstoxLedgerPage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", borderBottom: "2px solid #e2e8f0" }}>
+              <tr
+                style={{
+                  background: "#f8fafc",
+                  color: "#64748b",
+                  textAlign: "left",
+                  borderBottom: "2px solid #e2e8f0",
+                }}
+              >
                 <th style={{ padding: "12px 14px" }}>Trade ID / IST</th>
                 <th style={{ padding: "12px 14px" }}>Agent</th>
                 <th style={{ padding: "12px 14px" }}>Strategy</th>
@@ -567,9 +652,7 @@ export default function UpstoxLedgerPage() {
                           <div style={{ fontSize: 11, color: "#64748b" }}>{t.strategy_name}</div>
                         </td>
                         <td style={{ padding: "12px 14px" }}>
-                          <span style={{ fontWeight: 800, color: "#1e293b", fontFamily: "monospace" }}>
-                            {t.symbol}
-                          </span>
+                          <span style={{ fontWeight: 800, color: "#1e293b", fontFamily: "monospace" }}>{t.symbol}</span>
                         </td>
                         <td style={{ padding: "12px 14px" }}>
                           <span
@@ -632,8 +715,8 @@ export default function UpstoxLedgerPage() {
                                 t.exit_reason === "PROFIT_TARGET"
                                   ? "#15803d"
                                   : t.exit_reason === "STOP_LOSS"
-                                  ? "#b91c1c"
-                                  : "#64748b",
+                                    ? "#b91c1c"
+                                    : "#64748b",
                             }}
                           >
                             {t.exit_reason}
@@ -676,11 +759,19 @@ export default function UpstoxLedgerPage() {
                             >
                               {/* Rationale & Source */}
                               <div>
-                                <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#64748b",
+                                    fontWeight: 800,
+                                    textTransform: "uppercase",
+                                  }}
+                                >
                                   Signal Hypothesis & Rationale
                                 </div>
                                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginTop: 4 }}>
-                                  {t.hypothesis || "Quantitative algorithmic state machine breakout triggered on live price tick."}
+                                  {t.hypothesis ||
+                                    "Quantitative algorithmic state machine breakout triggered on live price tick."}
                                 </div>
                                 <div style={{ fontSize: 11, color: "#059669", marginTop: 6 }}>
                                   Feed: {t.upstox_feed_source}
@@ -689,33 +780,70 @@ export default function UpstoxLedgerPage() {
 
                               {/* Upstox Transaction Fees Breakdown */}
                               <div>
-                                <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#64748b",
+                                    fontWeight: 800,
+                                    textTransform: "uppercase",
+                                  }}
+                                >
                                   Upstox Statutory Fee Breakdown
                                 </div>
-                                <div style={{ fontSize: 11, marginTop: 4, display: "flex", flexDirection: "column", gap: 3, fontFamily: "monospace" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    marginTop: 4,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 3,
+                                    fontFamily: "monospace",
+                                  }}
+                                >
                                   <div>Brokerage (Upstox): ₹{t.brokerage.toFixed(2)}</div>
                                   <div>STT / CTT: ₹{t.stt_ctt.toFixed(2)}</div>
                                   <div>Exchange Charges: ₹{t.exchange_charges.toFixed(2)}</div>
                                   <div>GST (18%): ₹{t.gst.toFixed(2)}</div>
                                   <div>SEBI Turnover Fees: ₹{t.sebi_charges.toFixed(2)}</div>
                                   <div>Stamp Duty: ₹{t.stamp_duty.toFixed(2)}</div>
-                                  <div style={{ fontWeight: 800, color: "#b45309" }}>Total Friction: ₹{t.total_charges.toFixed(2)}</div>
+                                  <div style={{ fontWeight: 800, color: "#b45309" }}>
+                                    Total Friction: ₹{t.total_charges.toFixed(2)}
+                                  </div>
                                 </div>
                               </div>
 
                               {/* Capital & Margin Audit */}
                               <div>
-                                <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#64748b",
+                                    fontWeight: 800,
+                                    textTransform: "uppercase",
+                                  }}
+                                >
                                   Capital & Margin Audit
                                 </div>
-                                <div style={{ fontSize: 11, marginTop: 4, display: "flex", flexDirection: "column", gap: 3, fontFamily: "monospace" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    marginTop: 4,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 3,
+                                    fontFamily: "monospace",
+                                  }}
+                                >
                                   <div>Margin Utilized: ₹{t.margin_utilized.toLocaleString("en-IN")}</div>
                                   <div>Agent Max Principal: ₹{t.agent_max_principal.toLocaleString("en-IN")}</div>
                                   <div>Gross P&L: ₹{t.gross_pnl.toFixed(2)}</div>
                                   <div style={{ fontWeight: 800, color: t.net_pnl >= 0 ? "#16a34a" : "#dc2626" }}>
                                     Net Realized P&L: {t.net_pnl >= 0 ? "+" : ""}₹{t.net_pnl.toFixed(2)}
                                   </div>
-                                  <div>Post-Trade Balance: ₹{t.post_trade_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                                  <div>
+                                    Post-Trade Balance: ₹
+                                    {t.post_trade_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                  </div>
                                 </div>
                               </div>
                             </div>

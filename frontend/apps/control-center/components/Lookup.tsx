@@ -40,7 +40,9 @@ export function Lookup({
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 800 }}>
       <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{title}</h1>
       <form onSubmit={submit} style={{ display: "flex", gap: 8 }} aria-label={`${title} lookup`}>
-        <label htmlFor="lookup-id" style={{ position: "absolute", left: -9999 }}>ID</label>
+        <label htmlFor="lookup-id" style={{ position: "absolute", left: -9999 }}>
+          ID
+        </label>
         <input
           id="lookup-id"
           value={id}
@@ -48,11 +50,37 @@ export function Lookup({
           placeholder={placeholder}
           style={{ flex: 1, padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 13 }}
         />
-        <button type="submit" disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #111827", background: "#111827", color: "white", fontWeight: 600, cursor: "pointer" }}>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #111827",
+            background: "#111827",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
           {loading ? "Loading…" : "Fetch"}
         </button>
       </form>
-      {!data && !error ? <div role="status" style={{ padding: 16, background: "#f9fafb", border: "1px dashed #d1d5db", borderRadius: 8, textAlign: "center", color: "#6b7280" }}>{emptyMessage}</div> : null}
+      {!data && !error ? (
+        <div
+          role="status"
+          style={{
+            padding: 16,
+            background: "#f9fafb",
+            border: "1px dashed #d1d5db",
+            borderRadius: 8,
+            textAlign: "center",
+            color: "#6b7280",
+          }}
+        >
+          {emptyMessage}
+        </div>
+      ) : null}
       {data ? render(data, id) : null}
       {error ? (
         <div role="alert" style={{ padding: 12, border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8 }}>

@@ -76,15 +76,20 @@ export function Shell({
   const [showCopilot, setShowCopilot] = useState(false);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      background: "#f8fafc",
-      color: "#0f172a",
-      fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    }}>
-      <a href="#main" style={{ position: "absolute", left: -9999, top: 0, background: "#0f172a", color: "white", padding: 8 }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "#f8fafc",
+        color: "#0f172a",
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
+    >
+      <a
+        href="#main"
+        style={{ position: "absolute", left: -9999, top: 0, background: "#0f172a", color: "white", padding: 8 }}
+      >
         Skip to content
       </a>
 
@@ -102,59 +107,67 @@ export function Shell({
           justifyContent: "space-between",
           padding: "10px 20px",
           gap: 16,
-          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)"
+          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            fontWeight: 800,
-            letterSpacing: "0.04em",
-            fontSize: 13,
-            background: "#0f172a",
-            color: "#f8fafc",
-            padding: "5px 12px",
-            borderRadius: 8,
-            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)"
-          }}>
-            <span style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#38bdf8",
-              boxShadow: "0 0 8px #38bdf8"
-            }} />
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              fontSize: 13,
+              background: "#0f172a",
+              color: "#f8fafc",
+              padding: "5px 12px",
+              borderRadius: 8,
+              boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#38bdf8",
+                boxShadow: "0 0 8px #38bdf8",
+              }}
+            />
             ATS CONTROL CENTER
           </div>
 
-          <span style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 999,
-            background: "#f1f5f9",
-            color: "#475569",
-            border: "1px solid #cbd5e1"
-          }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              padding: "3px 8px",
+              borderRadius: 999,
+              background: "#f1f5f9",
+              color: "#475569",
+              border: "1px solid #cbd5e1",
+            }}
+          >
             A2_PAPER
           </span>
 
-          <span style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            padding: "3px 9px",
-            borderRadius: 999,
-            background: "#ecfdf5",
-            color: "#047857",
-            border: "1px solid #a7f3d0",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5
-          }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              padding: "3px 9px",
+              borderRadius: 999,
+              background: "#ecfdf5",
+              color: "#047857",
+              border: "1px solid #a7f3d0",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
             LIVE READY
           </span>
@@ -163,7 +176,17 @@ export function Shell({
         {/* Dual Data-Source & Copilot Controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           {/* Top-Right Global Data Source Control */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", padding: "3px 8px", borderRadius: 8, border: "1px solid #cbd5e1" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#f1f5f9",
+              padding: "3px 8px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+            }}
+          >
             <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b" }}>DATA SOURCE:</span>
             <select
               value={dataSource}
@@ -186,10 +209,26 @@ export function Shell({
 
           {/* Explicit Authority Separation Badges */}
           <div style={{ display: "flex", gap: 6, fontSize: 10, fontWeight: 700 }}>
-            <span style={{ background: "#e0f2fe", color: "#0369a1", padding: "3px 8px", borderRadius: 6, border: "1px solid #bae6fd" }}>
+            <span
+              style={{
+                background: "#e0f2fe",
+                color: "#0369a1",
+                padding: "3px 8px",
+                borderRadius: 6,
+                border: "1px solid #bae6fd",
+              }}
+            >
               EXEC: PaperBroker
             </span>
-            <span style={{ background: "#fef3c7", color: "#92400e", padding: "3px 8px", borderRadius: 6, border: "1px solid #fde68a" }}>
+            <span
+              style={{
+                background: "#fef3c7",
+                color: "#92400e",
+                padding: "3px 8px",
+                borderRadius: 6,
+                border: "1px solid #fde68a",
+              }}
+            >
               AUTH: A04
             </span>
           </div>
@@ -219,15 +258,17 @@ export function Shell({
           {systemState ? (
             <SystemStateBadge state={systemState} />
           ) : (
-            <span style={{
-              fontSize: 12,
-              color: "#64748b",
-              background: "#f1f5f9",
-              border: "1px solid #cbd5e1",
-              borderRadius: 999,
-              padding: "3px 10px",
-              fontWeight: 500
-            }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: "#64748b",
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
+                borderRadius: 999,
+                padding: "3px 10px",
+                fontWeight: 500,
+              }}
+            >
               system: connecting...
             </span>
           )}
@@ -238,14 +279,16 @@ export function Shell({
 
       {/* Floating AI Copilot Drawer */}
       {showCopilot && (
-        <div style={{
-          position: "fixed",
-          top: 60,
-          right: 20,
-          width: 480,
-          maxWidth: "90vw",
-          zIndex: 999,
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 60,
+            right: 20,
+            width: 480,
+            maxWidth: "90vw",
+            zIndex: 999,
+          }}
+        >
           <AICopilotPanel onClose={() => setShowCopilot(false)} />
         </div>
       )}
@@ -326,18 +369,21 @@ export function Shell({
             </div>
           ))}
 
-          <div style={{
-            marginTop: "auto",
-            padding: "12px",
-            background: "#f8fafc",
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
-            fontSize: 11,
-            color: "#64748b",
-            lineHeight: 1.5
-          }}>
+          <div
+            style={{
+              marginTop: "auto",
+              padding: "12px",
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              fontSize: 11,
+              color: "#64748b",
+              lineHeight: 1.5,
+            }}
+          >
             <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>Platform v2.0</div>
-            Strategy Registry Active<br />
+            Strategy Registry Active
+            <br />
             PaperBroker Guarded
           </div>
         </nav>

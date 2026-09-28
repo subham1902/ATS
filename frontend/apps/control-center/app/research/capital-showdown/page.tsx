@@ -11,7 +11,7 @@ export default function CapitalShowdownPage() {
     { id: "BIN_S07", origin: "IMPORTED", marginStatus: "MARGIN_UNKNOWN" },
     { id: "BIN_S08", origin: "IMPORTED", marginStatus: "MARGIN_UNKNOWN" },
     { id: "BIN_S09", origin: "IMPORTED", marginStatus: "MARGIN_UNKNOWN" },
-    { id: "S17", origin: "NATIVE", marginStatus: "MARGIN_UNKNOWN" }
+    { id: "S17", origin: "NATIVE", marginStatus: "MARGIN_UNKNOWN" },
   ];
 
   return (
@@ -26,7 +26,9 @@ export default function CapitalShowdownPage() {
       </header>
 
       <div style={{ display: "flex", gap: "20px", marginBottom: "30px" }}>
-        <div style={{ padding: "15px", background: "#fef3c7", borderRadius: "8px", flex: 1, border: "1px solid #fde68a" }}>
+        <div
+          style={{ padding: "15px", background: "#fef3c7", borderRadius: "8px", flex: 1, border: "1px solid #fde68a" }}
+        >
           <h3 style={{ margin: "0 0 10px 0", color: "#92400e", fontSize: "14px" }}>Experiment Scope</h3>
           <ul style={{ margin: 0, paddingLeft: "20px", color: "#b45309", fontSize: "13px" }}>
             <li>Timeframe: 15-Minute Base</li>
@@ -34,7 +36,9 @@ export default function CapitalShowdownPage() {
             <li>Cost Regimen: PIT V3 (Brokerage, Taxes, Slippage)</li>
           </ul>
         </div>
-        <div style={{ padding: "15px", background: "#fee2e2", borderRadius: "8px", flex: 1, border: "1px solid #fecaca" }}>
+        <div
+          style={{ padding: "15px", background: "#fee2e2", borderRadius: "8px", flex: 1, border: "1px solid #fecaca" }}
+        >
           <h3 style={{ margin: "0 0 10px 0", color: "#991b1b", fontSize: "14px" }}>System Blockers</h3>
           <ul style={{ margin: 0, paddingLeft: "20px", color: "#b91c1c", fontSize: "13px" }}>
             <li>Data Blocker: MCX GOLDM 5m/1h and OI feeds unavailable in 15m CSV.</li>
@@ -73,13 +77,31 @@ export default function CapitalShowdownPage() {
                 <td style={{ padding: "12px", textAlign: "right" }}>0.00%</td>
                 <td style={{ padding: "12px", textAlign: "right", fontFamily: "monospace" }}>₹0</td>
                 <td style={{ padding: "12px", textAlign: "center" }}>
-                  <span style={{ background: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: "700" }}>
+                  <span
+                    style={{
+                      background: "#fee2e2",
+                      color: "#991b1b",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                    }}
+                  >
                     {s.marginStatus}
                   </span>
                 </td>
                 <td style={{ padding: "12px", textAlign: "center" }}>0</td>
                 <td style={{ padding: "12px", textAlign: "center" }}>
-                  <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: "700" }}>
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                    }}
+                  >
                     DATA_BLOCKED
                   </span>
                 </td>

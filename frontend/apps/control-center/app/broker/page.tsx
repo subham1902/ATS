@@ -49,7 +49,7 @@ export default function BrokerHubPage() {
       const res = await fetch(`/v1/brokers/${brokerId}/test`, { method: "POST" });
       const data = await res.json();
       alert(`Test Result: ${data.message}`);
-    } catch (err) {
+    } catch (_err) {
       alert("Failed to test connection.");
     }
   };
@@ -71,15 +71,20 @@ export default function BrokerHubPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, color: "#6b7280" }}>Connection State</span>
-                <span style={{ 
-                  fontSize: 12, fontWeight: 700, padding: "4px 8px", borderRadius: 4,
-                  backgroundColor: broker.status === "CONNECTED" ? "#dcfce7" : "#fef9c3",
-                  color: broker.status === "CONNECTED" ? "#15803d" : "#ca8a04"
-                }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    backgroundColor: broker.status === "CONNECTED" ? "#dcfce7" : "#fef9c3",
+                    color: broker.status === "CONNECTED" ? "#15803d" : "#ca8a04",
+                  }}
+                >
                   {broker.status}
                 </span>
               </div>
-              
+
               <div style={{ fontSize: 13 }}>
                 <h4 style={{ margin: "0 0 8px 0", color: "#374151" }}>Capabilities</h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -96,7 +101,10 @@ export default function BrokerHubPage() {
                 <h4 style={{ margin: "0 0 8px 0", color: "#374151" }}>Supported Modes</h4>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {broker.supported_data_modes.map((mode) => (
-                    <span key={mode} style={{ backgroundColor: "#f3f4f6", padding: "2px 6px", borderRadius: 4, color: "#4b5563" }}>
+                    <span
+                      key={mode}
+                      style={{ backgroundColor: "#f3f4f6", padding: "2px 6px", borderRadius: 4, color: "#4b5563" }}
+                    >
                       {mode}
                     </span>
                   ))}
@@ -104,13 +112,31 @@ export default function BrokerHubPage() {
               </div>
 
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <button 
+                <button
                   onClick={() => handleTestConnection(broker.broker_id)}
-                  style={{ padding: "8px 16px", backgroundColor: "#f3f4f6", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, color: "#374151" }}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#f3f4f6",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#374151",
+                  }}
                 >
                   Test Connection
                 </button>
-                <button style={{ padding: "8px 16px", backgroundColor: "#2563eb", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, color: "white" }}>
+                <button
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#2563eb",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "white",
+                  }}
+                >
                   Configure Auth
                 </button>
               </div>

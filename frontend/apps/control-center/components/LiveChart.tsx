@@ -1,12 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import type {
-  CandleView,
-  FeedHealthView,
-  MarketInterval,
-  MarketQuoteView,
-  SseStatus,
-} from "@ats/api-client";
+import type { CandleView, FeedHealthView, MarketInterval, MarketQuoteView, SseStatus } from "@ats/api-client";
 import {
   createChart,
   ColorType,
@@ -21,11 +15,7 @@ import {
   type IPriceLine,
   type UTCTimestamp,
 } from "lightweight-charts";
-import {
-  inMemoryFootprintStore,
-  type BarFootprint,
-  type FootprintMemoryStats,
-} from "../lib/footprint";
+import { inMemoryFootprintStore, type BarFootprint, type FootprintMemoryStats } from "../lib/footprint";
 import { getMarketSessionInfo, type MarketSessionInfo } from "../lib/marketHours";
 
 interface LiveChartProps {
@@ -68,7 +58,7 @@ function computeEma(bars: { time: UTCTimestamp; close: number }[], period: numbe
 
 function computeVwap(
   bars: { time: UTCTimestamp; high: number; low: number; close: number }[],
-  volumes: { value: number }[]
+  volumes: { value: number }[],
 ) {
   if (!bars || bars.length === 0) return [];
   let cumVol = 0;
@@ -83,11 +73,7 @@ function computeVwap(
   });
 }
 
-function computeBollingerBands(
-  bars: { time: UTCTimestamp; close: number }[],
-  period = 20,
-  stdDevMult = 2
-) {
+function computeBollingerBands(bars: { time: UTCTimestamp; close: number }[], period = 20, stdDevMult = 2) {
   const upper: { time: UTCTimestamp; value: number }[] = [];
   const mid: { time: UTCTimestamp; value: number }[] = [];
   const lower: { time: UTCTimestamp; value: number }[] = [];
@@ -149,7 +135,7 @@ function computeRsi(bars: { close: number }[], period = 14): number {
 function computeSuperTrend(
   bars: { time: UTCTimestamp; high: number; low: number; close: number }[],
   period = 10,
-  multiplier = 3
+  multiplier = 3,
 ): { data: { time: UTCTimestamp; value: number }[]; isBullish: boolean } {
   if (!bars || bars.length < period) return { data: [], isBullish: true };
   const result: { time: UTCTimestamp; value: number }[] = [];
@@ -162,11 +148,7 @@ function computeSuperTrend(
   for (let i = 0; i < bars.length; i++) {
     const b = bars[i];
     if (i > 0) {
-      const tr = Math.max(
-        b.high - b.low,
-        Math.abs(b.high - bars[i - 1].close),
-        Math.abs(b.low - bars[i - 1].close)
-      );
+      const tr = Math.max(b.high - b.low, Math.abs(b.high - bars[i - 1].close), Math.abs(b.low - bars[i - 1].close));
       atr = (atr * (period - 1) + tr) / period;
     }
 
@@ -202,9 +184,7 @@ function computeSuperTrend(
   return { data: result, isBullish: trend === 1 };
 }
 
-function convertToHeikinAshi(
-  bars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[]
-) {
+function convertToHeikinAshi(bars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[]) {
   if (!bars || bars.length === 0) return [];
   const haBars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
   let prevHaOpen = bars[0].open;
@@ -231,10 +211,7 @@ function convertToHeikinAshi(
   return haBars;
 }
 
-function computeAtr(
-  bars: { high: number; low: number; close: number }[],
-  period = 14
-): number {
+function computeAtr(bars: { high: number; low: number; close: number }[], period = 14): number {
   if (!bars || bars.length < 2) return 0;
   let trSum = 0;
   const count = Math.min(bars.length - 1, period);
@@ -242,16 +219,14 @@ function computeAtr(
     const tr = Math.max(
       bars[i].high - bars[i].low,
       Math.abs(bars[i].high - bars[i - 1].close),
-      Math.abs(bars[i].low - bars[i - 1].close)
+      Math.abs(bars[i].low - bars[i - 1].close),
     );
     trSum += tr;
   }
   return parseFloat((trSum / count).toFixed(1));
 }
 
-function computeTrendChannel(
-  bars: { time: UTCTimestamp; high: number; low: number; close: number }[]
-) {
+function computeTrendChannel(bars: { time: UTCTimestamp; high: number; low: number; close: number }[]) {
   if (!bars || bars.length < 15) return { support: [], resistance: [] };
   const slice = bars.slice(-35);
   const n = slice.length;
@@ -346,7 +321,7 @@ export function LiveChart({
   const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
   const [showTargetBox, setShowTargetBox] = useState(true);
   const [showFibonacci, setShowFibonacci] = useState(false);
-  const [showWatermark, setShowWatermark] = useState(true);
+  const [showWatermark, _setShowWatermark] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [showTrendChannel, setShowTrendChannel] = useState(false);
   const [measureResult, setMeasureResult] = useState<{
@@ -410,9 +385,7 @@ export function LiveChart({
   } | null>(null);
 
   // Market Session Status (Accurate Indian Exchange Hours: NSE 09:15-15:30 IST, MCX 09:00-23:30 IST)
-  const [marketSession, setMarketSession] = useState<MarketSessionInfo>(() =>
-    getMarketSessionInfo(selectedSymbol)
-  );
+  const [marketSession, setMarketSession] = useState<MarketSessionInfo>(() => getMarketSessionInfo(selectedSymbol));
 
   useEffect(() => {
     setMarketSession(getMarketSessionInfo(selectedSymbol));
@@ -428,7 +401,7 @@ export function LiveChart({
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        })
+        }),
       );
 
       // Periodically refresh market session status
@@ -694,8 +667,7 @@ export function LiveChart({
     const volumes: { time: UTCTimestamp; value: number; color: string }[] = [];
 
     const now = new Date();
-    const startTime =
-      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 15, 0).getTime() / 1000;
+    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 15, 0).getTime() / 1000;
     const intervalSecMap: Record<string, number> = {
       "1s": 1,
       "1m": 60,
@@ -714,22 +686,15 @@ export function LiveChart({
 
     // Rich intraday price action pattern
     const patternDeltas = [
-      12, 18, -8, 22, -14, -20, -32, 15, -18, -25, 30, 45, 28, -15, -22, -40, -18, -35, -28, 12, 25,
-      40, 35, 18, -20, -30, -15, 22, 38, 50, -18, -25, -35, -45, -20, 15, 28, 35, -12, -28, -50,
-      -42, 20, 35, 48, 25, -15, -30, 22, 40, -25, -38, -60, -45, 15, 30, 55, 38, -20, -35, -70,
-      -55, 25, 45, 60, 32, -18, -40, 28, 48, -30, -50, -65, -40, 35, 55, 75, 42, -25, -45, -85,
-      -60, 40, 65, 80, 50, -30, -55, 35, 55, -40, -65, 45, 60, 25,
+      12, 18, -8, 22, -14, -20, -32, 15, -18, -25, 30, 45, 28, -15, -22, -40, -18, -35, -28, 12, 25, 40, 35, 18, -20,
+      -30, -15, 22, 38, 50, -18, -25, -35, -45, -20, 15, 28, 35, -12, -28, -50, -42, 20, 35, 48, 25, -15, -30, 22, 40,
+      -25, -38, -60, -45, 15, 30, 55, 38, -20, -35, -70, -55, 25, 45, 60, 32, -18, -40, 28, 48, -30, -50, -65, -40, 35,
+      55, 75, 42, -25, -45, -85, -60, 40, 65, 80, 50, -30, -55, 35, 55, -40, -65, 45, 60, 25,
     ];
 
     for (let i = 0; i < numBars; i++) {
       const scaleFactor =
-        profile.basePrice > 70000
-          ? 1.9
-          : profile.basePrice > 50000
-          ? 1.5
-          : profile.basePrice > 20000
-          ? 0.65
-          : 0.25;
+        profile.basePrice > 70000 ? 1.9 : profile.basePrice > 50000 ? 1.5 : profile.basePrice > 20000 ? 0.65 : 0.25;
       const delta = (patternDeltas[i % patternDeltas.length] || 10) * scaleFactor;
       const open = price;
       let close = open + delta;
@@ -1135,9 +1100,7 @@ export function LiveChart({
       candleSeriesRef.current.applyOptions({ visible: false });
       if (areaSeriesRef.current) {
         areaSeriesRef.current.applyOptions({ visible: true });
-        areaSeriesRef.current.setData(
-          activeBars.map((b) => ({ time: b.time, value: b.close }))
-        );
+        areaSeriesRef.current.setData(activeBars.map((b) => ({ time: b.time, value: b.close })));
       }
     } else {
       if (areaSeriesRef.current) areaSeriesRef.current.applyOptions({ visible: false });
@@ -1204,7 +1167,7 @@ export function LiveChart({
       try {
         candleSeriesRef.current?.removePriceLine(pl);
         areaSeriesRef.current?.removePriceLine(pl);
-      } catch (e) {
+      } catch (_e) {
         // ignore
       }
     });
@@ -1289,8 +1252,7 @@ export function LiveChart({
 
     // Smart Zoom & TimeScale: Only fitContent on symbol or timeframe change
     const isNewSymbolOrInterval =
-      lastFittedSymbolRef.current !== selectedSymbol ||
-      lastFittedIntervalRef.current !== interval;
+      lastFittedSymbolRef.current !== selectedSymbol || lastFittedIntervalRef.current !== interval;
 
     if (isNewSymbolOrInterval) {
       chartRef.current?.timeScale().fitContent();
@@ -1474,20 +1436,14 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("GOLDM")
-                  ? "rgba(234, 179, 8, 0.2)"
-                  : "rgba(234, 179, 8, 0.08)",
+                background: selectedSymbol.includes("GOLDM") ? "rgba(234, 179, 8, 0.2)" : "rgba(234, 179, 8, 0.08)",
                 padding: "3px 10px",
                 borderRadius: 4,
-                border: `1px solid ${
-                  selectedSymbol.includes("GOLDM") ? "#eab308" : "rgba(234, 179, 8, 0.3)"
-                }`,
+                border: `1px solid ${selectedSymbol.includes("GOLDM") ? "#eab308" : "rgba(234, 179, 8, 0.3)"}`,
               }}
             >
               <span style={{ fontWeight: 900, color: "#fbbf24" }}>★ MCX GOLDM</span>
-              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>
-                75,420.00
-              </span>
+              <span style={{ fontWeight: 900, color: "#fef08a", fontFamily: "monospace" }}>75,420.00</span>
               <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 700 }}>▲ 120.0 (0.16%)</span>
             </div>
 
@@ -1499,20 +1455,14 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("SILVERM")
-                  ? "rgba(148, 163, 184, 0.2)"
-                  : "transparent",
+                background: selectedSymbol.includes("SILVERM") ? "rgba(148, 163, 184, 0.2)" : "transparent",
                 padding: "3px 8px",
                 borderRadius: 4,
-                border: `1px solid ${
-                  selectedSymbol.includes("SILVERM") ? "#94a3b8" : "rgba(148, 163, 184, 0.2)"
-                }`,
+                border: `1px solid ${selectedSymbol.includes("SILVERM") ? "#94a3b8" : "rgba(148, 163, 184, 0.2)"}`,
               }}
             >
               <span style={{ fontWeight: 800, color: "#cbd5e1" }}>MCX SILVERM</span>
-              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
-                89,250.00
-              </span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>89,250.00</span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 375.0 (0.42%)</span>
             </div>
 
@@ -1524,20 +1474,14 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("CRUDEOIL")
-                  ? "rgba(239, 68, 68, 0.2)"
-                  : "transparent",
+                background: selectedSymbol.includes("CRUDEOIL") ? "rgba(239, 68, 68, 0.2)" : "transparent",
                 padding: "3px 8px",
                 borderRadius: 4,
-                border: `1px solid ${
-                  selectedSymbol.includes("CRUDEOIL") ? "#ef4444" : "rgba(239, 68, 68, 0.2)"
-                }`,
+                border: `1px solid ${selectedSymbol.includes("CRUDEOIL") ? "#ef4444" : "rgba(239, 68, 68, 0.2)"}`,
               }}
             >
               <span style={{ fontWeight: 800, color: "#f87171" }}>MCX CRUDEOIL</span>
-              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
-                6,180.00
-              </span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>6,180.00</span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 45.0 (0.73%)</span>
             </div>
 
@@ -1549,29 +1493,21 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("NATURALGAS")
-                  ? "rgba(56, 189, 248, 0.2)"
-                  : "transparent",
+                background: selectedSymbol.includes("NATURALGAS") ? "rgba(56, 189, 248, 0.2)" : "transparent",
                 padding: "3px 8px",
                 borderRadius: 4,
-                border: `1px solid ${
-                  selectedSymbol.includes("NATURALGAS") ? "#38bdf8" : "rgba(56, 189, 248, 0.2)"
-                }`,
+                border: `1px solid ${selectedSymbol.includes("NATURALGAS") ? "#38bdf8" : "rgba(56, 189, 248, 0.2)"}`,
               }}
             >
               <span style={{ fontWeight: 800, color: "#38bdf8" }}>MCX NATGAS</span>
-              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
-                238.50
-              </span>
+              <span style={{ fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>238.50</span>
               <span style={{ fontSize: 10, color: "#ef4444" }}>▼ -3.20 (-1.32%)</span>
             </div>
 
             <span style={{ color: "#334155" }}>|</span>
 
             {/* NSE INDICES */}
-            <span style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px" }}>
-              INDICES:
-            </span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px" }}>INDICES:</span>
 
             {/* NIFTY 50 */}
             <div
@@ -1581,9 +1517,7 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("NIFTY 50")
-                  ? "rgba(34, 197, 94, 0.12)"
-                  : "transparent",
+                background: selectedSymbol.includes("NIFTY 50") ? "rgba(34, 197, 94, 0.12)" : "transparent",
                 padding: "2px 6px",
                 borderRadius: 4,
               }}
@@ -1596,12 +1530,20 @@ export function LiveChart({
               >
                 NIFTY 50
               </span>
-              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>
-                23,446.80
-              </span>
+              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>23,446.80</span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 117.80 (0.50%)</span>
               {!getMarketSessionInfo("NIFTY 50").isOpen && (
-                <span style={{ fontSize: 9, color: "#f87171", fontWeight: 700, background: "rgba(239, 68, 68, 0.15)", padding: "1px 5px", borderRadius: 3, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#f87171",
+                    fontWeight: 700,
+                    background: "rgba(239, 68, 68, 0.15)",
+                    padding: "1px 5px",
+                    borderRadius: 3,
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                  }}
+                >
                   CLOSED
                 </span>
               )}
@@ -1615,9 +1557,7 @@ export function LiveChart({
                 alignItems: "baseline",
                 gap: 6,
                 cursor: "pointer",
-                background: selectedSymbol.includes("BANKNIFTY")
-                  ? "rgba(34, 197, 94, 0.12)"
-                  : "transparent",
+                background: selectedSymbol.includes("BANKNIFTY") ? "rgba(34, 197, 94, 0.12)" : "transparent",
                 padding: "2px 6px",
                 borderRadius: 4,
               }}
@@ -1630,12 +1570,20 @@ export function LiveChart({
               >
                 BANKNIFTY
               </span>
-              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>
-                56,548.90
-              </span>
+              <span style={{ fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>56,548.90</span>
               <span style={{ fontSize: 10, color: "#22c55e" }}>▲ 333.35 (0.59%)</span>
               {!getMarketSessionInfo("BANKNIFTY").isOpen && (
-                <span style={{ fontSize: 9, color: "#f87171", fontWeight: 700, background: "rgba(239, 68, 68, 0.15)", padding: "1px 5px", borderRadius: 3, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#f87171",
+                    fontWeight: 700,
+                    background: "rgba(239, 68, 68, 0.15)",
+                    padding: "1px 5px",
+                    borderRadius: 3,
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                  }}
+                >
                   CLOSED
                 </span>
               )}
@@ -1662,18 +1610,14 @@ export function LiveChart({
               fontWeight: 700,
               padding: "2px 8px",
               borderRadius: 999,
-              background:
-                streamState === "STREAMING" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
+              background: streamState === "STREAMING" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
               color: streamState === "STREAMING" ? "#4ade80" : "#fde047",
-              border: `1px solid ${
-                streamState === "STREAMING" ? "rgba(34, 197, 94, 0.3)" : "rgba(234, 179, 8, 0.3)"
-              }`,
+              border: `1px solid ${streamState === "STREAMING" ? "rgba(34, 197, 94, 0.3)" : "rgba(234, 179, 8, 0.3)"}`,
             }}
           >
             <span>●</span>
             <span>
-              {streamState}{" "}
-              {streamTransport && streamTransport !== "DISCONNECTED" ? `(${streamTransport})` : ""}
+              {streamState} {streamTransport && streamTransport !== "DISCONNECTED" ? `(${streamTransport})` : ""}
             </span>
           </div>
 
@@ -1829,9 +1773,7 @@ export function LiveChart({
               <span style={{ fontSize: 8 }}>●</span>
               <span>{marketSession.statusText}</span>
               {!marketSession.isOpen && (
-                <span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 9 }}>
-                  ({marketSession.nextOpen})
-                </span>
+                <span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 9 }}>({marketSession.nextOpen})</span>
               )}
             </span>
           </div>
@@ -1856,9 +1798,7 @@ export function LiveChart({
               {priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
             </span>
             {!marketSession.isOpen && (
-              <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>
-                · Frozen at Close
-              </span>
+              <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>· Frozen at Close</span>
             )}
           </div>
 
@@ -2049,15 +1989,10 @@ export function LiveChart({
             <span
               title="Cumulative Volume Delta (In-Memory CVD Flow)"
               style={{
-                background:
-                  footprintStats.cumDelta >= 0
-                    ? "rgba(34, 197, 94, 0.15)"
-                    : "rgba(239, 68, 68, 0.15)",
+                background: footprintStats.cumDelta >= 0 ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)",
                 color: footprintStats.cumDelta >= 0 ? "#4ade80" : "#f87171",
                 border: `1px solid ${
-                  footprintStats.cumDelta >= 0
-                    ? "rgba(34, 197, 94, 0.3)"
-                    : "rgba(239, 68, 68, 0.3)"
+                  footprintStats.cumDelta >= 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"
                 }`,
                 padding: "2px 6px",
                 borderRadius: 4,
@@ -2307,9 +2242,7 @@ export function LiveChart({
               <span style={{ fontSize: 68, fontWeight: 900, letterSpacing: -2, color: "white" }}>
                 {selectedSymbol.split(" ")[0]}
               </span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: "white" }}>
-                {interval} • ATS TERMINAL
-              </span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "white" }}>{interval} • ATS TERMINAL</span>
             </div>
           )}
 
@@ -2374,17 +2307,13 @@ export function LiveChart({
                 {enabledIndicators.vwap && (
                   <span style={{ color: "#facc15" }}>
                     VWAP:{" "}
-                    {indicatorsData.vwap.length > 0
-                      ? indicatorsData.vwap[indicatorsData.vwap.length - 1].value
-                      : "--"}
+                    {indicatorsData.vwap.length > 0 ? indicatorsData.vwap[indicatorsData.vwap.length - 1].value : "--"}
                   </span>
                 )}
                 {enabledIndicators.bollingerBands && indicatorsData.bb?.mid && indicatorsData.bb.mid.length > 0 && (
                   <span style={{ color: "#22d3ee" }}>
-                    BB [
-                    {indicatorsData.bb.lower[indicatorsData.bb.lower.length - 1]?.value} -{" "}
-                    {indicatorsData.bb.upper[indicatorsData.bb.upper.length - 1]?.value}
-                    ]
+                    BB [{indicatorsData.bb.lower[indicatorsData.bb.lower.length - 1]?.value} -{" "}
+                    {indicatorsData.bb.upper[indicatorsData.bb.upper.length - 1]?.value}]
                   </span>
                 )}
                 <span style={{ color: "#a855f7" }}>ATR: {indicatorsData.atrValue}</span>
@@ -2397,9 +2326,7 @@ export function LiveChart({
                     ST: {indicatorsData.superTrend?.isBullish ? "▲ BULL" : "▼ BEAR"}
                   </span>
                 )}
-                {showTrendChannel && (
-                  <span style={{ color: "#22c55e" }}>📐 Channel: ACTIVE</span>
-                )}
+                {showTrendChannel && <span style={{ color: "#22c55e" }}>📐 Channel: ACTIVE</span>}
               </div>
             </div>
           ) : (
@@ -2476,7 +2403,10 @@ export function LiveChart({
               }}
             >
               <span>
-                📏 Range: <strong>₹{measureResult.fromPrice} → ₹{measureResult.toPrice}</strong>
+                📏 Range:{" "}
+                <strong>
+                  ₹{measureResult.fromPrice} → ₹{measureResult.toPrice}
+                </strong>
               </span>
               <span
                 style={{
@@ -2558,16 +2488,10 @@ export function LiveChart({
                 </div>
                 <div style={{ display: "flex", gap: 12, fontSize: 11, fontFamily: "monospace" }}>
                   <span>
-                    Buy Pressure:{" "}
-                    <strong style={{ color: "#22c55e" }}>
-                      {footprintStats.buyPressurePct}%
-                    </strong>
+                    Buy Pressure: <strong style={{ color: "#22c55e" }}>{footprintStats.buyPressurePct}%</strong>
                   </span>
                   <span>
-                    Sell Pressure:{" "}
-                    <strong style={{ color: "#ef4444" }}>
-                      {footprintStats.sellPressurePct}%
-                    </strong>
+                    Sell Pressure: <strong style={{ color: "#ef4444" }}>{footprintStats.sellPressurePct}%</strong>
                   </span>
                   <span>
                     Net CVD:{" "}
@@ -2606,9 +2530,7 @@ export function LiveChart({
                       style={{
                         minWidth: 125,
                         background: "#0c0f17",
-                        border: `1px solid ${
-                          isBull ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)"
-                        }`,
+                        border: `1px solid ${isBull ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)"}`,
                         borderRadius: 6,
                         display: "flex",
                         flexDirection: "column",
@@ -2621,9 +2543,7 @@ export function LiveChart({
                       <div
                         style={{
                           padding: "3px 6px",
-                          background: isBull
-                            ? "rgba(34, 197, 94, 0.15)"
-                            : "rgba(239, 68, 68, 0.15)",
+                          background: isBull ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)",
                           display: "flex",
                           justifyContent: "space-between",
                           borderBottom: "1px solid #1e2433",
@@ -2657,10 +2577,10 @@ export function LiveChart({
                               background: lvl.isPoc
                                 ? "rgba(234, 179, 8, 0.25)"
                                 : lvl.isBuyImbalance
-                                ? "rgba(34, 197, 94, 0.18)"
-                                : lvl.isSellImbalance
-                                ? "rgba(239, 68, 68, 0.18)"
-                                : "transparent",
+                                  ? "rgba(34, 197, 94, 0.18)"
+                                  : lvl.isSellImbalance
+                                    ? "rgba(239, 68, 68, 0.18)"
+                                    : "transparent",
                               border: lvl.isPoc ? "1px solid #eab308" : "none",
                               borderRadius: 2,
                               fontSize: 9,
@@ -2722,9 +2642,7 @@ export function LiveChart({
                           Δ {fp.delta >= 0 ? "+" : ""}
                           {fp.delta}
                         </span>
-                        <span style={{ color: "#64748b" }}>
-                          Vol: {fp.volume.toLocaleString()}
-                        </span>
+                        <span style={{ color: "#64748b" }}>Vol: {fp.volume.toLocaleString()}</span>
                       </div>
                     </div>
                   );
@@ -2867,17 +2785,18 @@ export function LiveChart({
                       }}
                       style={{
                         padding: "8px 10px",
-                        background: selectedSymbol === item.symbol
-                          ? "rgba(234, 179, 8, 0.18)"
-                          : item.isCore
-                          ? "rgba(234, 179, 8, 0.08)"
-                          : "#141923",
+                        background:
+                          selectedSymbol === item.symbol
+                            ? "rgba(234, 179, 8, 0.18)"
+                            : item.isCore
+                              ? "rgba(234, 179, 8, 0.08)"
+                              : "#141923",
                         border: `1px solid ${
                           selectedSymbol === item.symbol
                             ? "#eab308"
                             : item.isCore
-                            ? "rgba(234, 179, 8, 0.4)"
-                            : "#1e2638"
+                              ? "rgba(234, 179, 8, 0.4)"
+                              : "#1e2638"
                         }`,
                         borderRadius: 6,
                         display: "flex",
@@ -2888,9 +2807,12 @@ export function LiveChart({
                     >
                       <div>
                         <div style={{ fontWeight: 800, fontSize: 12, color: item.isCore ? "#fbbf24" : "#f8fafc" }}>
-                          {item.isCore ? "★ " : ""}{item.symbol}
+                          {item.isCore ? "★ " : ""}
+                          {item.symbol}
                         </div>
-                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{item.name} · {item.expiry}</div>
+                        <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                          {item.name} · {item.expiry}
+                        </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontWeight: 800, fontSize: 12, fontFamily: "monospace" }}>
@@ -2910,7 +2832,9 @@ export function LiveChart({
                     </div>
                   ))}
 
-                  <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px", marginTop: 8 }}>
+                  <div
+                    style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.5px", marginTop: 8 }}
+                  >
                     NSE INDICES:
                   </div>
                   {[
@@ -2958,9 +2882,7 @@ export function LiveChart({
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 12, color: "#f8fafc" }}>
-                          {item.symbol}
-                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: "#f8fafc" }}>{item.symbol}</div>
                         <div style={{ fontSize: 10, color: "#64748b" }}>{item.expiry}</div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -2999,9 +2921,7 @@ export function LiveChart({
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 12, color: "#fbbf24" }}>
-                        {profile.symbol}
-                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 12, color: "#fbbf24" }}>{profile.symbol}</div>
                       <div style={{ fontSize: 10, color: "#94a3b8" }}>
                         {profile.contract} · {profile.segment}
                       </div>
@@ -3010,9 +2930,7 @@ export function LiveChart({
                       <div style={{ fontWeight: 900, fontSize: 13, fontFamily: "monospace", color: "#fef08a" }}>
                         ₹{currentPrice.toFixed(2)}
                       </div>
-                      <div style={{ fontSize: 9, color: "#22c55e", fontWeight: 700 }}>
-                        ● IN-MEMORY STREAMING
-                      </div>
+                      <div style={{ fontSize: 9, color: "#22c55e", fontWeight: 700 }}>● IN-MEMORY STREAMING</div>
                     </div>
                   </div>
 
@@ -3035,7 +2953,9 @@ export function LiveChart({
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ color: "#94a3b8" }}>Memory Footprint:</span>
-                      <strong style={{ fontFamily: "monospace" }}>{(footprintStats.memoryBytes / 1024).toFixed(1)} KB</strong>
+                      <strong style={{ fontFamily: "monospace" }}>
+                        {(footprintStats.memoryBytes / 1024).toFixed(1)} KB
+                      </strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#94a3b8" }}>Read Latency:</span>
@@ -3159,41 +3079,46 @@ export function LiveChart({
                       <span>DELTA</span>
                       <span>POC</span>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 180, overflowY: "auto" }}>
-                      {footprintBars.slice(-10).reverse().map((b) => {
-                        const timeStr = new Date(b.time * 1000).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        return (
-                          <div
-                            key={b.time}
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                              fontSize: 10,
-                              fontFamily: "monospace",
-                              padding: "3px 4px",
-                              background: "#121620",
-                              borderRadius: 4,
-                              alignItems: "center",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>{timeStr}</span>
-                            <span style={{ fontWeight: 600 }}>{b.close.toFixed(1)}</span>
-                            <span
+                    <div
+                      style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 180, overflowY: "auto" }}
+                    >
+                      {footprintBars
+                        .slice(-10)
+                        .reverse()
+                        .map((b) => {
+                          const timeStr = new Date(b.time * 1000).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          return (
+                            <div
+                              key={b.time}
                               style={{
-                                color: b.delta >= 0 ? "#22c55e" : "#ef4444",
-                                fontWeight: 700,
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                                fontSize: 10,
+                                fontFamily: "monospace",
+                                padding: "3px 4px",
+                                background: "#121620",
+                                borderRadius: 4,
+                                alignItems: "center",
                               }}
                             >
-                              {b.delta >= 0 ? "+" : ""}
-                              {b.delta}
-                            </span>
-                            <span style={{ color: "#fef08a" }}>{b.pocPrice.toFixed(1)}</span>
-                          </div>
-                        );
-                      })}
+                              <span style={{ color: "#94a3b8" }}>{timeStr}</span>
+                              <span style={{ fontWeight: 600 }}>{b.close.toFixed(1)}</span>
+                              <span
+                                style={{
+                                  color: b.delta >= 0 ? "#22c55e" : "#ef4444",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {b.delta >= 0 ? "+" : ""}
+                                {b.delta}
+                              </span>
+                              <span style={{ color: "#fef08a" }}>{b.pocPrice.toFixed(1)}</span>
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
 
@@ -3222,9 +3147,7 @@ export function LiveChart({
 
               {activeTab === "OPTION_CHAIN" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>
-                    L2 MARKET DEPTH (5 LEVELS)
-                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>L2 MARKET DEPTH (5 LEVELS)</div>
                   {depthData && depthData.bids && depthData.asks ? (
                     <div style={{ fontSize: 11, fontFamily: "monospace" }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -3444,9 +3367,7 @@ export function LiveChart({
               paddingBottom: 8,
             }}
           >
-            <span style={{ fontWeight: 800, fontSize: 13, color: "#f8fafc" }}>
-              Technical Indicators & Overlays
-            </span>
+            <span style={{ fontWeight: 800, fontSize: 13, color: "#f8fafc" }}>Technical Indicators & Overlays</span>
             <button
               onClick={() => setShowIndicatorsModal(false)}
               style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}
@@ -3455,10 +3376,21 @@ export function LiveChart({
             </button>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12, maxHeight: 380, overflowY: "auto" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              fontSize: 12,
+              maxHeight: 380,
+              overflowY: "auto",
+            }}
+          >
             {/* Trend Group */}
             <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+              <div
+                style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}
+              >
                 Trend & Moving Averages
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3499,7 +3431,9 @@ export function LiveChart({
 
             {/* Volume & Benchmark Group */}
             <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+              <div
+                style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}
+              >
                 Volume & Institutional Benchmarks
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3524,7 +3458,9 @@ export function LiveChart({
 
             {/* Volatility & Oscillators Group */}
             <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+              <div
+                style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}
+              >
                 Volatility & Momentum
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3532,9 +3468,7 @@ export function LiveChart({
                   <input
                     type="checkbox"
                     checked={enabledIndicators.bollingerBands}
-                    onChange={(e) =>
-                      setEnabledIndicators({ ...enabledIndicators, bollingerBands: e.target.checked })
-                    }
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, bollingerBands: e.target.checked })}
                   />
                   <span style={{ color: "#22d3ee" }}>Bollinger Bands (20, 2) (Cyan Bands)</span>
                 </label>
@@ -3551,7 +3485,9 @@ export function LiveChart({
 
             {/* Strategy & Risk Group */}
             <div style={{ borderTop: "1px solid #1e2638", paddingTop: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+              <div
+                style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}
+              >
                 Strategy & Execution
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3559,9 +3495,7 @@ export function LiveChart({
                   <input
                     type="checkbox"
                     checked={enabledIndicators.optionStrikes}
-                    onChange={(e) =>
-                      setEnabledIndicators({ ...enabledIndicators, optionStrikes: e.target.checked })
-                    }
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, optionStrikes: e.target.checked })}
                   />
                   <span style={{ color: "#c084fc" }}>Option Strikes C/P Line (Purple)</span>
                 </label>
@@ -3569,9 +3503,7 @@ export function LiveChart({
                   <input
                     type="checkbox"
                     checked={enabledIndicators.slTpOverlays}
-                    onChange={(e) =>
-                      setEnabledIndicators({ ...enabledIndicators, slTpOverlays: e.target.checked })
-                    }
+                    onChange={(e) => setEnabledIndicators({ ...enabledIndicators, slTpOverlays: e.target.checked })}
                   />
                   <span style={{ color: "#4ade80" }}>Strategy SL / TP & Entry Lines</span>
                 </label>
@@ -3600,8 +3532,7 @@ export function LiveChart({
             Open P&L: <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
           </div>
           <div>
-            Total P&L:{" "}
-            <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
+            Total P&L: <span style={{ color: "#94a3b8", fontWeight: 700, fontFamily: "monospace" }}>--</span>
           </div>
         </div>
 

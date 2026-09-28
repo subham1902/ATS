@@ -21,7 +21,7 @@ export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<GovernedCandidate[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [search, setSearch] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/v1/governance/candidates")
@@ -51,7 +51,9 @@ export default function CandidatesPage() {
   const executedCount = candidates.filter((c) => c.status === "EXECUTED" || c.status === "APPROVED").length;
   const a04DeniedCount = candidates.filter((c) => c.status === "A04_DENIED").length;
   const capitalDeniedCount = candidates.filter((c) => c.status === "CAPITAL_DENIED").length;
-  const riskDeniedCount = candidates.filter((c) => c.status === "EXECUTION_DENIED" || c.status === "RISK_DENIED").length;
+  const riskDeniedCount = candidates.filter(
+    (c) => c.status === "EXECUTION_DENIED" || c.status === "RISK_DENIED",
+  ).length;
 
   return (
     <div
@@ -97,7 +99,8 @@ export default function CandidatesPage() {
             </span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            Real-time trade proposals emitted by alpha strategy agents and evaluated sequentially across all 4 governance gates.
+            Real-time trade proposals emitted by alpha strategy agents and evaluated sequentially across all 4
+            governance gates.
           </p>
         </div>
 
@@ -129,31 +132,66 @@ export default function CandidatesPage() {
           marginBottom: 24,
         }}
       >
-        <div style={{ padding: 16, background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(51, 65, 85, 0.5)", borderRadius: 10 }}>
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(51, 65, 85, 0.5)",
+            borderRadius: 10,
+          }}
+        >
           <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>TOTAL PROPOSALS</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>{candidates.length}</div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>From S17, S02, S04</div>
         </div>
 
-        <div style={{ padding: 16, background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(16, 185, 129, 0.4)", borderRadius: 10 }}>
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(16, 185, 129, 0.4)",
+            borderRadius: 10,
+          }}
+        >
           <div style={{ fontSize: 11, color: "#34d399", fontWeight: 600 }}>APPROVED / EXECUTED</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#34d399", marginTop: 4 }}>{executedCount}</div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Passed all 4 gates</div>
         </div>
 
-        <div style={{ padding: 16, background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 10 }}>
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            borderRadius: 10,
+          }}
+        >
           <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>GATE 1 A04 DENIED</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#f87171", marginTop: 4 }}>{a04DeniedCount}</div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>P(win) &lt; 0.52 or low edge</div>
         </div>
 
-        <div style={{ padding: 16, background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10 }}>
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(245, 158, 11, 0.3)",
+            borderRadius: 10,
+          }}
+        >
           <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 600 }}>GATE 2 CAPITAL DENIED</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fbbf24", marginTop: 4 }}>{capitalDeniedCount}</div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Margin &gt; available</div>
         </div>
 
-        <div style={{ padding: 16, background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 10 }}>
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            borderRadius: 10,
+          }}
+        >
           <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>GATE 3 RISK DENIED</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#f87171", marginTop: 4 }}>{riskDeniedCount}</div>
           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Max loss or concurrency limit</div>
@@ -229,9 +267,7 @@ export default function CandidatesPage() {
                   ? "rgba(16, 185, 129, 0.08)"
                   : "rgba(15, 23, 42, 0.75)",
               border: `1px solid ${
-                c.status === "EXECUTED" || c.status === "APPROVED"
-                  ? "rgba(16, 185, 129, 0.3)"
-                  : "rgba(51, 65, 85, 0.5)"
+                c.status === "EXECUTED" || c.status === "APPROVED" ? "rgba(16, 185, 129, 0.3)" : "rgba(51, 65, 85, 0.5)"
               }`,
               display: "flex",
               justifyContent: "space-between",
@@ -259,13 +295,28 @@ export default function CandidatesPage() {
               </div>
 
               <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#cbd5e1", marginTop: 6 }}>
-                <span>Entry: <strong>₹{c.entry_price.toLocaleString()}</strong></span>
-                <span>Expected Edge: <strong>{c.expected_edge_r}R</strong></span>
-                <span>P(win): <strong>{c.calibrated_prob}</strong></span>
+                <span>
+                  Entry: <strong>₹{c.entry_price.toLocaleString()}</strong>
+                </span>
+                <span>
+                  Expected Edge: <strong>{c.expected_edge_r}R</strong>
+                </span>
+                <span>
+                  P(win): <strong>{c.calibrated_prob}</strong>
+                </span>
               </div>
 
               {c.rejection_reason && (
-                <div style={{ fontSize: 11, color: "#f87171", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "#f87171",
+                    marginTop: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   <span>✗</span>
                   <span>{c.rejection_reason}</span>
                 </div>
@@ -282,14 +333,9 @@ export default function CandidatesPage() {
                   c.status === "EXECUTED"
                     ? "rgba(16, 185, 129, 0.2)"
                     : c.status === "APPROVED"
-                    ? "rgba(99, 102, 241, 0.2)"
-                    : "rgba(239, 68, 68, 0.2)",
-                color:
-                  c.status === "EXECUTED"
-                    ? "#34d399"
-                    : c.status === "APPROVED"
-                    ? "#a5b4fc"
-                    : "#f87171",
+                      ? "rgba(99, 102, 241, 0.2)"
+                      : "rgba(239, 68, 68, 0.2)",
+                color: c.status === "EXECUTED" ? "#34d399" : c.status === "APPROVED" ? "#a5b4fc" : "#f87171",
               }}
             >
               {c.status}

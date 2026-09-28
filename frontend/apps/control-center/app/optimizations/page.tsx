@@ -7,11 +7,14 @@ interface OptimizationState {
   status: string;
   active_trials: number;
   total_trials: number;
-  best_results: Record<string, {
-    value: number;
-    params: Record<string, any>;
-    updated_at: string;
-  }>;
+  best_results: Record<
+    string,
+    {
+      value: number;
+      params: Record<string, any>;
+      updated_at: string;
+    }
+  >;
   recent_trials: Array<{
     strategy: string;
     trial_id: string;
@@ -36,7 +39,7 @@ export default function LiveOptimizationsPage() {
         console.error("Failed to fetch opt state", e);
       }
     };
-    
+
     fetchState();
     const intv = setInterval(fetchState, 2000);
     return () => clearInterval(intv);
@@ -44,16 +47,18 @@ export default function LiveOptimizationsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "14px 20px",
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
-        borderRadius: 14,
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 20px",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 14,
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
+        }}
+      >
         <div>
           <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
             Live Optimizations
@@ -62,7 +67,8 @@ export default function LiveOptimizationsPage() {
             Continuous Bayesian parameter search & validation across active strategies
           </div>
         </div>
-        <div style={{
+        <div
+          style={{
             display: "flex",
             alignItems: "center",
             gap: 7,
@@ -72,17 +78,20 @@ export default function LiveOptimizationsPage() {
             border: `1px solid ${optState?.status === "RUNNING" ? "#bbf7d0" : "#cbd5e1"}`,
             fontSize: 11,
             fontWeight: 600,
-            color: optState?.status === "RUNNING" ? "#15803d" : "#64748b"
-          }}>
-            <span style={{
+            color: optState?.status === "RUNNING" ? "#15803d" : "#64748b",
+          }}
+        >
+          <span
+            style={{
               width: 10,
               height: 10,
               borderRadius: "50%",
               background: optState?.status === "RUNNING" ? "#22c55e" : "#94a3b8",
               boxShadow: optState?.status === "RUNNING" ? "0 0 8px rgba(34,197,94,0.6)" : "none",
-              animation: optState?.status === "RUNNING" ? "pulse-dot 2s infinite ease-in-out" : "none"
-            }} />
-            <span style={{ fontSize: 14 }}>Worker: {optState?.status || "UNKNOWN"}</span>
+              animation: optState?.status === "RUNNING" ? "pulse-dot 2s infinite ease-in-out" : "none",
+            }}
+          />
+          <span style={{ fontSize: 14 }}>Worker: {optState?.status || "UNKNOWN"}</span>
         </div>
       </div>
 
@@ -100,22 +109,33 @@ export default function LiveOptimizationsPage() {
           </div>
         </Card>
 
-        {optState && Object.entries(optState.best_results).map(([strat, result]) => (
-          <Card key={strat} title={`Best Known: ${strat}`}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: 14, color: "#64748b", fontWeight: 600 }}>Peak Score</span>
-                <span style={{ fontSize: 28, fontWeight: 800, color: "#16a34a" }}>{result.value.toFixed(2)}</span>
+        {optState &&
+          Object.entries(optState.best_results).map(([strat, result]) => (
+            <Card key={strat} title={`Best Known: ${strat}`}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 14, color: "#64748b", fontWeight: 600 }}>Peak Score</span>
+                  <span style={{ fontSize: 28, fontWeight: 800, color: "#16a34a" }}>{result.value.toFixed(2)}</span>
+                </div>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "12px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontFamily: "monospace",
+                    color: "#334155",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  {JSON.stringify(result.params, null, 2)}
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "right", fontWeight: 500 }}>
+                  Last improved: {new Date(result.updated_at).toLocaleTimeString()}
+                </div>
               </div>
-              <div style={{ background: "#f8fafc", padding: "12px", borderRadius: 8, fontSize: 13, fontFamily: "monospace", color: "#334155", border: "1px solid #e2e8f0" }}>
-                {JSON.stringify(result.params, null, 2)}
-              </div>
-              <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "right", fontWeight: 500 }}>
-                Last improved: {new Date(result.updated_at).toLocaleTimeString()}
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))}
       </div>
 
       <Card title="Live Evolution Feed">
@@ -133,12 +153,30 @@ export default function LiveOptimizationsPage() {
               </thead>
               <tbody>
                 {optState.recent_trials.map((t, idx) => (
-                  <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s", cursor: "default" }} onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                    <td style={{ padding: "10px 8px", color: "#94a3b8" }}>{new Date(t.timestamp).toLocaleTimeString()}</td>
+                  <tr
+                    key={idx}
+                    style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s", cursor: "default" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <td style={{ padding: "10px 8px", color: "#94a3b8" }}>
+                      {new Date(t.timestamp).toLocaleTimeString()}
+                    </td>
                     <td style={{ padding: "10px 8px", fontWeight: 700, color: "#334155" }}>{t.strategy}</td>
                     <td style={{ padding: "10px 8px", fontFamily: "monospace", color: "#0284c7" }}>{t.trial_id}</td>
-                    <td style={{ padding: "10px 8px", fontWeight: 800, fontSize: 15, color: t.score > 0 ? "#16a34a" : "#dc2626" }}>{t.score.toFixed(2)}</td>
-                    <td style={{ padding: "10px 8px", fontFamily: "monospace", fontSize: 13, color: "#475569" }}>{JSON.stringify(t.params)}</td>
+                    <td
+                      style={{
+                        padding: "10px 8px",
+                        fontWeight: 800,
+                        fontSize: 15,
+                        color: t.score > 0 ? "#16a34a" : "#dc2626",
+                      }}
+                    >
+                      {t.score.toFixed(2)}
+                    </td>
+                    <td style={{ padding: "10px 8px", fontFamily: "monospace", fontSize: 13, color: "#475569" }}>
+                      {JSON.stringify(t.params)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

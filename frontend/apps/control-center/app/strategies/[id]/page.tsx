@@ -36,7 +36,8 @@ export default function StrategyDetailPage() {
       <div>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{report.strategy.name}</h1>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#6b7280" }}>
-          ID: {report.strategy.strategy_id} | Class: {report.strategy.classification} | Tier: {report.strategy.evidence_tier}
+          ID: {report.strategy.strategy_id} | Class: {report.strategy.classification} | Tier:{" "}
+          {report.strategy.evidence_tier}
         </p>
       </div>
 
@@ -78,7 +79,7 @@ export default function StrategyDetailPage() {
               </div>
             </div>
           </Card>
-          
+
           <Card title="Lifetime Metrics">
             <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -87,7 +88,13 @@ export default function StrategyDetailPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#6b7280" }}>Total Net P&L</span>
-                <span style={{ fontWeight: 600, fontFamily: "monospace", color: report.strategy.total_net_pnl >= 0 ? "#16a34a" : "#dc2626" }}>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    fontFamily: "monospace",
+                    color: report.strategy.total_net_pnl >= 0 ? "#16a34a" : "#dc2626",
+                  }}
+                >
                   ₹{report.strategy.total_net_pnl}
                 </span>
               </div>
@@ -114,18 +121,31 @@ export default function StrategyDetailPage() {
                 {report.strategy.performance_records.map((run: any, idx: number) => (
                   <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
                     <td style={{ padding: 8 }}>
-                       <span style={{ padding: "2px 6px", background: "#f3f4f6", borderRadius: 4, fontWeight: 600 }}>{run.execution_context}</span>
+                      <span style={{ padding: "2px 6px", background: "#f3f4f6", borderRadius: 4, fontWeight: 600 }}>
+                        {run.execution_context}
+                      </span>
                     </td>
                     <td style={{ padding: 8 }}>{run.timeframe}</td>
                     <td style={{ padding: 8, fontFamily: "monospace" }}>{run.trades_count}</td>
-                    <td style={{ padding: 8, fontFamily: "monospace", color: run.net_pnl >= 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>₹{run.net_pnl}</td>
+                    <td
+                      style={{
+                        padding: 8,
+                        fontFamily: "monospace",
+                        color: run.net_pnl >= 0 ? "#16a34a" : "#dc2626",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ₹{run.net_pnl}
+                    </td>
                     <td style={{ padding: 8, fontFamily: "monospace", color: "#dc2626" }}>₹{run.max_drawdown}</td>
                     <td style={{ padding: 8, color: "#9ca3af" }}>{run.measured_at}</td>
                   </tr>
                 ))}
                 {report.strategy.performance_records.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#9ca3af" }}>No verified historical runs recorded in the evidence ledger.</td>
+                    <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#9ca3af" }}>
+                      No verified historical runs recorded in the evidence ledger.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -141,7 +161,7 @@ export default function StrategyDetailPage() {
           </div>
         </Card>
       )}
-      
+
       {(activeTab === "LIVE STATE" || activeTab === "PERFORMANCE" || activeTab === "EVIDENCE") && (
         <Card title={`${activeTab} Overview`}>
           <div style={{ padding: 24, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
