@@ -2,13 +2,11 @@
 param(
     [switch]$NoOpen
 )
-
 $scriptDir = $PSScriptRoot
 $operatorScript = Join-Path $scriptDir 'ats-operator.ps1'
-
 if ($NoOpen) {
-    & $operatorScript -Action Start -NoOpen
+    & $operatorScript -Action Restart -NoOpen
 } else {
-    & $operatorScript -Action Start
+    & $operatorScript -Action Restart
 }
 exit $LASTEXITCODE

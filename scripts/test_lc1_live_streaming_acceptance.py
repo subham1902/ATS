@@ -13,9 +13,8 @@ Validates:
 9. Screenshot evidence generation.
 """
 
-import sys
-import time
 from pathlib import Path
+
 from playwright.sync_api import sync_playwright
 
 ARTIFACTS_DIR = Path("C:/Users/subha/.gemini/antigravity-ide/brain/4fd21fa7-bce8-41a6-9245-97268504a312/screenshots")
