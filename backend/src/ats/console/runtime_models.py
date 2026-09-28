@@ -60,6 +60,8 @@ class RuntimeStatusReadModel(ATSBaseModel):
     broker_healthy: bool
     halted: bool
     paused_new_entries: bool
+    execution_context: str = "PAPER"
+    live_ready: bool = False
     updated_at: UTCDateTime
 
 
@@ -71,9 +73,13 @@ class RuntimeCommandRequest(ATSBaseModel):
         "EXIT_POSITION",
         "FLATTEN_PORTFOLIO",
         "HALT_SYSTEM",
+        "START_SESSION",
+        "STOP_SESSION",
     ]
     mode: Literal["SAFE", "NORMAL", "AGGRESSIVE"] | None = None
     position_id: UUID | None = None
+    budget: Decimal | None = None
+    duration_minutes: int | None = None
 
 
 class RuntimeCommandResult(ATSBaseModel):

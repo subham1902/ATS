@@ -13,10 +13,11 @@ with no fabric attached it reports ``NO_FEED``, and an absent provider field sta
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
@@ -45,6 +46,8 @@ from .market_models import (
     ReferenceIntelligenceView,
     StrategyPredictionView,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/market", tags=["market"])
 
@@ -154,7 +157,9 @@ def quote_view(
     bid = update.bid_price
     ask = update.ask_price
     spread: Decimal | None = ask - bid if (bid is not None and ask is not None) else None
-    reason: tuple[str, ...] = () if state is MarketDataState.LIVE else ("LAST_UPDATE_EXCEEDS_STALE_AFTER",)
+    reason: tuple[str, ...] = (
+        () if state is MarketDataState.LIVE else ("LAST_UPDATE_EXCEEDS_STALE_AFTER",)
+    )
     return MarketQuoteView(
         instrument_key=update.instrument_key,
         state=state,
@@ -184,56 +189,65 @@ def load_historical_reference_candles(
     *,
     limit: int = DEFAULT_CANDLE_LIMIT,
 ) -> tuple[CandleView, ...]:
-    """Load historical reference candles from normalized dataset if available."""
+    """Load historical reference candles from active dynamic datasets if available."""
     import csv
-    from pathlib import Path
 
-    filename_map = {
-        MarketInterval.M5: "norm_global_gold_5m_yahoo.csv",
-        MarketInterval.M15: "norm_global_gold_15m_refb.csv",
-        MarketInterval.H1: "norm_global_gold_1h_refb.csv",
-    }
-    fname = filename_map.get(interval)
-    if not fname:
-        return ()
-    repo_root = Path(__file__).resolve().parents[5]
-    p = repo_root / "research_data" / "strat04" / "normalized" / fname
-    if not p.exists():
-        return ()
+    from ats.datasets.service import get_dataset_registry_service
 
-    delta_seconds = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}.get(interval.value, 300)
-    candles: list[CandleView] = []
-    try:
-        with p.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            for row in rows[-limit:]:
-                try:
-                    dt_naive = datetime.strptime(row["timestamp_ist"], "%Y-%m-%d %H:%M:%S")
-                    dt_ist = dt_naive.replace(tzinfo=_IST_TZ)
-                    dt_utc = dt_ist.astimezone(timezone.utc)
-                    bar_close_utc = dt_utc + timedelta(seconds=delta_seconds)
-                    vol_str = row.get("volume")
-                    vol = int(float(vol_str)) if vol_str not in (None, "", "None") else None
-                    candles.append(
-                        CandleView(
-                            bar_start=dt_utc,
-                            bar_close=bar_close_utc,
-                            open=Decimal(row["open"]),
-                            high=Decimal(row["high"]),
-                            low=Decimal(row["low"]),
-                            close=Decimal(row["close"]),
-                            volume=vol,
-                            open_interest=None,
-                            tick_count=1,
-                            is_closed=True,
-                        )
-                    )
-                except Exception:
-                    continue
-    except Exception:
-        return ()
-    return tuple(candles)
+    svc = get_dataset_registry_service()
+    datasets = svc.list_datasets()
+    matching = next((d for d in datasets if d.get("timeframe") == interval.value), None)
+    if matching:
+        csv_path = svc.get_raw_csv_path(matching["id"])
+        if csv_path and csv_path.exists():
+            delta_seconds = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}.get(
+                interval.value, 300
+            )
+            candles: list[CandleView] = []
+            try:
+                with csv_path.open("r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+                    for row in rows[-limit:]:
+                        try:
+                            t_str = row.get("time") or row.get("timestamp") or ""
+                            dt_utc = None
+                            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+                                try:
+                                    dt_naive = datetime.strptime(t_str[:19], fmt)
+                                    dt_utc = dt_naive.replace(tzinfo=UTC)
+                                    break
+                                except ValueError:
+                                    pass
+                            if dt_utc is None:
+                                continue
+                            bar_close_utc = dt_utc + timedelta(seconds=delta_seconds)
+                            vol_str = row.get("volume")
+                            vol = (
+                                int(float(vol_str))
+                                if isinstance(vol_str, str) and vol_str not in ("", "None")
+                                else None
+                            )
+                            candles.append(
+                                CandleView(
+                                    bar_start=dt_utc,
+                                    bar_close=bar_close_utc,
+                                    open=Decimal(str(row["open"])),
+                                    high=Decimal(str(row["high"])),
+                                    low=Decimal(str(row["low"])),
+                                    close=Decimal(str(row["close"])),
+                                    volume=vol,
+                                    open_interest=None,
+                                    tick_count=1,
+                                    is_closed=True,
+                                )
+                            )
+                        except Exception:
+                            continue
+                return tuple(candles)
+            except Exception as e:
+                LOGGER.warning("Could not read dynamic dataset candles: %s", e)
+    return ()
 
 
 def candles_view(
@@ -315,7 +329,7 @@ def health_view(
     fabric: MarketDataFabric | None,
     clock: ClockProtocol,
     stale_after: int,
-    telemetry: dict | None = None,
+    telemetry: dict[str, Any] | None = None,
 ) -> FeedHealthView:
     """Distribution health from real counters; unattached is ``NO_FEED``."""
 
@@ -618,7 +632,9 @@ async def iter_market_sse(
                 price = _last_known_price()
                 if price is not None:
                     frame_id += 1
-                    yield serialize_market_frame(_make_prediction(price), f"market-prediction-{frame_id}")
+                    yield serialize_market_frame(
+                        _make_prediction(price), f"market-prediction-{frame_id}"
+                    )
                 continue
             if key is None:
                 key = resolve_key(fabric, None)
@@ -638,7 +654,9 @@ async def iter_market_sse(
             if update.last_traded_price is not None:
                 price = float(update.last_traded_price)
                 frame_id += 1
-                yield serialize_market_frame(_make_prediction(price), f"market-prediction-{frame_id}")
+                yield serialize_market_frame(
+                    _make_prediction(price), f"market-prediction-{frame_id}"
+                )
     finally:
         if subscription is not None:
             subscription.close()
@@ -672,6 +690,7 @@ def get_market_stream(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
             "X-ATS-Replay-Supported": "false",
         },
     )
@@ -725,7 +744,11 @@ async def market_depth(
             )
             for lvl in update.market_depth.sell_levels
         )
-        freshness = FreshnessState.STREAMING if (age_ms(clock, update.received_at) or 0) < 5000 else FreshnessState.NEAR_REAL_TIME
+        freshness = (
+            FreshnessState.STREAMING
+            if (age_ms(clock, update.received_at) or 0) < 5000
+            else FreshnessState.NEAR_REAL_TIME
+        )
     elif update and update.bid_price and update.ask_price:
         bp = update.bid_price
         ap = update.ask_price
@@ -735,7 +758,11 @@ async def market_depth(
         asks = (
             OrderBookLevel(price=ap, quantity=update.ask_quantity or 1, orders_count=1),
         )
-        freshness = FreshnessState.STREAMING if (age_ms(clock, update.received_at) or 0) < 5000 else FreshnessState.NEAR_REAL_TIME
+        freshness = (
+            FreshnessState.STREAMING
+            if (age_ms(clock, update.received_at) or 0) < 5000
+            else FreshnessState.NEAR_REAL_TIME
+        )
     else:
         # Fallback honest empty/unresolved depth
         bids = ()
@@ -860,7 +887,10 @@ async def market_intelligence(
         NewsItemView(
             id="news-gold-01",
             headline="Gold Consolidates Near Record Highs as Central Bank Demand Persists",
-            summary="Global central bank buying and safe-haven flows continue supporting bullion prices amid expectations of further rate cuts.",
+            summary=(
+                "Global central bank buying and safe-haven flows continue supporting "
+                "bullion prices amid expectations of further rate cuts."
+            ),
             source="Market News Wire",
             published_at=now - timedelta(minutes=45),
             relevant_instruments=("MCX_FO|569003", "XAUUSD", "COMEX_GC"),
@@ -870,7 +900,10 @@ async def market_intelligence(
         NewsItemView(
             id="news-macro-02",
             headline="US Dollar Softens as Yield Curve Normalizes",
-            summary="Treasury yields fell following dovish comments from Fed officials, giving commodities breathing room.",
+            summary=(
+                "Treasury yields fell following dovish comments from Fed officials, "
+                "giving commodities breathing room."
+            ),
             source="Global Macro Desk",
             published_at=now - timedelta(hours=2),
             relevant_instruments=("DXY", "USDINR", "MCX_FO|569003"),
@@ -924,20 +957,41 @@ async def market_compare(
     resolved = resolve_key(fabric, instrument)
     update = fabric.latest(resolved) if fabric and resolved else None
 
-    broker_price = update.last_traded_price if (update and update.last_traded_price) else Decimal("75420.00")
+    broker_price = (
+        update.last_traded_price if (update and update.last_traded_price) else Decimal("75420.00")
+    )
     broker_ts = (update.exchange_timestamp or update.received_at) if update else clock.now()
-    broker_freshness = FreshnessState.STREAMING if (update and (age_ms(clock, update.received_at) or 0) < 5000) else FreshnessState.NEAR_REAL_TIME
+    broker_freshness = (
+        FreshnessState.STREAMING
+        if (update and (age_ms(clock, update.received_at) or 0) < 5000)
+        else FreshnessState.NEAR_REAL_TIME
+    )
 
-    # Synthetic reference price conversion for Gold: (XAUUSD * USDINR / 31.1035 * 10 * 1.15 duty)
-    # Spot ~ $2684.50 * 83.94 / 31.1035 * 10 * 1.15 ~= ₹83,300 landed; local MCX futures basis
+    # Landed-parity reference for GOLDM, derived from the stated inputs:
+    #   spot_usd * usdinr / 31.1035 g-per-oz * 10 (contract size) * 1.15 duty
+    # NOTE: these are static reference constants, not a live reference feed. The
+    # view reports them as-is and never presents them as provider-sourced.
     ref_spot_usd = Decimal("2684.50")
     usdinr = Decimal("83.94")
-    # Landed parity benchmark
-    ref_benchmark = Decimal("75380.00")
+    duty_factor = Decimal("1.15")
+    contract_oz = Decimal("10")
+    grams_per_oz = Decimal("31.1035")
+    ref_benchmark = (ref_spot_usd * usdinr / grams_per_oz) * contract_oz * duty_factor
     ref_freshness = FreshnessState.NEAR_REAL_TIME
+
 
     diff = broker_price - ref_benchmark if broker_price else None
     diff_pct = float(diff / ref_benchmark * 100) if diff and ref_benchmark else None
+
+    # Derive the diagnosis from the observed basis instead of asserting a constant.
+    if diff_pct is None:
+        diagnosis = "UNKNOWN_NO_REFERENCE"
+    elif abs(diff_pct) <= 0.5:
+        diagnosis = "HEALTHY_BASIS_ALIGNMENT"
+    elif abs(diff_pct) <= 2.0:
+        diagnosis = "WATCH_BASIS_DIVERGENCE"
+    else:
+        diagnosis = "BASIS_DISLOCATION_INVESTIGATE"
 
     return DualSourceComparisonView(
         instrument_key=resolved or "MCX_FO|569003",
@@ -949,8 +1003,11 @@ async def market_compare(
         reference_freshness=ref_freshness,
         price_difference=diff,
         difference_pct=diff_pct,
-        basis_note="MCX GOLDM futures trade at a basis spread relative to international spot parity due to import tariffs and carrying cost.",
-        diagnosis="HEALTHY_BASIS_ALIGNMENT",
+        basis_note=(
+            "MCX GOLDM futures trade at a basis spread relative to international spot "
+            "parity due to import tariffs and carrying cost."
+        ),
+        diagnosis=diagnosis,
     )
 
 
