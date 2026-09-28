@@ -10,6 +10,7 @@ from ats.contracts.governance import GOVERNANCE_CONTRACTS
 from ats.contracts.governance import types as governance_types
 from ats.contracts.intelligence import INTELLIGENCE_CONTRACTS
 from ats.contracts.intelligence import types as intelligence_types
+
 from tests.unit.contracts.intelligence.fixtures import make_contracts
 
 HERE = Path(__file__).parent

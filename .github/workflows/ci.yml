@@ -13,41 +13,21 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel an in-progress run on main: the branch must always end with a
+  # definite green or red signal rather than a superseded run's outcome.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # Fail every Python step if any dependency in uv.lock disagrees with a
+  # manifest. This is what makes the lockfile a contract instead of a hint.
+  UV_FROZEN: "1"
+  # All durability tests talk to the service container below. Declared once so
+  # no step can forget it and silently skip the safety-critical suites.
+  ATS_TEST_POSTGRES_DSN: "postgresql://ats:ats@127.0.0.1:5432/ats_test"
 
 jobs:
   lint-and-typecheck:
     name: Lint & Typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11.15"
-      - uses: astral-sh/setup-uv@v6
-        with:
-          version: "0.12.1"
-          enable-cache: true
-      - run: uv sync --frozen
-      - name: Ruff
-        run: uv run ruff check backend
-      - name: Mypy
-        run: uv run mypy backend/src
-      - uses: pnpm/action-setup@v4
-        with:
-          version: "11.9.0"
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24.19.0"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Frontend typecheck
-        run: pnpm -r typecheck
-
-  python-tests:
-    name: Python Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -60,21 +40,238 @@ jobs:
           version: "0.12.1"
           enable-cache: true
       - run: uv sync --frozen
+      - name: Ruff (backend + tests)
+        run: uv run ruff check backend tests
+      - name: Mypy (strict)
+        run: uv run mypy backend/src
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.9.0"
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Lint/format run once from the workspace root: `eslint .` and
+      # `prettier --check .` already cover every workspace package.
+      - name: Frontend lint
+        run: pnpm lint
+      - name: Frontend typecheck
+        run: pnpm -r typecheck
+      - name: Format check
+        run: pnpm format:check
+
+  python-smoke:
+    name: Smoke / Governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      # The governance layer: forbidden dependencies, secret/model-artifact
+      # scan, ownership manifest completeness, no-live-credential markers.
+      # These were previously never executed by CI at all.
+      - name: Smoke tests
+        run: uv run python -m pytest tests/smoke -q --junitxml=junit-smoke.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-smoke
+          path: junit-smoke.xml
+
+  python-contract:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Contract tests (architecture guards)
+        run: uv run python -m pytest tests/contract -q --junitxml=junit-contract.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-contract
+          path: junit-contract.xml
+
+  python-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
       - name: Unit tests
-        run: uv run python -m pytest tests/unit -x -q
-      - name: Contract tests
-        run: uv run python -m pytest tests/contract -x -q
-      - name: Integration tests
-        run: uv run python -m pytest tests/integration -x -q
+        # No -x: fail-fast hides the true failure surface behind the first
+        # red test. The JUnit artifact records every outcome instead.
+        run: uv run python -m pytest tests/unit backend/tests -q --junitxml=junit-unit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-unit
+          path: junit-unit.xml
+
+  python-property:
+    name: Property Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
       - name: Property tests
-        run: uv run python -m pytest tests/property -x -q
-      - name: Faults tests
-        run: uv run python -m pytest tests/faults -x -q
+        run: uv run python -m pytest tests/property -q --junitxml=junit-property.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-property
+          path: junit-property.xml
+
+  python-durability:
+    name: Durability & Faults (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ats
+          POSTGRES_PASSWORD: ats
+          POSTGRES_DB: ats_test
+        # Postgres credentials are CI-fixture only; they grant no access to
+        # anything outside this job's loopback container.
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ats"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Verify the driver and DSN are actually present
+        # Guard the guard: if psycopg or the DSN went missing, the suites below
+        # would skip and the job would still be green.
+        run: |
+          uv run python -c "import psycopg; print('psycopg', psycopg.__version__)"
+          test -n "$ATS_TEST_POSTGRES_DSN" || { echo "ATS_TEST_POSTGRES_DSN unset" >&2; exit 1; }
+          uv run python -c "
+          import os, psycopg
+          with psycopg.connect(os.environ['ATS_TEST_POSTGRES_DSN']) as c:
+              print(c.execute('select version()').fetchone()[0])
+          "
+      - name: Integration tests
+        run: uv run python -m pytest tests/integration -q --junitxml=junit-integration.xml
+      - name: Fault-injection tests
+        run: uv run python -m pytest tests/faults -q --junitxml=junit-faults.xml
+      - name: Assert safety-critical database suites executed
+        # A skip in any of these means capital double-spend, single-use token
+        # consumption, durable authority or reconciliation was never exercised.
+        # That must fail the build, not pass silently.
+        run: >
+          uv run python scripts/ci/assert_critical_tests_ran.py
+          junit-integration.xml junit-faults.xml --strict-names
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-durability
+          path: junit-*.xml
+
+  python-coverage:
+    name: Coverage (risk-weighted)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ats
+          POSTGRES_PASSWORD: ats
+          POSTGRES_DB: ats_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ats"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Collect coverage
+        # A repository-wide percentage would be a vanity metric. Coverage is
+        # collected everywhere so the report is complete, but only the trusted
+        # core below is gated.
+        run: >
+          uv run python -m pytest
+          tests/contract tests/unit tests/property tests/smoke backend/tests
+          --cov --cov-report=xml:coverage.xml --cov-report=term
+          -q --junitxml=junit-coverage.xml
+      - name: Gate the trusted core
+        # Thresholds were measured locally on 2026-09-28 (contracts 95%,
+        # kernel 84%) and set two points below the measurement. They may
+        # ratchet upward only -- raising them is the default change.
+        run: |
+          uv run coverage report --include="*/ats/contracts/*" --fail-under=93
+          uv run coverage report --include="*/ats/kernel/*" --fail-under=82
+      - name: Report (informational, all modules)
+        if: always()
+        run: uv run coverage report || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            junit-coverage.xml
 
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -86,12 +283,16 @@ jobs:
           node-version: "24.19.0"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: API client tests
-        run: pnpm --filter @ats/api-client test
-      - name: UI tests
-        run: pnpm --filter @ats/ui test
-      - name: Control center tests
-        run: pnpm --filter @ats/control-center test
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Unit tests
+        # No --if-present: pnpm 11 forwards unknown flags to the script, and
+        # vitest rejects `--if-present`. Every workspace package defines `test`.
+        run: pnpm -r test
+      - name: Production build
+        run: pnpm --filter @ats/control-center build
 
   secret-scan:
     name: Secret Scan
@@ -104,18 +305,20 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Report into the security tab so findings are actionable rather than
+          # only visible in a log line.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
 
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # The action is supported for public repositories and private repositories
-    # with GitHub Code Security. This personal private repository has no such
-    # entitlement; Dependabot remains enabled for dependency alerts.
-    # Capability probe below: when the dependency graph is unavailable the
-    # review step is skipped instead of failing; when it is available the
-    # review runs with full fail-on-severity enforcement.
-    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    # Previously gated on `repository.private == false`, which is always false
+    # for this repository -- the job existed but could never execute. The
+    # capability probe is now the only gate: it runs on every pull request and
+    # performs the review when the dependency graph is available, otherwise
+    # reports why it could not.
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
       - name: Check dependency-review capability
@@ -127,7 +330,7 @@ jobs:
             echo "supported=true" >> "$GITHUB_OUTPUT"
           else
             echo "supported=false" >> "$GITHUB_OUTPUT"
-            echo "Dependency review is not supported for this repository (dependency graph unavailable); skipping enforcement."
+            echo "::notice::Dependency graph unavailable on this repository; dependency review skipped (Dependabot still monitors declared manifests)."
           fi
       - uses: actions/dependency-review-action@v4
         if: steps.capability.outputs.supported == 'true'

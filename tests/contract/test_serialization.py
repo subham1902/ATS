@@ -9,7 +9,6 @@ from enum import auto
 from uuid import UUID
 
 import pytest
-
 from ats.contracts import (
     ATSBaseModel,
     ATSStringEnum,

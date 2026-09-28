@@ -9,8 +9,15 @@ import pytest
 
 
 def test_multi_position_shared_authority_no_oversub() -> None:
-    from tests.unit.portfolio.runtime.helpers import NOW, PORTFOLIO_ID, FakeTransactionManager, command, policy
     from ats.portfolio.runtime import PortfolioRecoveryEvidence, SerializedPortfolioAuthority
+
+    from tests.unit.portfolio.runtime.helpers import (
+        NOW,
+        PORTFOLIO_ID,
+        FakeTransactionManager,
+        command,
+        policy,
+    )
 
     tm = FakeTransactionManager()
     authority = SerializedPortfolioAuthority(transaction_manager=tm, policy=policy(maximum=3))
@@ -40,6 +47,7 @@ def test_unique_tokens_per_position() -> None:
 
     from ats.kernel.autonomy import construct_autonomy_token, validate_token_eligibility
     from ats.kernel.types import AutonomyTokenPolicy, KernelOutcome
+
     from tests.unit.contracts.intelligence.fixtures import T0
     from tests.unit.kernel.fixtures import make_kernel_fixture, uid
 
@@ -160,7 +168,12 @@ def test_session_flat_invariants() -> None:
 
     from ats.market.calendar.models import SessionCalendar
     from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
-    from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
+    from ats.trading_runtime.engine import (
+        RuntimeConfig,
+        RuntimeEvent,
+        RuntimeEventKind,
+        TradingRuntime,
+    )
 
     cal = SessionCalendar(
         calendar_id="T",

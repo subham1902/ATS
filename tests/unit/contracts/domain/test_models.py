@@ -6,8 +6,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts.common import ATSBaseModel
 from ats.contracts.domain import DOMAIN_CONTRACTS
 from ats.contracts.domain.types import (
@@ -17,8 +15,9 @@ from ats.contracts.domain.types import (
     PositionStatus,
     RiskOutcome,
 )
+from pydantic import ValidationError
 
-from .fixtures import HASH, LATER, NOW, make_contracts
+from .fixtures import HASH, NOW, make_contracts
 
 
 @pytest.fixture(scope="module")

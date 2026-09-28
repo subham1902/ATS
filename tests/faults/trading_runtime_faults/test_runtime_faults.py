@@ -30,7 +30,7 @@ def test_large_event_burst_does_not_crash() -> None:
     now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
     feed.set_mark("NIFTY", Decimal("100"), now)
     runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
-    for i in range(500):
+    for _ in range(500):
         runtime.process_event(
             RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "99"}, at=now)
         )

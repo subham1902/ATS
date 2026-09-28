@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts import canonical_sha256
 from ats.contracts.domain import DOMAIN_CONTRACTS, compute_payload_hash
 from ats.contracts.domain.models import (
@@ -22,6 +20,8 @@ from ats.contracts.domain.types import (
     PredicateOperator,
     RiskOutcome,
 )
+from pydantic import ValidationError
+
 from tests.unit.contracts.domain.fixtures import make_contracts
 
 EXPECTED_CONTRACT_NAMES = (
@@ -102,7 +102,6 @@ def test_alpha_authority_literals_are_closed() -> None:
 
 def test_draft_and_advisory_cannot_express_executable_authority() -> None:
     draft = make_contracts()["StrategyPolicyDraft"]
-    advisory = make_contracts()["SupervisorAdvisory"]
     with pytest.raises(ValidationError):
         StrategyPolicyDraft.model_validate({**draft.model_dump(), "executable": True})
     assert "executable" not in SupervisorAdvisory.model_fields

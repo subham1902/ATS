@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
 from ats.contracts.intelligence.models import FormulaDefinition
 from ats.contracts.intelligence.types import (
     FormulaNode,
@@ -212,7 +210,7 @@ def test_nan_rejected_in_series() -> None:
 
 
 def test_inf_rejected_in_literal() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         lit_float(float("inf"))
 
 

@@ -5,21 +5,28 @@ All inputs are TEST_ONLY / NON_MARKET_DATA. Authority flow is real production co
 
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from decimal import Decimal
 
 from ats.contracts.common import UTCDateTime
-from ats.contracts.domain.hashing import compute_payload_hash
-from ats.contracts.domain.models import Fill, OrderIntent, PaperOrder, Position
-from ats.contracts.domain.types import AdvisoryOutcome, DataQualityState, PaperOrderStatus, PaperOrderType, Side
-from ats.contracts.governance.types import CandidateStatus
+from ats.contracts.domain.types import (
+    DataQualityState,
+    PaperOrderStatus,
+)
 from ats.execution.paper import PaperMarketFacts, PaperSubmissionScenario
 from ats.execution.paper.broker import process_paper_order, submit_paper_order
 from ats.execution.paper.models import PaperExecutionPolicy
-from ats.kernel.autonomy import construct_autonomy_token, validate_token_eligibility, validate_token_for_use
+from ats.kernel.autonomy import (
+    construct_autonomy_token,
+    validate_token_eligibility,
+    validate_token_for_use,
+)
 from ats.kernel.order_guard import validate_order_intent
-from ats.kernel.types import AutonomyTokenPolicy, GateCode, KernelOutcome, OrderEvaluationFacts, OrderGuardPolicy
+from ats.kernel.types import (
+    AutonomyTokenPolicy,
+    GateCode,
+    KernelOutcome,
+)
 
 from tests.unit.kernel.fixtures import T0, _validated, make_kernel_fixture, uid
 
@@ -227,7 +234,6 @@ def test_exit_authority_through_safe_path() -> None:
         supervisor_advisory_id=token.advisory_id,  # type: ignore[union-attr]
     )
     # Even with UNKNOWN execution safety, REDUCE should be allowed when fully_known_safe is handled
-    from ats.contracts.governance.types import RiskDirection
 
     assert token.candidate_id == x["candidate"].candidate_id  # type: ignore[union-attr]
     _ = intent

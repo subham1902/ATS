@@ -9,11 +9,14 @@ from datetime import UTC, date, datetime, time
 from decimal import Decimal
 
 from ats.market.calendar.models import SessionCalendar
-from ats.portfolio.runtime import PortfolioRecoveryEvidence, ReservationPartition
-from ats.portfolio.runtime import SerializedPortfolioAuthority
+from ats.portfolio.runtime import (
+    PortfolioRecoveryEvidence,
+    SerializedPortfolioAuthority,
+)
 from ats.trading_runtime.authority_service import PortfolioAuthorityService
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
+
 from tests.unit.portfolio.runtime.helpers import NOW, PORTFOLIO_ID, FakeTransactionManager, policy
 
 
@@ -64,8 +67,6 @@ def test_stale_data_blocks_new_risk_but_allows_fill_tracking() -> None:
 
 
 def test_unknown_submit_holds_reservation_through_engine() -> None:
-    from ats.execution.paper import PaperMarketFacts, PaperSubmissionScenario
-    from ats.contracts.domain.types import DataQualityState
 
     cal = _cal()
     feed = InMemoryMarketFeed()
@@ -76,7 +77,7 @@ def test_unknown_submit_holds_reservation_through_engine() -> None:
     feed.set_mark("NIFTY", Decimal("101"), now)
     rt = TradingRuntime(config=RuntimeConfig(calendar=cal, authority_reservation_amount=Decimal("10000")), market_feed=feed, broker=broker, authority=svc)
     # First entry reserves
-    r1 = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
+    rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
     snap = svc.snapshot()
     # Either reserved or blocked by churn — but if reserved, count is 1
     assert snap is not None

@@ -8,7 +8,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
 from ats.contracts.intelligence.models import FormulaDefinition
 from ats.contracts.intelligence.types import (
     FormulaNode,

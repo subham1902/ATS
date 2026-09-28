@@ -75,9 +75,8 @@ def test_laya_may_not_authorize_execution() -> None:
     ``status="AUTHORIZED"`` straight from an inbound callback, which inverted the
     repository axiom "AI proposes; deterministic ATS authorizes".
     """
-    from fastapi.testclient import TestClient
-
     from ats.console.app import create_console_app
+    from fastapi.testclient import TestClient
 
     client = TestClient(create_console_app())
     response = client.post(
@@ -98,9 +97,8 @@ def test_laya_may_not_authorize_execution() -> None:
 
 def test_laya_may_not_escalate_agent_risk_limits() -> None:
     """Constitution §1.2.3 -- no model may raise a risk limit or lot ceiling."""
-    from fastapi.testclient import TestClient
-
     from ats.console.app import create_console_app
+    from fastapi.testclient import TestClient
 
     client = TestClient(create_console_app())
     response = client.post(

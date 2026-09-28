@@ -8,8 +8,6 @@ from enum import auto
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
 from ats.contracts import (
     ATSBaseModel,
     ATSStringEnum,
@@ -25,6 +23,7 @@ from ats.contracts import (
     fixture_id,
     new_opaque_id,
 )
+from pydantic import ValidationError
 
 
 class CommonFixture(ATSBaseModel):

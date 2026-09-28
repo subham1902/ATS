@@ -9,7 +9,10 @@ dependencies = ["ats"]
 dev = [
   "httpx2==2.10.0",
   "mypy==1.17.1",
+  "psycopg[binary]==3.3.6",
   "pytest==8.4.2",
+  "pytest-cov==7.1.0",
+  "pytest-timeout==2.4.0",
   "ruff==0.12.11",
 ]
 
@@ -24,7 +27,48 @@ members = ["backend"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
+# Every tests/<layer>/ directory carries an __init__.py. Without it, two sibling
+# trees both resolved to the module name `trading_runtime` and the second one
+# selected failed to import with "No module named 'trading_runtime.test_startup'":
+# 8 orchestrator / startup / shutdown / reconciliation modules were silently
+# uncollectable whenever more than one test tree was selected. Making tests/,
+# tests/unit/ and tests/integration/ packages gives every module a unique
+# fully-qualified name and matches the repo's absolute `from tests.*` imports.
+# Every test is individually bounded so a hung durability or feed test cannot
+# stall a CI job until the runner-level timeout kills it with no diagnostics.
+timeout = 120
+markers = [
+  "asyncio: mark test as asyncio",
+  "durability: database-backed durability / double-spend / token-consumption safety",
+  "critical: safety-critical suite that CI asserts actually executed",
+]
+
+# Risk-weighted coverage. A repository-wide percentage is meaningless here; what
+# matters is that the trusted core -- contracts, kernel, execution authority,
+# portfolio authority, persistence and runtime safety -- cannot rot unnoticed.
+# Thresholds are enforced by separate `coverage report --fail-under` invocations
+# against one shared .coverage data file, so each tier is gated independently.
+[tool.coverage.run]
+branch = true
+source = ["backend/src/ats"]
+parallel = true
+omit = [
+  "*/ats/market/feeds/upstox_v3/proto/*",  # generated protobuf
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "\\.\\.\\.",
+]
+
+[tool.coverage.html]
+directory = "coverage-html"
 
 [tool.ruff]
 target-version = "py311"
@@ -35,6 +79,11 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/src/ats/market/feeds/upstox_v3/proto/MarketDataFeedV3_pb2.*" = ["ALL"]
+"backend/src/ats/agents/*" = ["E501"]
+"backend/tests/test_agents_playground.py" = ["E501"]
+# Test files carry long literal payloads (seeds, JSON envelopes, SQL). Wrapping
+# them adds churn without improving readability; every other rule still applies.
+"tests/*" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"
