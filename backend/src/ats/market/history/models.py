@@ -40,6 +40,7 @@ HISTORY_NAMESPACE = UUID("5f1c3a9e-8b24-5d67-a9c0-3e7f2b8d1c4a")
 DATASET_NAMESPACE = UUID("9d2b7e4a-6c31-5f88-b2d9-4a1e8c6f3b75")
 
 ExpiryDateText = Annotated[str, StringConstraints(strict=True, pattern=r"^\d{4}-\d{2}-\d{2}$")]
+
 HeadlineText = Annotated[str, StringConstraints(strict=True, min_length=1, max_length=256)]
 SummaryText = Annotated[str, StringConstraints(strict=True, min_length=1, max_length=2048)]
 NonEmptyText = Annotated[str, StringConstraints(strict=True, min_length=1)]
@@ -60,6 +61,7 @@ class ObservationKind(ATSStringEnum):
     OPTION_CHAIN_QUOTE = "OPTION_CHAIN_QUOTE"
     CONTRACT_METADATA = "CONTRACT_METADATA"
     MARKET_EVENT = "MARKET_EVENT"
+    RESEARCH_TICK = "RESEARCH_TICK"
 
 
 class HistoricalOptionType(ATSStringEnum):
@@ -183,11 +185,40 @@ class MarketEventPayload(ATSBaseModel):
     summary: SummaryText | None = None
 
 
+class ResearchTickPayload(ATSBaseModel):
+    """Canonical research tick payload."""
+
+    payload_kind: Literal[ObservationKind.RESEARCH_TICK]
+    underlying: InstrumentId
+    trading_symbol: InstrumentId
+    expiry_date: ExpiryDateText | None = None
+    strike: PositiveDecimal | None = None
+    option_type: HistoricalOptionType | None = None
+    bid: FiniteDecimal | None = None
+    bid_size: NonNegativeInt | None = None
+    ask: FiniteDecimal | None = None
+    ask_size: NonNegativeInt | None = None
+    volume: NonNegativeDecimal | None = None
+    open_interest: NonNegativeDecimal | None = None
+    open_interest_delta: FiniteDecimal | None = None
+    implied_volatility: FiniteDecimal | None = None
+    delta: FiniteDecimal | None = None
+    gamma: FiniteDecimal | None = None
+    theta: FiniteDecimal | None = None
+    vega: FiniteDecimal | None = None
+    rho: FiniteDecimal | None = None
+    age_ms: NonNegativeInt | None = None
+    lot_size: PositiveInt | None = None
+    tick_size: PositiveDecimal | None = None
+    contract_multiplier: PositiveDecimal | None = None
+
+
 ObservationPayload = Annotated[
     MarketBarPayload
     | OptionChainQuotePayload
     | ContractMetadataPayload
-    | MarketEventPayload,
+    | MarketEventPayload
+    | ResearchTickPayload,
     Field(discriminator="payload_kind"),
 ]
 
@@ -437,6 +468,7 @@ __all__ = [
     "OptionChainQuotePayload",
     "QualitySummary",
     "RawRecordReference",
+    "ResearchTickPayload",
     "TransformStep",
     "milliseconds_between",
     "validation_policy_hash",

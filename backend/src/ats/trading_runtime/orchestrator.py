@@ -243,6 +243,12 @@ class AutonomousPaperOrchestrator:
         if candidate is None or not isinstance(candidate, dict):
             return result
 
+        try:
+            from ats.observability.jev_telemetry import invoke_jev_shadow_async
+            invoke_jev_shadow_async(candidate, at)
+        except Exception:
+            pass  # Fail safe completely
+
         authorization = self._authorization_provider(result)
         if authorization.outcome is not KernelOutcome.ALLOW:
             self.counters.risk_rejected_candidates += 1

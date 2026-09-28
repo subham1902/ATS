@@ -18,27 +18,24 @@ import asyncio
 import logging
 import random
 from datetime import UTC, datetime
-from decimal import Decimal
-from typing import Any, Dict, Optional
-
-from websockets.asyncio.client import connect as ws_connect
-from websockets.exceptions import ConnectionClosed
+from typing import Any
 
 from ats.market.fabric import MarketDataFabric
 from ats.market.feeds.upstox_v3.config import (
     FeedMode,
     UpstoxFeedAuthorization,
-    UpstoxFeedConfiguration,
 )
 from ats.market.feeds.upstox_v3.frames import subscribe_frame
-from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate
 from ats.market.feeds.upstox_v3.protobuf_codec import UpstoxV3ProtobufDecoder
 from ats.market.feeds.upstox_v3.transport import UpstoxV3FeedAuthorizer
-from ats.market.live.candle_builder import IncrementalCandleEngine, LiveCandle
+from ats.market.live.candle_builder import IncrementalCandleEngine
 from ats.market.live.journal import MarketJournal
 from ats.market.live.state import ProviderState, ProviderStateMachine
 from ats.market.live.stream_hub import StreamHub
 from ats.market.live.subscriptions import SubscriptionRegistry
+from websockets.asyncio.client import ClientConnection
+from websockets.asyncio.client import connect as ws_connect
+from websockets.exceptions import ConnectionClosed
 
 logger = logging.getLogger("ats.market.live.upstox_v3")
 
@@ -53,7 +50,7 @@ class UpstoxV3LiveWorker:
         candle_engine: IncrementalCandleEngine,
         journal: MarketJournal,
         hub: StreamHub,
-        registry: Optional[SubscriptionRegistry] = None,
+        registry: SubscriptionRegistry | None = None,
         primary_instrument: str = "MCX_FO|569003",
         mode: str = "full",
     ):
@@ -74,19 +71,19 @@ class UpstoxV3LiveWorker:
         self.frames_received: int = 0
         self.decode_errors: int = 0
         self.reconnect_count: int = 0
-        self.last_tick_time: Optional[datetime] = None
-        self.last_quote_time: Optional[datetime] = None
-        self.last_depth_time: Optional[datetime] = None
-        self.last_oi_time: Optional[datetime] = None
-        self.last_ltp: Optional[float] = None
-        self.last_bid: Optional[float] = None
-        self.last_ask: Optional[float] = None
-        self.last_volume: Optional[int] = None
-        self.last_oi: Optional[int] = None
+        self.last_tick_time: datetime | None = None
+        self.last_quote_time: datetime | None = None
+        self.last_depth_time: datetime | None = None
+        self.last_oi_time: datetime | None = None
+        self.last_ltp: float | None = None
+        self.last_bid: float | None = None
+        self.last_ask: float | None = None
+        self.last_volume: int | None = None
+        self.last_oi: int | None = None
 
         self._running: bool = False
-        self._task: Optional[asyncio.Task] = None
-        self._current_ws = None
+        self._task: asyncio.Task[Any] | None = None
+        self._current_ws: ClientConnection | None = None
 
         # Register primary subscription
         self.registry.subscribe(
@@ -287,7 +284,11 @@ class UpstoxV3LiveWorker:
                 "ask": self.last_ask,
                 "volume": self.last_volume,
                 "open_interest": self.last_oi,
-                "exchange_timestamp": update.exchange_timestamp.isoformat() if update.exchange_timestamp else now.isoformat(),
+                "exchange_timestamp": (
+                    update.exchange_timestamp.isoformat()
+                    if update.exchange_timestamp
+                    else now.isoformat()
+                ),
             }
             asyncio.create_task(self.hub.broadcast_quote(inst, quote_payload))
 
@@ -295,8 +296,14 @@ class UpstoxV3LiveWorker:
             if update.market_depth:
                 self.last_depth_time = now
                 depth_payload = {
-                    "bids": [{"price": float(lvl.price), "quantity": lvl.quantity} for lvl in update.market_depth.buy_levels],
-                    "asks": [{"price": float(lvl.price), "quantity": lvl.quantity} for lvl in update.market_depth.sell_levels],
+                    "bids": [
+                        {"price": float(lvl.price), "quantity": lvl.quantity}
+                        for lvl in update.market_depth.buy_levels
+                    ],
+                    "asks": [
+                        {"price": float(lvl.price), "quantity": lvl.quantity}
+                        for lvl in update.market_depth.sell_levels
+                    ],
                 }
                 asyncio.create_task(self.hub.broadcast_depth(inst, depth_payload))
 
@@ -308,13 +315,29 @@ class UpstoxV3LiveWorker:
                 }
                 asyncio.create_task(self.hub.broadcast_oi(inst, oi_payload))
 
-    def get_telemetry(self) -> Dict[str, Any]:
+    def get_telemetry(self) -> dict[str, Any]:
         """Provides full observability without exposing credentials."""
         now = datetime.now(UTC)
-        quote_age_ms = int((now - self.last_quote_time).total_seconds() * 1000) if self.last_quote_time else None
-        trade_age_ms = int((now - self.last_tick_time).total_seconds() * 1000) if self.last_tick_time else None
-        depth_age_ms = int((now - self.last_depth_time).total_seconds() * 1000) if self.last_depth_time else None
-        oi_age_ms = int((now - self.last_oi_time).total_seconds() * 1000) if self.last_oi_time else None
+        quote_age_ms = (
+            int((now - self.last_quote_time).total_seconds() * 1000)
+            if self.last_quote_time
+            else None
+        )
+        trade_age_ms = (
+            int((now - self.last_tick_time).total_seconds() * 1000)
+            if self.last_tick_time
+            else None
+        )
+        depth_age_ms = (
+            int((now - self.last_depth_time).total_seconds() * 1000)
+            if self.last_depth_time
+            else None
+        )
+        oi_age_ms = (
+            int((now - self.last_oi_time).total_seconds() * 1000)
+            if self.last_oi_time
+            else None
+        )
 
         return {
             "provider": "upstox",

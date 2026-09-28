@@ -42,7 +42,11 @@ class SubscriptionRegistry:
 
         Returns (record, is_new_subscription).
         """
-        feed_mode = FeedMode.FULL if (isinstance(mode, str) and mode.lower() == "full") else (mode if isinstance(mode, FeedMode) else FeedMode.LTPC)
+        feed_mode = (
+            FeedMode.FULL
+            if (isinstance(mode, str) and mode.lower() == "full")
+            else (mode if isinstance(mode, FeedMode) else FeedMode.LTPC)
+        )
         existing = self._subscriptions.get(instrument_key)
         if existing is not None and existing.status != "UNSUBSCRIBED":
             existing.consumer_count += 1
@@ -69,7 +73,9 @@ class SubscriptionRegistry:
         )
         return record, True
 
-    def unsubscribe(self, instrument_key: str, consumer_id: str | None = None) -> tuple[SubscriptionRecord | None, bool]:
+    def unsubscribe(
+        self, instrument_key: str, consumer_id: str | None = None
+    ) -> tuple[SubscriptionRecord | None, bool]:
         """Decrement reference count; returns (record, should_unsubscribe_upstream)."""
         existing = self._subscriptions.get(instrument_key)
         if existing is None:

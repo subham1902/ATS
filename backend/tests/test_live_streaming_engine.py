@@ -11,12 +11,12 @@ Covers:
 """
 
 import asyncio
-from datetime import datetime, timezone
-import pytest
+from datetime import UTC, datetime
 
-from ats.market.live.state import ProviderState, ProviderStateMachine
+import pytest
 from ats.market.live.candle_builder import IncrementalCandleEngine, LiveCandle
 from ats.market.live.journal import MarketJournal
+from ats.market.live.state import ProviderState, ProviderStateMachine
 from ats.market.live.stream_hub import StreamHub
 from ats.market.live.subscriptions import SubscriptionRegistry
 
@@ -199,13 +199,14 @@ def test_stream_hub_filtering_and_broadcast():
                 self.closed = True
 
         ws = MockWebSocket()
-        sub = await hub.register(ws)
+        _sub = await hub.register(ws)
         assert hub.client_count == 1
 
         # Client subscribes to GOLDM and 5m candle
         await hub.handle_client_message(
             ws,
-            '{"action": "subscribe", "instrument_key": "MCX_FO|569003", "interval": "5m", "channels": ["candle"]}',
+            '{"action": "subscribe", "instrument_key": "MCX_FO|569003", '
+            '"interval": "5m", "channels": ["candle"]}',
         )
 
         # Broadcast a 5m candle
@@ -247,12 +248,13 @@ def test_stream_hub_filtering_and_broadcast():
 def test_market_journal_non_blocking():
     async def _run():
         from decimal import Decimal
+
         from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate, UpdateKind
 
         journal = MarketJournal(max_memory_entries=50)
         journal.start()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for i in range(10):
             update = NormalizedFeedUpdate(
                 instrument_key="MCX_FO|569003",
@@ -276,10 +278,20 @@ def test_market_journal_non_blocking():
 def test_safety_rules_invariants():
     """Verifies critical safety constraints: LIVE_MONEY=false, PaperBroker sole execution target."""
     import inspect
+
     from ats.market.live import upstox_v3
 
     # Check that upstox_v3 has NO order writing functions
     methods = [m[0] for m in inspect.getmembers(upstox_v3.UpstoxV3LiveWorker)]
-    forbidden = ["place_order", "modify_order", "cancel_order", "order_write", "buy", "sell"]
+    forbidden = [
+        "place_order",
+        "modify_order",
+        "cancel_order",
+        "order_write",
+        "buy",
+        "sell",
+    ]
     for f in forbidden:
-        assert f not in methods, f"Violation: Forbidden order method {f} found in live market worker!"
+        assert f not in methods, (
+            f"Violation: Forbidden order method {f} found in live market worker!"
+        )

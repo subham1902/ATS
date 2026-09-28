@@ -137,7 +137,7 @@ class MarketJournal:
                 try:
                     entry = await asyncio.wait_for(self._write_queue.get(), timeout=1.0)
                     batch.append(entry)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 # Drain available items up to batch size 100

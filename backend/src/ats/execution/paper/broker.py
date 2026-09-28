@@ -302,6 +302,19 @@ def _process_acknowledged_order(
             "version": order.version + 1,
         }
     )
+    try:
+        from ats.trading_runtime.paper_tournament import record_system_activity
+        record_system_activity(
+            event_kind=f"PAPER_{fill.side.value}_FILL",
+            summary=(
+                f"Paper fill on {fill.instrument_id} | Qty: {fill.quantity} @ "
+                f"₹{fill.price:,.2f} | Fees: ₹{fill.fees:,.2f} | "
+                f"Taxes: ₹{fill.taxes:,.2f} | Slippage: ₹{fill.slippage:,.2f}"
+            ),
+            correlation_id=str(fill.fill_id),
+        )
+    except Exception:
+        pass
     return updated, (fill,)
 
 
@@ -310,6 +323,18 @@ def cancel_paper_order(order: PaperOrder, *, cancelled_at: UTCDateTime) -> Paper
         raise PaperExecutionError("only open paper orders can be cancelled")
     if cancelled_at < order.updated_at:
         raise PaperExecutionError("cancellation time moved backwards")
+    try:
+        from ats.trading_runtime.paper_tournament import record_system_activity
+        record_system_activity(
+            event_kind="PAPER_ORDER_CANCELLED",
+            summary=(
+                f"Paper order {order.paper_order_id} cancelled on {order.instrument_id} "
+                f"(Side: {order.side.value}, Qty: {order.quantity})"
+            ),
+            correlation_id=str(order.paper_order_id),
+        )
+    except Exception:
+        pass
     return order.model_copy(
         update={
             "status": PaperOrderStatus.CANCELLED,
