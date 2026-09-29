@@ -1,11 +1,11 @@
 # ATS Implementation Report
 
-**Status: IN PROGRESS.** Covers Phases 0-1, the Phase 2 authorization work, and
-several latent defects found and fixed along the way. Items under
+**Status: PAUSED FOR VERIFICATION.** Phases 0-2 are committed, pushed, and green
+in remote CI. Phase 3 (frontend honesty) is committed locally as `d5ef50b` but
+NOT pushed — local checks pass (typecheck, eslint, 38 frontend tests, prod
+build) and remote CI is the pending verification step. Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
-there as incomplete. This document is extended as phases land; it is not final
-until every item under Remaining Work is either DONE or explicitly descoped in
-writing.
+there as incomplete.
 
 Repo: `D:\Projects\ATS\ats` (branch `main`). Baseline HEAD before this work:
 `bd0177b`. Commits made this session are listed under [Commits](#commits); the
@@ -28,6 +28,8 @@ AUTHORIZES.** The paper-only invariant (`Literal["A2_PAPER"]`) is untouched.
 | `e853ea9` | `fix(runtime)`: synthetic exit authority removed, fail-closed ordering                        |
 | `ce00a34` | `docs`: this report, with SHAs and the two open P2 follow-ups                                 |
 | `2de1ba1` | `fix(ci)`: four machine-local test failures made honest; token placeholder reshaped           |
+| `23eff20` | `docs`: replace the CI caveat with the verified remote result                                 |
+| `d5ef50b` | `fix(frontend)`: render only observed market data, never invented state                       |
 
 Each commit was validated on its own (lint, types and its relevant suites pass
 at that point, `uv lock --check` clean) so the history can be bisected.
@@ -81,7 +83,7 @@ Two honest caveats about that job, not hedges:
 | Integration (API + trading_runtime) | `pytest tests/integration`                                     | **49 passed, 61 skipped** (Postgres-gated)         |
 | Backend tests                       | `pytest backend/tests`                                         | **233 passed**                                     |
 | Whole-tree collection               | `pytest tests backend/tests --collect-only`                    | **1998 collected, 0 errors** (was 1926 + 8 errors) |
-| Frontend lint                       | `pnpm lint` (`eslint .`)                                       | PASS (0 errors, 57 warnings)                       |
+| Frontend lint                       | `pnpm lint` (`eslint .`)                                       | PASS (0 errors, 56 warnings)                       |
 | Frontend format                     | `pnpm format:check` (`prettier --check .`)                     | PASS                                               |
 | Frontend types                      | `pnpm -r typecheck`                                            | PASS (3 packages)                                  |
 | Frontend unit tests                 | `pnpm -r test`                                                 | PASS                                               |
@@ -245,6 +247,75 @@ true when the orchestrator constructs `TradingRuntime` without an authority, and
 gates independently, so this is defense-in-depth rather than an open escape
 hatch, but it should be made explicit.
 
+### Phase 3 - Frontend honesty (committed in `d5ef50b`, NOT yet pushed)
+
+The control center presented several things as measured that were not, and
+every one of them erred in the optimistic direction. This phase removes the
+fabrications rather than relabeling them.
+
+**Chart provenance (`lib/provenance.ts`, new):**
+
+- `chartBarsFromCandles` keeps ONLY bars whose open, high, low and close are
+  all present and numeric. A bar missing any leg is skipped and counted, never
+  interpolated. Bars with unknown volume are kept with `volume: null` and
+  render as gaps.
+- `evaluateChartProvenance` decides what the chart may claim from the series
+  envelope, feed health, quote state and transport, failing closed: no series
+  or no bars means NO_FEED/UNKNOWN, a dropped transport means frozen STALE
+  history labeled as such, and LIVE requires a live series plus a live (or
+  absent) health signal. The requested source travels through as a label.
+
+**LiveChart renders observed bars or an honest empty state:**
+
+- The 95-bar `patternDeltas` generator and the 1 Hz `Math.random()` pulse
+  (including its footprint-store writes) are deleted, with the last-bar
+  overwrite against a preset base price.
+- VWAP skips unknown-volume bars instead of assuming 1200; the footprint sync
+  passes volume through instead of defaulting it.
+- Price, change, OHLC legend, measure tool, ticket and card all handle "no
+  observed bars" with "—" rather than preset prices. A provenance banner shows
+  LIVE/STALE/NO FEED with bar counts, authority class, reason codes and
+  skipped-bar counts.
+- The POSITIONS/ORDERS tabs' static cards are labeled illustrative samples;
+  the ORDERS "FILLED" ticket no longer claims a fill. Footprint memory reads
+  "~KB (est.)" and latency reads "not measured".
+
+**Shell honesty:**
+
+- `ShellWrapper` maps a failed control-plane fetch to UNKNOWN instead of READY.
+- The header pill derives from system state plus stream state (LIVE READY only
+  when both agree; READY · FEED DOWN; NOT LIVE; CHECKING).
+- The data-source selector is backed by a `DataSourceProvider` context
+  (`lib/dataSource.tsx`) with typed values, labeled as a request because the
+  backend exposes no per-source selection; actual feed state comes from chart
+  provenance.
+
+**Hook and panels:**
+
+- `useMarketFeed` keeps the full candle-series envelope and maps the compact
+  socket quote through: quantities and age pass through or stay null (age
+  computed from exchange timestamps), state mirrors the server's feed-health
+  classification defaulting to UNKNOWN. Quantity 1, age 50 ms and hardcoded
+  LIVE are gone.
+- Dashboard wires data it already fetched: registry-count strategies chip,
+  "—"/"unknown" instead of 75420.0 / MCX_REGULAR / GOLDM FUT 05 OCT 26 /
+  FEED_ACTIVE, market-open no longer defaults to true, and system/readiness/
+  autonomy rows render fetched values.
+
+**Tests:** `lib/__tests__/provenance.test.ts` (9 cases), `lib/__tests__/dataSource.test.tsx`
+(3 cases), six new shell cases covering every pill state plus the selector.
+Control-center suite is **38 passed** across 4 files; typecheck clean on all 3
+packages; eslint 0 errors (56 warnings, down from 57); prettier clean;
+production build succeeds.
+
+**Deliberately out of scope:** the LiveChart decomposition into `chart360/`
+modules (charter item 6), the two ATR definitions, unimplemented drawing tools,
+and the `AICopilotPanel` backend URL.
+
+**Status: committed locally, NOT pushed. Remote CI has not run on this commit.**
+The numbers above are local; push and the CI check are the pending
+verification step.
+
 ### Latent defects found and fixed (not in any planned scope)
 
 1. **`httpx` was an undeclared runtime dependency.**
@@ -372,15 +443,24 @@ allow_all`. Exit authority and entry _binding_ are both explicit; entry
   provider now gates independently, so this is defense-in-depth - but it is
   still a bypass that should be made explicit.
 
-### P3/P5 - Frontend honesty
+### P3/P5 - Frontend honesty (DONE locally in `d5ef50b`, awaiting push + CI)
 
-- `ShellWrapper.tsx:16` (`"use client"` placement) and `Shell.tsx:145-185` -
-  ensure displayed state is not presented as authoritative when it is stale or
-  unknown. Existing tests already assert UNKNOWN must not render as healthy;
-  extend to every panel.
-- `LiveChart.tsx` is 3,680 lines with 14 `any` warnings - split and type it.
-- Verify every SSE-derived field degrades honestly on disconnect rather than
-  freezing on last value.
+Completed and documented under
+[Phase 3](#phase-3---frontend-honesty-committed-in-d5ef50b-not-yet-pushed):
+synthetic chart history and random-walk pulse deleted, quote fields passed
+through instead of hardcoded, shell pill and data-source selector honest,
+dashboard wired to fetched data, 18 new frontend tests. Verified locally;
+**remote CI has not run on this commit** — that is the pending step.
+
+Left over for a later chart pass (charter item 6, not started):
+
+- `LiveChart.tsx` is still one large file (~3,500 lines) — decomposition into
+  `chart360/` modules with unit tests for the indicator math.
+- Two contradictory ATR definitions (`computeAtr` SMA vs Wilder inside
+  `computeSuperTrend`) still need unifying.
+- 5 of 7 declared drawing tools remain unimplemented.
+- `AICopilotPanel.tsx:38` still hardcodes `http://127.0.0.1:8000/v1/ai/query`,
+  bypassing the proxy.
 
 ### P4 - Agent management surface (§23)
 
