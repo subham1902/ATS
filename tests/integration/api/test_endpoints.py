@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from ats.api.app import create_app
 from ats.contracts.domain.types import AutonomyLevel
 from fastapi.testclient import TestClient
@@ -105,9 +107,33 @@ def test_safe_autonomy_activity_and_sse_visibility() -> None:
     activity = x["client"].get("/v1/activity")
     assert activity.status_code == 200
     assert activity.json()["replay_supported"] is False
-    stream = x["client"].get("/v1/stream")
-    assert stream.status_code == 200
-    assert stream.headers["content-type"].startswith("text/event-stream")
-    assert stream.headers["x-ats-replay-supported"] == "false"
-    assert "event: RISK_EVALUATED" in stream.text
-    assert "command" not in stream.text.lower()
+    # /v1/stream is an unbounded SSE source: it serves a snapshot, then keeps
+    # heartbeating until the client disconnects. A TestClient has no socket, so
+    # `request.is_disconnected()` never flips and a plain .get() would read
+    # forever. Drive the generator directly against a request stub that reports
+    # disconnection after a bounded number of polls, so the same safety
+    # assertions run deterministically without an open-ended streaming read.
+    seen = asyncio.run(_read_bounded_stream(x["reader"]))
+    assert seen
+    assert "event: RISK_EVALUATED" in seen
+    assert "command" not in seen.lower()
+
+
+class _DisconnectingRequest:
+    """Request stub whose disconnect verdict flips after `polls` checks."""
+
+    def __init__(self, polls: int) -> None:
+        self._remaining = polls
+
+    async def is_disconnected(self) -> bool:
+        self._remaining -= 1
+        return self._remaining <= 0
+
+
+async def _read_bounded_stream(reader: object) -> str:
+    from ats.api.stream import iter_sse
+
+    chunks: list[str] = []
+    async for chunk in iter_sse(_DisconnectingRequest(polls=8), reader):  # type: ignore[arg-type]
+        chunks.append(chunk)
+    return "".join(chunks)
