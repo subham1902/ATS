@@ -29,6 +29,7 @@ from ats.trading_runtime.reduction_authority import (
     ReductionAuthorityService,
 )
 
+from tests.integration.trading_runtime.paper_fill_seed import seed_fill
 from tests.unit.contracts.domain.fixtures import make_contracts
 from tests.unit.kernel.fixtures import T0, _validated, make_kernel_fixture, uid
 
@@ -273,7 +274,7 @@ def test_partial_fill_restart_and_duplicate_full_fill_are_exactly_once(
     acknowledged = service.submit(authorized, broker=broker, submitted_at=request.issued_at)
     assert acknowledged.state.value == "ACKNOWLEDGED"
     order_id = f"paper-{request.idempotency_key}"
-    broker.seed_fill(
+    seed_fill(broker, 
         order_id,
         Decimal("101"),
         Decimal("4"),
@@ -294,7 +295,7 @@ def test_partial_fill_restart_and_duplicate_full_fill_are_exactly_once(
     assert snapshot.payload["position"]["net_quantity"] == "6"
     assert snapshot.payload["reductions"][0]["remaining_quantity"] == "6"
 
-    broker.seed_fill(
+    seed_fill(broker, 
         order_id,
         Decimal("102"),
         Decimal("10"),
@@ -368,7 +369,7 @@ def test_trading_runtime_dashboard_exit_uses_durable_reduction_path(
     assert result["execution_state"] == "ACKNOWLEDGED"
     assert str(request.position_id) in runtime.state.open_positions
     order_id = f"paper-{request.idempotency_key}"
-    broker.seed_fill(
+    seed_fill(broker, 
         order_id,
         Decimal("101"),
         request.requested_quantity,
@@ -474,7 +475,7 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
         str(first_request.reduction_id),
         str(second_request.reduction_id),
     }
-    broker.seed_fill(
+    seed_fill(broker, 
         f"paper-{first_request.idempotency_key}",
         Decimal("101"),
         first_request.requested_quantity,
@@ -484,7 +485,7 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
         str(first_request.position_id), first_request.issued_at + timedelta(seconds=1)
     )
     assert len(runtime.state.open_positions) == 1
-    broker.seed_fill(
+    seed_fill(broker, 
         f"paper-{second_request.idempotency_key}",
         Decimal("202"),
         second_request.requested_quantity,

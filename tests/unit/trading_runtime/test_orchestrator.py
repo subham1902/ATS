@@ -11,6 +11,8 @@ from decimal import Decimal
 
 from ats.trading_runtime.broker import InMemoryMarketFeed
 
+from tests.unit.trading_runtime.exit_authorization_doubles import allow_all_with_binding
+
 from .helpers import (
     NIFTY,
     NOW,
@@ -37,11 +39,16 @@ def _facts_provider(iid: str, at):
     return None
 
 
-def _fresh_orchestrator(at=NOW):
+def _fresh_orchestrator(at=NOW, exit_authorization_provider=None, intent_binding_provider=allow_all_with_binding):
     feed = InMemoryMarketFeed()
     feed.set_mark(INDEX, PREV, at)
     feed.set_mark(NIFTY, Decimal("101"), at)
-    return build_orchestrator(market_facts_provider=_facts_provider, feed=feed)
+    return build_orchestrator(
+        market_facts_provider=_facts_provider,
+        feed=feed,
+        exit_authorization_provider=exit_authorization_provider,
+        intent_binding_provider=intent_binding_provider,
+    )
 
 
 def _bull_bar(orch, at=NOW):

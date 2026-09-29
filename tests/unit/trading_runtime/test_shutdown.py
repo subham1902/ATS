@@ -11,6 +11,11 @@ from decimal import Decimal
 
 from ats.trading_runtime.broker import InMemoryMarketFeed
 
+from tests.unit.trading_runtime.exit_authorization_doubles import (
+    PermissiveExitAuthorization,
+    allow_all_with_binding,
+)
+
 from .helpers import (
     NIFTY,
     NOW,
@@ -40,7 +45,7 @@ def _entry_orchestrator():
     feed = InMemoryMarketFeed()
     feed.set_mark(INDEX, PREV, NOW)
     feed.set_mark(NIFTY, Decimal("101"), NOW)
-    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed)
+    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed, intent_binding_provider=allow_all_with_binding, exit_authorization_provider=PermissiveExitAuthorization())
     orch.runtime.market_feed.set_mark(INDEX, BULL_MARK, NOW)
     orch.bar(INDEX, close=BULL_MARK, previous_close=PREV, at=NOW)
     assert len(orch.get_open_positions()) == 1
@@ -48,7 +53,7 @@ def _entry_orchestrator():
 
 
 def test_shutdown_with_zero_positions() -> None:
-    orch = build_orchestrator(market_facts_provider=_facts_provider)
+    orch = build_orchestrator(market_facts_provider=_facts_provider, intent_binding_provider=allow_all_with_binding)
     result = orch.request_shutdown(NOW)
     assert result["status"] == "CLOSED"
     assert orch.is_position_empty()

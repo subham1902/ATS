@@ -18,6 +18,11 @@ from decimal import Decimal
 
 from ats.trading_runtime.broker import InMemoryMarketFeed
 
+from tests.unit.trading_runtime.exit_authorization_doubles import (
+    PermissiveExitAuthorization,
+    allow_all_with_binding,
+)
+
 from .helpers import (
     NIFTY,
     NOW,
@@ -72,7 +77,7 @@ def _runner(entry_marks: bool = True):
     feed.set_mark(INDEX, PREV, NOW)
     feed.set_mark(NIFTY, Decimal("101"), NOW)
     trace = _Trace()
-    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed)
+    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed, intent_binding_provider=allow_all_with_binding, exit_authorization_provider=PermissiveExitAuthorization())
     orch.listener = _Listener(trace)
     return orch, trace
 

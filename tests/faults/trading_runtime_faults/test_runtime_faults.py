@@ -9,6 +9,8 @@ from ats.market.calendar.models import SessionCalendar
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
 
+from tests.unit.trading_runtime.exit_authorization_doubles import test_intent_binding
+
 
 def _calendar() -> SessionCalendar:
     return SessionCalendar(
@@ -64,7 +66,8 @@ def test_unknown_submit_holds_capital_semantics() -> None:
             order_type="MARKET",
             limit_price=None,
             idempotency_key="test-unknown-1",
-            intent_id="intent-1",
+            intent_id="11111111-1111-1111-1111-111111111112",
+            binding=test_intent_binding(),
         ),
         now=now,
     )
@@ -112,8 +115,9 @@ def test_delayed_ack_still_reconciles() -> None:
             order_type="MARKET",
             limit_price=None,
             idempotency_key="delayed-ack-1",
-            intent_id="intent-delayed",
-        ),
+                intent_id="11111111-1111-1111-1111-111111111111",
+                binding=test_intent_binding(),
+            ),
         now=now,
     )
     assert order is not None

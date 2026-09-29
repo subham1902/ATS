@@ -31,23 +31,23 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Protocol
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from ats.contracts.common import SystemClock, UTCDateTime
-from ats.contracts.domain.models import ExitIntent, Fill, Position
+from ats.contracts.domain.models import Fill
 from ats.contracts.domain.types import (
     ExitReason,
-    PaperOrderType,
 )
 from ats.execution.paper.models import (
     PaperExecutionPolicy,
     PaperMarketFacts,
 )
-from ats.kernel.types import ALLOW, GateCode, KernelOutcome, KernelResult
+from ats.kernel.types import GateCode, KernelOutcome, KernelResult
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.contract_master import DerivativeInstrument
 from ats.trading_runtime.broker import (
     MarketDataFeed,
+    OrderIntentBinding,
     OrderRequest,
     PaperBrokerAdapter,
 )
@@ -57,6 +57,12 @@ from ats.trading_runtime.engine import (
     RuntimeEventKind,
     RuntimeState,
     TradingRuntime,
+)
+from ats.trading_runtime.exit_authorization import (
+    ExitAuthorizationProvider,
+    ExitAuthorizationRequest,
+    ExitAuthorizationResult,
+    UnavailableExitAuthorization,
 )
 from ats.trading_runtime.position_monitor import (
     MonitoredPosition,
@@ -96,6 +102,9 @@ class OrchestrationCounters:
     rejected_orders: int = 0
     risk_rejected_candidates: int = 0
     emergency_exits: int = 0
+    # Reductions refused because no authorized ExitIntent/Position could be
+    # obtained. Non-zero here means positions stayed open deliberately.
+    exit_authorization_refused: int = 0
     fees: Decimal = Decimal("0")
     taxes: Decimal = Decimal("0")
     slippage: Decimal = Decimal("0")
@@ -126,6 +135,7 @@ class _NoopListener:
 
 MarketFactsProvider = Callable[[str, UTCDateTime], PaperMarketFacts | None]
 AuthorizationProvider = Callable[[dict[str, Any]], KernelResult]
+IntentBindingProvider = Callable[[dict[str, Any]], OrderIntentBinding | None]
 
 
 def _default_authorization(result: dict[str, Any]) -> KernelResult:
@@ -155,6 +165,8 @@ class AutonomousPaperOrchestrator:
         instrument: DerivativeInstrument,
         market_facts_provider: MarketFactsProvider,
         authorization_provider: AuthorizationProvider = _default_authorization,
+        intent_binding_provider: IntentBindingProvider | None = None,
+        exit_authorization_provider: ExitAuthorizationProvider | None = None,
         opening_capital: Decimal = Decimal("100000"),
         listener: OrchestrationListener | None = None,
     ) -> None:
@@ -166,6 +178,14 @@ class AutonomousPaperOrchestrator:
         self.instrument = instrument
         self._market_facts_provider = market_facts_provider
         self._authorization_provider = authorization_provider
+        # No binding provider means no order can be bound to real evidence, so
+        # every candidate is refused by the broker instead of being dressed up
+        # with invented policy/forecast/risk-decision identities.
+        self._intent_binding_provider = intent_binding_provider
+        # Exit authority defaults to *absent*, which resolves to UNKNOWN and
+        # yields no artifacts. There is no implicit permit here: wiring a real
+        # provider is the only way to make an exit executable.
+        self._exit_authorization = exit_authorization_provider or UnavailableExitAuthorization()
         self.listener = listener or _NoopListener()
         self.state = RuntimeState(
             session_start_equity=opening_capital,
@@ -296,6 +316,9 @@ class AutonomousPaperOrchestrator:
             limit_price=None,
             idempotency_key=order_key,
             intent_id=str(uuid4()),
+            binding=self._intent_binding_provider(candidate)
+            if self._intent_binding_provider is not None
+            else None,
         )
 
         status = self.broker.submit_order(
@@ -373,36 +396,74 @@ class AutonomousPaperOrchestrator:
         )
         if not listed.get("accepted", False):
             return
-        self.counters.emergency_exits += 1
-        reason = reason_codes[0] if reason_codes else "EXIT"
-        self.listener.on_exit(position_id, reason)
-
+        # Only count the exit once it is actually authorized and submitted. A
+        # refused reduction is recorded below and must never be reported as a
+        # completed emergency exit.
         facts = self._market_facts_provider(position.instrument_id, at)
         if facts is None:
             return
 
-        exit_intent = ExitIntent(
-            schema_version="1.0",
+        authorization_request = ExitAuthorizationRequest(
+            position_key=position_id,
             exit_intent_id=uuid4(),
-            position_id=_snapshot_position_id(),
-            position_version=1,
-            reason=_exit_reason(reason),
+            instrument_id=position.instrument_id,
             quantity=position.quantity,
-            order_type=PaperOrderType.MARKET,
-            limit_price=None,
-            stop_price=None,
-            risk_decision_id=uuid4(),
-            autonomy_token_id=uuid4(),
+            reason=_exit_reason(reason_codes[0] if reason_codes else "EXIT"),
+            reason_codes=reason_codes,
             idempotency_key=f"EXIT:{position_id}:{at.isoformat()}",
-            created_at=at,
-            payload_hash="0" * 64,
+            at=at,
+            source="ORCHESTRATOR",
         )
-        from ats.contracts.domain.hashing import compute_payload_hash
+        try:
+            authorized = self._exit_authorization.authorize_exit(authorization_request)
+        except Exception:
+            # An authority that throws has not authorized anything. Map it onto
+            # UNKNOWN so the shared refusal path records the blocked exit instead
+            # of either escalating the exception into a failed shutdown or, far
+            # worse, being read as permission.
+            authorized = ExitAuthorizationResult(
+                decision=KernelResult(
+                    outcome=KernelOutcome.UNKNOWN,
+                    reason_codes=(GateCode.RISK_UNKNOWN,),
+                )
+            )
+        if not authorized.allows_exit():
+            # Fail closed. No Artifacts means nothing safe to submit, and we
+            # must not synthesise an ExitIntent or Position to satisfy Stage-2.
+            self.counters.exit_authorization_refused += 1
+            self.listener.on_decision(
+                OrchestrationDecision.BLOCKED,
+                instrument_id=position.instrument_id,
+                position_id=position_id,
+                reason_codes=tuple(code.value for code in authorized.refusal_reason()),
+            )
+            return
 
-        exit_intent = exit_intent.model_copy(
-            update={"payload_hash": compute_payload_hash(exit_intent)}
-        )
-        snapshot = _position_snapshot(position)
+        assert authorized.exit_intent is not None  # guaranteed by allows_exit
+        assert authorized.position is not None  # guaranteed by allows_exit
+        exit_intent = authorized.exit_intent
+        snapshot = authorized.position
+
+        if (
+            snapshot.instrument_id != position.instrument_id
+            or snapshot.net_quantity != position.quantity
+        ):
+            # Stale identity. Reducing against a snapshot that no longer
+            # describes this position would flatten the wrong thing, so it is a
+            # refusal, not a partial success to be papered over.
+            self.counters.exit_authorization_refused += 1
+            self.listener.on_decision(
+                OrchestrationDecision.BLOCKED,
+                instrument_id=position.instrument_id,
+                position_id=position_id,
+                reason_codes=(GateCode.POSITION_BINDING.value,),
+            )
+            return
+
+        self.counters.emergency_exits += 1
+        reason = exit_intent.reason.value
+        self.listener.on_exit(position_id, reason)
+
         request = OrderRequest(
             instrument_id=position.instrument_id,
             side="SELL",
@@ -418,7 +479,7 @@ class AutonomousPaperOrchestrator:
             position=snapshot,
             now=at,
             market_facts=facts,
-            authorization=ALLOW,
+            authorization=authorized.decision,
         )
         if status is None or status.status == "REJECTED":
             return
@@ -544,47 +605,6 @@ def _exit_reason(reason: str) -> ExitReason:
         "SESSIONS_END_FLATTEN": ExitReason.HALT,
     }
     return mapping.get(reason, ExitReason.RISK)
-
-
-def _snapshot_position_id() -> UUID:
-    # A stable synthetic contract for the domain exit path; the runtime closes
-    # the real string position_id via handle_exit_fill independently.
-    return UUID("a0000000-0000-0000-0000-000000000001")
-
-
-def _position_snapshot(position: MonitoredPosition) -> Position:
-    """Domain Position placeholder for the canonical exit path.
-
-    Real integrations supply the authoritative domain ``Position`` from the
-    position authority store; the orchestrator passes a lightweight snapshot so
-    the canonical ``submit_paper_exit`` binding checks can operate. The payload
-    hash is computed so the canonical integrity check passes.
-    """
-    from ats.contracts.domain.hashing import compute_payload_hash
-    from ats.contracts.domain.types import PositionStatus
-
-    value = Position(
-        schema_version="1.0",
-        position_id=_snapshot_position_id(),
-        portfolio_id=UUID("a0000000-0000-0000-0000-000000000002"),
-        instrument_id=position.instrument_id,
-        net_quantity=position.quantity,
-        average_entry_price=position.entry_price,
-        mark_price=position.current_mark or position.entry_price,
-        realized_pnl=position.realized_pnl,
-        unrealized_pnl=position.unrealized_pnl,
-        cash_effect=Decimal("0"),
-        policy_id=UUID(int=1),
-        policy_version=1,
-        opened_at=position.entry_at or SystemClock().now(),
-        updated_at=SystemClock().now(),
-        closed_at=None,
-        status=PositionStatus.OPEN,
-        version=1,
-        last_fill_id=UUID("a0000000-0000-0000-0000-000000000003"),
-        payload_hash="0" * 64,
-    )
-    return value.model_copy(update={"payload_hash": compute_payload_hash(value)})
 
 
 __all__ = [

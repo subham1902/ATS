@@ -13,6 +13,10 @@ from ats.trading_runtime.forward_validation import (
     require_paper_only,
 )
 
+from tests.unit.trading_runtime.exit_authorization_doubles import (
+    PermissiveExitAuthorization,
+)
+
 from .helpers import NIFTY, NOW, build_orchestrator, market_facts
 
 
@@ -29,7 +33,7 @@ def test_replay_harness_persists_only_final_reconciled_result(tmp_path) -> None:
     feed = InMemoryMarketFeed()
     feed.set_mark("NIFTY", Decimal("25000"), NOW)
     feed.set_mark(NIFTY, Decimal("101"), NOW)
-    orchestrator = build_orchestrator(market_facts_provider=_facts, feed=feed)
+    orchestrator = build_orchestrator(market_facts_provider=_facts, feed=feed, exit_authorization_provider=PermissiveExitAuthorization())
     orchestrator.listener = listener
     orchestrator.runtime.market_feed.set_mark("NIFTY", Decimal("25600"), NOW)
     orchestrator.bar("NIFTY", close=Decimal("25600"), previous_close=Decimal("25000"), at=NOW)

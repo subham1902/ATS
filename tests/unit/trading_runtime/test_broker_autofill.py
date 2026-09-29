@@ -21,6 +21,8 @@ from ats.execution.paper.models import (
 from ats.kernel.types import ALLOW, GateCode, KernelOutcome, KernelResult
 from ats.trading_runtime.broker import OrderRequest, PaperBrokerAdapter
 
+from tests.unit.trading_runtime.exit_authorization_doubles import test_intent_binding
+
 from .helpers import NIFTY, NOW, instrument, market_facts, policy
 
 DENY = KernelResult(outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,))
@@ -35,6 +37,9 @@ def _request(**updates: object) -> OrderRequest:
         "limit_price": None,
         "idempotency_key": "K-AUTOFILL-1",
         "intent_id": "11111111-1111-1111-1111-111111111111",
+        # Sits below the orchestrator, so an unbound request must be refused
+        # rather than given invented provenance. Opt in explicitly.
+        "binding": test_intent_binding(),
     }
     values.update(updates)
     return OrderRequest(**values)
@@ -155,3 +160,20 @@ def test_unknown_submission_state() -> None:
     assert st is not None
     # canonical returns order None -> adapter leaves ACKNOWLEDGED, no fills
     assert b.consume_fills(st.order_id) == ()
+
+
+def test_unbound_entry_order_is_refused_before_touching_state() -> None:
+    """No binding, no order: the refusal happens before broker state exists."""
+    b = _broker()
+    unbound = _request(binding=None)
+    st = b.submit_order(unbound, now=NOW, market_facts=market_facts(), authorization=ALLOW)
+    assert st is None, "an entry with no upstream provenance must not submit"
+    assert f"paper-{unbound.idempotency_key}" not in b._orders
+    assert b.consume_fills(f"paper-{unbound.idempotency_key}") == ()
+
+
+def test_exit_submission_needs_no_entry_binding() -> None:
+    """Exits carry their own ExitIntent/Position, so they are not gated on it."""
+    b = _broker()
+    st = b.submit_order(_request(binding=None), now=NOW)
+    assert st is not None and st.status == "ACKNOWLEDGED"

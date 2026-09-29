@@ -15,9 +15,11 @@ from ats.execution.paper.models import (
 from ats.market.calendar.models import SessionCalendar
 from ats.market.derivatives.contract_master import DerivativeInstrument
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
+from ats.trading_runtime.exit_authorization import ExitAuthorizationProvider
 from ats.trading_runtime.orchestrator import (
     AuthorizationProvider,
     AutonomousPaperOrchestrator,
+    IntentBindingProvider,
     MarketFactsProvider,
 )
 
@@ -101,6 +103,8 @@ def build_orchestrator(
     *,
     market_facts_provider: MarketFactsProvider,
     authorization_provider: AuthorizationProvider | None = None,
+    intent_binding_provider: IntentBindingProvider | None = None,
+    exit_authorization_provider: ExitAuthorizationProvider | None = None,
     feed: InMemoryMarketFeed | None = None,
     broker: PaperBrokerAdapter | None = None,
     opening_capital: Decimal = Decimal("100000"),
@@ -109,6 +113,12 @@ def build_orchestrator(
     inst: DerivativeInstrument | None = None,
     pol: PaperExecutionPolicy | None = None,
 ) -> AutonomousPaperOrchestrator:
+    """Build an orchestrator for tests.
+
+    Exit authority is passed straight through: ``None`` means the orchestrator
+    installs its fail-closed default, so a test that needs positions to be
+    flattened must say so by supplying a provider. There is no implicit permit.
+    """
 
     inst = inst or instrument()
     pol = pol or policy()
@@ -124,6 +134,8 @@ def build_orchestrator(
         instrument=inst,
         market_facts_provider=market_facts_provider,
         authorization_provider=authorization_provider or allow_all,
+        intent_binding_provider=intent_binding_provider,
+        exit_authorization_provider=exit_authorization_provider,
         opening_capital=opening_capital,
     )
     orch.start(at)

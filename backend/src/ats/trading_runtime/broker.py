@@ -3,8 +3,12 @@
 ``PaperBrokerAdapter`` routes order submissions through the canonical
 ``ats.execution.paper`` broker so that runtime adapters never reimplement the
 fill/cost algorithm (slippage, fees, taxes, partial fills, rejection).
-Autonomous operation must not depend on the manual ``seed_fill`` primitive;
-it exists only as a test/debug escape hatch.
+
+The adapter deliberately exposes no manual fill-injection. Writing settlement
+state directly was previously possible via a ``seed_fill`` primitive; that
+capability now lives outside the production adapter (see
+``tests/integration/trading_runtime/paper_fill_seed.py``) so that autonomous
+runtime operation cannot build its own fills.
 """
 
 from __future__ import annotations
@@ -35,11 +39,53 @@ from ats.trading_runtime.lot_size import LotSizeError, LotSizeRegistry
 from .position_monitor import MonitoredPosition
 
 
+class UnboundOrderError(RuntimeError):
+    """An order was submitted with no upstream provenance to bind it to.
+
+    Raised rather than papered over: binding an intent to invented policy,
+    forecast, risk-decision or token identities is how an unearned order comes
+    to look authorized.
+    """
+
+    def __init__(self, idempotency_key: str) -> None:
+        super().__init__(
+            f"order {idempotency_key!r} has no intent binding; "
+            "cannot build an OrderIntent without real upstream evidence"
+        )
+        self.idempotency_key = idempotency_key
+
+
 class BrokerHealth(StrEnum):
     HEALTHY = "HEALTHY"
     DEGRADED = "DEGRADED"
     UNHEALTHY = "UNHEALTHY"
     UNKNOWN = "UNKNOWN"
+
+
+@dataclass(frozen=True)
+class OrderIntentBinding:
+    """Upstream provenance that a submitted ``OrderIntent`` is bound to.
+
+    Every identity here must reference evidence that **already exists**. The
+    runtime may not mint any of them: an order that cannot be traced to a real
+    policy, forecast, risk decision, advisory and autonomy token is not
+    describable, and the caller must fail closed rather than invent them.
+
+    Risk economics are supplied rather than derived, because a plausible-looking
+    tick-derived product is an unearned input to Stage-2 sizing, not a
+    measurement.
+    """
+
+    policy_id: UUID
+    policy_version: int
+    forecast_id: UUID
+    risk_decision_id: UUID
+    supervisor_advisory_id: UUID
+    autonomy_token_id: UUID
+    maximum_permitted_loss: Decimal
+    expected_reward: Decimal
+    target_price: Decimal | None = None
+    stop_price: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +97,7 @@ class OrderRequest:
     limit_price: Decimal | None
     idempotency_key: str
     intent_id: str
+    binding: OrderIntentBinding | None = None
 
 
 @dataclass(frozen=True)
@@ -143,6 +190,7 @@ class PaperBrokerAdapter:
         self._instrument = instrument
         self._orders: dict[str, OrderStatus] = {}
         self._requested_quantities: dict[str, Decimal] = {}
+        self._unbound_orders: int = 0
         self._positions: dict[str, PositionSnapshot] = {}
         self._pending_fills: dict[str, list[Fill]] = {}
         self._pending_exit_fills: dict[str, list[Fill]] = {}
@@ -177,6 +225,15 @@ class PaperBrokerAdapter:
                 self._lot_size_registry.validate_quantity(request.instrument_id, request.quantity)
             except LotSizeError:
                 return None
+        # Entry orders are the ones that need upstream provenance: building an
+        # OrderIntent is what mints policy/forecast/risk-decision identities, so
+        # refusing here means none are ever fabricated. Exit submissions carry
+        # their own authoritative ExitIntent/Position and never build one.
+        builds_intent = market_facts is not None and authorization is not None
+        if builds_intent and request.binding is None:
+            self._unbound_orders += 1
+            return None
+
         order_id = f"paper-{request.idempotency_key}"
         if order_id in self._orders:
             return self._orders[order_id]
@@ -260,29 +317,45 @@ class PaperBrokerAdapter:
         fills = self._pending_exit_fills.pop(order_id, [])
         return tuple(fills)
 
+    @staticmethod
+    def _resolve_target_price(binding: OrderIntentBinding, market: PaperMarketFacts) -> Decimal:
+        """Reference price from the binding, else a real quote -- never invented.
+
+        With neither an explicit target nor any market quote there is no price
+        evidence, so the intent is unbuildable rather than defaulting to zero.
+        """
+        if binding.target_price is not None:
+            return binding.target_price
+        quote = market.ask or market.bid
+        if quote is None:
+            raise UnboundOrderError("missing target price and market quote")
+        return quote
+
     def _build_order_intent(
         self, request: OrderRequest, now: UTCDateTime, market: PaperMarketFacts
     ) -> OrderIntent:
-        instrument = self._require_instrument()
+        binding = request.binding
+        if binding is None:  # pragma: no cover - submit_order guards first
+            raise UnboundOrderError(request.idempotency_key)
         intent = OrderIntent(
             schema_version="1.0",
-            intent_id=UUID(request.intent_id) if request.intent_id else UUID(int=0),
+            intent_id=UUID(request.intent_id),
             instrument_id=request.instrument_id,
             side=Side(request.side.upper()),
             quantity=request.quantity,
             order_type=_paper_order_type(request.order_type),
             entry_conditions=(),
             limit_price=_as_decimal(request.limit_price),
-            stop_price=None,
-            target_price=market.ask or market.bid or Decimal("0"),
-            maximum_permitted_loss=instrument.lot_size * instrument.tick_size * 10,
-            expected_reward=instrument.lot_size * instrument.tick_size * 10,
-            policy_id=UUID(int=1),
-            policy_version=1,
-            forecast_id=UUID(int=2),
-            risk_decision_id=UUID(int=3),
-            supervisor_advisory_id=UUID(int=4),
-            autonomy_token_id=UUID(int=5),
+            stop_price=binding.stop_price,
+            target_price=self._resolve_target_price(binding, market),
+            maximum_permitted_loss=binding.maximum_permitted_loss,
+            expected_reward=binding.expected_reward,
+            policy_id=binding.policy_id,
+            policy_version=binding.policy_version,
+            forecast_id=binding.forecast_id,
+            risk_decision_id=binding.risk_decision_id,
+            supervisor_advisory_id=binding.supervisor_advisory_id,
+            autonomy_token_id=binding.autonomy_token_id,
             idempotency_key=request.idempotency_key,
             created_at=now,
             payload_hash="0" * 64,
@@ -363,25 +436,6 @@ class PaperBrokerAdapter:
 
     def query_positions(self) -> tuple[PositionSnapshot, ...]:
         return tuple(self._positions.values())
-
-    def seed_fill(
-        self, order_id: str, average_price: Decimal, filled_quantity: Decimal, now: UTCDateTime
-    ) -> None:
-        existing = self._orders.get(order_id)
-        if existing is None:
-            return
-        self._orders[order_id] = OrderStatus(
-            order_id=existing.order_id,
-            status=(
-                "FILLED"
-                if filled_quantity == self._requested_quantities[order_id]
-                else "PARTIALLY_FILLED"
-            ),
-            filled_quantity=filled_quantity,
-            average_price=average_price,
-            updated_at=now,
-            idempotency_key=existing.idempotency_key,
-        )
 
     def monitored_positions(self) -> tuple[MonitoredPosition, ...]:
         return ()
