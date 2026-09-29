@@ -14,7 +14,7 @@ dependencies = [
   "protobuf==5.29.3",
   "pydantic==2.13.4",
   "uvicorn[standard]==0.38.0",
-  "websockets==15.0.1",
+  "websockets==17.1",
 ]
 
 [tool.hatch.build.targets.wheel]
