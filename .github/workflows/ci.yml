@@ -332,7 +332,7 @@ jobs:
             echo "supported=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Dependency graph unavailable on this repository; dependency review skipped (Dependabot still monitors declared manifests)."
           fi
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         if: steps.capability.outputs.supported == 'true'
         with:
           fail-on-severity: high
