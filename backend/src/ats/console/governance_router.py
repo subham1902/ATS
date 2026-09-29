@@ -826,8 +826,12 @@ def get_autonomy_overview() -> AutonomyOverviewResponse:
         emergency_override=False,
         tiers=AUTONOMY_TIERS,
         active_tokens=[
+            # Placeholder identifiers, not token material. These carry no
+            # entropy and no authority: the shape of a real single-use token is
+            # deliberately absent so nothing here can be mistaken for one, nor
+            # trip a secret scanner.
             {
-                "token_id": "TOK-0924-87A1BC",
+                "token_id": "sample-token-consumed",
                 "scope": "A2_PAPER",
                 "candidate_id": "CAND-0924-A101",
                 "status": "CONSUMED",
@@ -835,7 +839,7 @@ def get_autonomy_overview() -> AutonomyOverviewResponse:
                 "expires_at": datetime.now(UTC).isoformat(),
             },
             {
-                "token_id": "TOK-0924-99D4EF",
+                "token_id": "sample-token-issued",
                 "scope": "A2_PAPER",
                 "candidate_id": "CAND-0924-A105",
                 "status": "ISSUED",

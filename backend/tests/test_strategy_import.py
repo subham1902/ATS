@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from ats.console.app import create_console_app
 from ats.market.fabric import MarketDataFabric
 from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate, UpdateKind
@@ -20,7 +21,18 @@ from fastapi.testclient import TestClient
 
 BIN_DIR = Path(r"D:\Projects\ATS\ATS trade data\strategy bins")
 
+# The strategy bins are operator material kept outside the repository, so a
+# clone or CI runner cannot have them. These three tests read that directory
+# directly; they must say the evidence is absent rather than fail on an
+# absolute local path. The remaining tests in this module build their adapters
+# from code and run everywhere.
+requires_strategy_bins = pytest.mark.skipif(
+    not BIN_DIR.exists(),
+    reason=f"strategy bin evidence lives outside the repo at {BIN_DIR}",
+)
 
+
+@requires_strategy_bins
 def test_inventory_and_hashing() -> None:
     """Verify inventory, SHA-256 calculation, and entropy for strategy bin files."""
     assert BIN_DIR.exists(), f"Bin directory {BIN_DIR} must exist"
@@ -35,6 +47,7 @@ def test_inventory_and_hashing() -> None:
         assert not info["is_quarantined"]
 
 
+@requires_strategy_bins
 def test_safe_decoder_and_authority() -> None:
     """Verify that decoded strategies strictly have authority = RESEARCH_ONLY."""
     strategies = StrategyDecoder.scan_directory(BIN_DIR)
@@ -152,6 +165,7 @@ def test_tournament_telemetry_and_metrics() -> None:
         assert m.sample_status == "INSUFFICIENT_EVIDENCE"
 
 
+@requires_strategy_bins
 def test_imported_strategies_api_endpoints() -> None:
     """Verify REST endpoints for imported strategies."""
     app = create_console_app()
