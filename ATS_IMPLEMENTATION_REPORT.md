@@ -26,15 +26,46 @@ AUTHORIZES.** The paper-only invariant (`Literal["A2_PAPER"]`) is untouched.
 | `009df58` | `build(frontend)`: lint, formatting and production quality gates                              |
 | `28cab3a` | `fix(tests)`: bounded SSE integration read, contract package importable                       |
 | `e853ea9` | `fix(runtime)`: synthetic exit authority removed, fail-closed ordering                        |
+| `ce00a34` | `docs`: this report, with SHAs and the two open P2 follow-ups                                 |
+| `2de1ba1` | `fix(ci)`: four machine-local test failures made honest; token placeholder reshaped           |
 
 Each commit was validated on its own (lint, types and its relevant suites pass
 at that point, `uv lock --check` clean) so the history can be bisected.
 
-**Remote status: AWAITING REMOTE CI VERIFICATION.** All results below are local.
-The Postgres-backed durability suites (61 skips under `tests/integration`, 8
-under `tests/property` + `tests/faults`) cannot run here and must be confirmed
-by the `python-durability` job. `tests/contract` and `tests/smoke` have **zero**
-skips.
+---
+
+## Remote CI verification (run `36551337386`, commit `2de1ba1`)
+
+Pushed to `origin/main`; **all nine active jobs pass**, `Dependency Review`
+skipped as designed.
+
+| Job                              | Result                                                            |
+| -------------------------------- | ----------------------------------------------------------------- |
+| Lint & Typecheck                 | success (ruff 0, mypy, `pnpm lint` / typecheck / format:check)    |
+| Smoke / Governance               | success                                                           |
+| Contract Tests                   | success (149 passed)                                              |
+| Property Tests                   | success (255 passed)                                              |
+| Unit Tests                       | success (1427 passed, 13 skipped)                                 |
+| Durability & Faults (PostgreSQL) | success — **110 integration + 37 fault tests, 0 skipped**         |
+| Coverage (risk-weighted)         | success (1838 passed, 13 skipped; contracts and kernel gates met) |
+| Frontend Tests                   | success (34 tests across 3 packages)                              |
+| Secret Scan                      | success (0 findings)                                              |
+
+The durability job is the one that mattered: it provisions a PostgreSQL 16
+service, asserts the driver and DSN are really present, then runs
+`assert_critical_tests_ran.py` over the JUnit XML and **fails the build** if any
+of the nine named safety-critical suites is absent, skipped or errored. It
+passed, which converts the local gap recorded below into a verified result:
+the 61 integration skips and 8 property/faults skips that cannot run on this
+machine **did run in CI, and none of them skipped**.
+
+Two honest caveats about that job, not hedges:
+
+- The 13 skips in Unit Tests are the evidence-outside-the-repo tests described
+  under [CI truth](#phase-1---ci-truth-this-session). They skip with a stated
+  path; they are not in the critical-suite list and nothing else is.
+- Coverage is measured on a Linux runner, so its absolute percentages are not
+  comparable to the Windows numbers in the table below. The gates passed.
 
 ---
 
@@ -61,7 +92,8 @@ skips.
 The 8 + 61 skips are durability tests awaiting a Postgres DSN
 (`ATS_TEST_POSTGRES_DSN` is unset locally); `tests/contract` and `tests/smoke`
 are fully executed with no skips. They are gated in CI by the critical-suite
-assertion below.
+assertion below, and [Remote CI verification](#remote-ci-verification-run-36551337386-commit-2de1ba1)
+records that they ran there rather than skipped.
 
 ---
 
@@ -268,6 +300,46 @@ hatch, but it should be made explicit.
    was unused), removed a dead `imbCount` accumulator in `lib/footprint.ts`, and
    removed an `eslint-disable` comment referencing a rule that does not exist in
    this configuration.
+
+7. **`tests/unit/api/test_stream.py::test_sse_connected_reader_preserves_provider_order`
+   could never pass, on any machine.** `iter_sse` has no natural end: after the
+   snapshot it heartbeats until the client disconnects, and the stub returned
+   `False` forever, so the test ran to the 120 s `pytest-timeout` and was killed
+   before reaching a single assertion. It also asserted `len(rendered) == 1`,
+   which no terminating stream can satisfy, because `": connected"` is always
+   yielded after the snapshot. Only visible once CI ran `tests/unit` on Linux.
+   Fixed by making the stub count polls and disconnect on request, and by
+   asserting the thing the test is actually named for: the provider's event
+   first, then the channel confirmation. This is the second instance of the same
+   unbounded-SSE defect that `28cab3a` fixed in the integration suite.
+
+8. **Three test modules asserted on paths outside the repository.**
+   `backend/tests/test_strategy_import.py` reads
+   `D:\Projects\ATS\ATS trade data\strategy bins` and
+   `backend/tests/test_paper_tournament.py` audits
+   `D:\Projects\ATS\evidence\paper_sessions\PT-20260924-075030_results.csv`.
+   All four affected tests pass on this machine and cannot pass on any clone.
+   They now skip with the path and reason stated. Worth being precise about the
+   asymmetry: only the tests that read those directories were marked — the other
+   five in the strategy module build their adapters from code and still run
+   everywhere — and the security-critical durability suites are in a different
+   registry entirely, gated by `assert_critical_tests_ran.py`.
+
+9. **A `.gitleaks.toml` containing only an `[allowlist]` silently disables the
+   entire secret scan.** This is the obvious fix for a false-positive finding
+   and it is a trap. gitleaks treats a supplied config as the _complete_
+   ruleset, so a config with no `[[rules]]` detects nothing at all. Measured
+   with gitleaks 8.30.1 over full history: **15 findings with no config, 0 with
+   an allowlist-only config, and 0 with an allowlist whose regex cannot match
+   anything.** The distinction that proves it is that last number — a
+   well-meaning allowlist and a nonsense one behave identically, which is the
+   signature of a rule set that is switched off rather than a rule that is
+   satisfied. Nothing was allowlisted. The finding itself was a fabricated
+   autonomy token id (`TOK-0924-87A1BC`, entropy 3.77) in the canned
+   governance overview payload; the placeholders are now `sample-token-consumed`
+   / `sample-token-issued`, which says what they are and has no credential
+   shape. A scan that passes because its rules were turned off is worse than one
+   that is red.
 
 ---
 
