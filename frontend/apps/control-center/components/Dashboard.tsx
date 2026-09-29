@@ -16,9 +16,9 @@ import { Card, EmptyState, ConnectionIndicator, StrategyBadge, RatingBar, RankBa
 import { useSse } from "../hooks/useSse";
 
 export function Dashboard() {
-  const [_system, setSystem] = useState<SystemReadModel | null>(null);
+  const [system, setSystem] = useState<SystemReadModel | null>(null);
   const [_healthLive, setHealthLive] = useState<HealthReadModel | null>(null);
-  const [_healthReady, setHealthReady] = useState<HealthReadModel | null>(null);
+  const [healthReady, setHealthReady] = useState<HealthReadModel | null>(null);
   const [marketSnap, setMarketSnap] = useState<MarketSnapshotView | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusReadModel | null>(null);
   const [_policy, setPolicy] = useState<PolicyReadModel | null>(null);
@@ -93,9 +93,9 @@ export function Dashboard() {
       ?.filter((s) => s.total_trades > 0)
       .sort((a, b) => parseFloat(b.rating.overall) - parseFloat(a.rating.overall))[0] ?? null;
 
-  const isMarketOpen = marketSnap?.state === "LIVE" || (marketSnap?.market_session?.includes("REGULAR") ?? true);
+  const isMarketOpen = marketSnap?.state === "LIVE" || marketSnap?.market_session?.includes("REGULAR") === true;
   const realizedPnL = runtimeStatus ? parseFloat(runtimeStatus.pnl.realized) : 0;
-  const goldmPrice = marketSnap?.last_price ? parseFloat(marketSnap.last_price) : 75420.0;
+  const goldmPrice = marketSnap?.last_price ? parseFloat(marketSnap.last_price) : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -135,7 +135,7 @@ export function Dashboard() {
                 }}
               >
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6" }} />
-                40 Active Strategies
+                {registry ? `${registry.total_strategies} Strategies` : "Strategies: unknown"}
               </span>
             </div>
             <div style={{ fontSize: 16, color: "#475569", marginTop: 4, fontWeight: 500 }}>
@@ -265,7 +265,7 @@ export function Dashboard() {
                 border: `1px solid ${isMarketOpen ? "#a7f3d0" : "#e2e8f0"}`,
               }}
             >
-              {marketSnap?.market_session || "MCX_REGULAR"}
+              {marketSnap?.market_session || "session unknown"}
             </span>
           </div>
           <div
@@ -277,7 +277,9 @@ export function Dashboard() {
               letterSpacing: "-0.02em",
             }}
           >
-            ₹{goldmPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {goldmPrice !== null && !Number.isNaN(goldmPrice)
+              ? `₹${goldmPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : "₹—"}
           </div>
           <div
             style={{
@@ -289,8 +291,10 @@ export function Dashboard() {
               fontWeight: 500,
             }}
           >
-            <span>{marketSnap?.contract || "GOLDM FUT 05 OCT 26"}</span>
-            <span style={{ color: "#059669", fontWeight: 700 }}>● {marketSnap?.state || "FEED_ACTIVE"}</span>
+            <span>{marketSnap?.contract || "contract unknown"}</span>
+            <span style={{ color: marketSnap?.state === "LIVE" ? "#059669" : "#64748b", fontWeight: 700 }}>
+              ● {marketSnap?.state || "UNKNOWN"}
+            </span>
           </div>
         </div>
 
@@ -1003,7 +1007,7 @@ export function Dashboard() {
               }}
             >
               <span style={{ color: "#475569" }}>Autonomy Level:</span>
-              <span style={{ fontWeight: 800, color: "#2563eb" }}>A04_SUPERVISED</span>
+              <span style={{ fontWeight: 800, color: "#2563eb" }}>{system?.authority_mode ?? "unknown"}</span>
             </div>
             <div
               style={{
@@ -1016,7 +1020,15 @@ export function Dashboard() {
               }}
             >
               <span style={{ color: "#475569" }}>System Health & State:</span>
-              <span style={{ fontWeight: 800, color: "#059669" }}>● READY (Online)</span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: system?.system_state === "READY" ? "#059669" : "#64748b",
+                }}
+              >
+                ● {system?.system_state ?? "UNKNOWN"}
+                {system ? "" : " (not loaded)"}
+              </span>
             </div>
             <div
               style={{
@@ -1029,7 +1041,14 @@ export function Dashboard() {
               }}
             >
               <span style={{ color: "#475569" }}>Readiness Check:</span>
-              <span style={{ fontWeight: 800, color: "#059669" }}>✓ HEALTH_READY</span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: healthReady?.ready === true ? "#059669" : "#64748b",
+                }}
+              >
+                {healthReady ? (healthReady.ready ? "✓ " : "✗ ") + healthReady.status : "— unknown"}
+              </span>
             </div>
           </div>
         </Card>

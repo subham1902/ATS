@@ -31,6 +31,12 @@ export interface BarFootprint {
 export interface FootprintMemoryStats {
   cachedBars: number;
   memoryBytes: number;
+  /**
+   * Whether memoryBytes was actually measured. It never is: the value is a
+   * rough bars*bytes estimate, so the UI must label it as such and never
+   * present it as a measured figure.
+   */
+  memoryBytesMeasured: boolean;
   totalVolume: number;
   totalDelta: number;
   cumDelta: number;
@@ -231,6 +237,7 @@ class InMemoryFootprintStore {
       return {
         cachedBars: 0,
         memoryBytes: 0,
+        memoryBytesMeasured: false,
         totalVolume: 0,
         totalDelta: 0,
         cumDelta: 0,
@@ -263,6 +270,7 @@ class InMemoryFootprintStore {
     return {
       cachedBars: bars.length,
       memoryBytes: approxBytes,
+      memoryBytesMeasured: false,
       totalVolume: totVol,
       totalDelta: totDelta,
       cumDelta: bars[bars.length - 1]?.cumDelta || 0,

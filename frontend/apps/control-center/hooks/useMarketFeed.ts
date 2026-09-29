@@ -1,6 +1,13 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CandleView, FeedHealthView, MarketInterval, MarketQuoteView, SseStatus } from "@ats/api-client";
+import type {
+  CandleSeriesView,
+  CandleView,
+  FeedHealthView,
+  MarketInterval,
+  MarketQuoteView,
+  SseStatus,
+} from "@ats/api-client";
 import { parseMarketSseFrame } from "@ats/api-client/sse";
 import { getApiClient } from "../lib/api";
 
@@ -11,6 +18,8 @@ export interface MarketFeedState {
   health: FeedHealthView | null;
   prediction: any | null;
   candles: CandleView[];
+  /** Full series envelope, kept so the UI can report source/authority/state. */
+  series: CandleSeriesView | null;
   interval: MarketInterval;
   error: string | null;
   reconnect: () => void;
@@ -25,6 +34,7 @@ export function useMarketFeed(instrument?: string, initialInterval: MarketInterv
   const [health, setHealth] = useState<FeedHealthView | null>(null);
   const [prediction, setPrediction] = useState<any | null>(null);
   const [candles, setCandles] = useState<CandleView[]>([]);
+  const [series, setSeries] = useState<CandleSeriesView | null>(null);
   const [interval, setInterval] = useState<MarketInterval>(initialInterval);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,14 +46,25 @@ export function useMarketFeed(instrument?: string, initialInterval: MarketInterv
   const intervalRef = useRef<MarketInterval>(interval);
   intervalRef.current = interval;
 
+  // Latest server health classification, mirrored for quote mapping below.
+  // The compact WebSocket quote carries no state of its own, so the hook must
+  // not assert one: it reports the server's own classification, or UNKNOWN.
+  const healthRef = useRef<FeedHealthView | null>(null);
+  useEffect(() => {
+    healthRef.current = health;
+  }, [health]);
+
   // 1. Initial historical candle bootstrap
   const loadCandles = useCallback(
     async (intvl: MarketInterval) => {
       try {
         const client = getApiClient();
-        const series = await client.getMarketCandles(intvl, instrument);
-        if (series && series.candles) {
-          setCandles(series.candles);
+        const next = await client.getMarketCandles(intvl, instrument);
+        // Keep the whole envelope, not just the bars: source, authority class,
+        // state and reason codes are what let the UI describe the data honestly.
+        setSeries(next ?? null);
+        if (next && next.candles) {
+          setCandles(next.candles);
         }
       } catch (e) {
         console.error("Failed to load historical candles:", e);
@@ -290,25 +311,29 @@ export function useMarketFeed(instrument?: string, initialInterval: MarketInterv
           } else if (type === "quote") {
             const q = envelope.quote;
             if (q) {
+              // The compact socket quote carries prices and sizes only. Every
+              // field the server did not send stays null: quantity 1, age 50 ms
+              // and a hardcoded LIVE used to be invented here.
+              const exchangeMs = q.exchange_timestamp != null ? Date.parse(String(q.exchange_timestamp)) : NaN;
               const qView: MarketQuoteView = {
-                instrument_key: envelope.instrument_key || "MCX_FO|569003",
-                state: "LIVE",
-                contract: null,
+                instrument_key: envelope.instrument_key || q.instrument_key || "MCX_FO|569003",
+                state: healthRef.current?.state ?? "UNKNOWN",
+                contract: q.contract ?? null,
                 last_price: q.ltp != null ? String(q.ltp) : null,
                 bid_price: q.bid != null ? String(q.bid) : null,
                 ask_price: q.ask != null ? String(q.ask) : null,
-                bid_quantity: 1,
-                ask_quantity: 1,
+                bid_quantity: q.bid_quantity ?? null,
+                ask_quantity: q.ask_quantity ?? null,
                 spread: q.ask != null && q.bid != null ? String(q.ask - q.bid) : null,
-                volume: q.volume,
-                open_interest: q.open_interest,
-                open_interest_change: null,
-                exchange_timestamp: q.exchange_timestamp,
+                volume: q.volume ?? null,
+                open_interest: q.open_interest ?? null,
+                open_interest_change: q.open_interest_change ?? null,
+                exchange_timestamp: q.exchange_timestamp ?? null,
                 received_at: envelope.time || new Date().toISOString(),
-                age_ms: 50,
-                source: envelope.source || "BROKER",
-                authority_class: "LIVE_FEED_ATTACHED",
-                reason_codes: [],
+                age_ms: Number.isFinite(exchangeMs) ? Math.max(0, Date.now() - exchangeMs) : null,
+                source: envelope.source ?? q.source ?? null,
+                authority_class: q.authority_class ?? healthRef.current?.authority_class ?? null,
+                reason_codes: q.reason_codes ?? [],
               };
               setQuote(qView);
 
@@ -408,6 +433,7 @@ export function useMarketFeed(instrument?: string, initialInterval: MarketInterv
     health,
     prediction,
     candles,
+    series,
     interval,
     error,
     reconnect: connect,

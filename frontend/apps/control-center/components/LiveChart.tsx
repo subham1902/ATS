@@ -1,6 +1,13 @@
 "use client";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import type { CandleView, FeedHealthView, MarketInterval, MarketQuoteView, SseStatus } from "@ats/api-client";
+import type {
+  CandleSeriesView,
+  CandleView,
+  FeedHealthView,
+  MarketInterval,
+  MarketQuoteView,
+  SseStatus,
+} from "@ats/api-client";
 import {
   createChart,
   ColorType,
@@ -17,9 +24,14 @@ import {
 } from "lightweight-charts";
 import { inMemoryFootprintStore, type BarFootprint, type FootprintMemoryStats } from "../lib/footprint";
 import { getMarketSessionInfo, type MarketSessionInfo } from "../lib/marketHours";
+import { chartBarsFromCandles, evaluateChartProvenance } from "../lib/provenance";
+import { useDataSource } from "../lib/dataSource";
 
 interface LiveChartProps {
   candles: CandleView[];
+  /** Full series envelope: source, authority class, state. The chart never
+   * claims more than this envelope supports. */
+  series?: CandleSeriesView | null;
   quote: MarketQuoteView | null;
   health: FeedHealthView | null;
   prediction?: any | null;
@@ -58,16 +70,20 @@ function computeEma(bars: { time: UTCTimestamp; close: number }[], period: numbe
 
 function computeVwap(
   bars: { time: UTCTimestamp; high: number; low: number; close: number }[],
-  volumes: { value: number }[],
+  volumes: { value: number | null }[],
 ) {
   if (!bars || bars.length === 0) return [];
   let cumVol = 0;
   let cumTypVol = 0;
+  // Bars with unknown volume contribute nothing: VWAP is computed over
+  // observed volume only, never over a filled-in default.
   return bars.map((b, i) => {
-    const vol = volumes[i]?.value || 1200;
+    const vol = volumes[i]?.value ?? null;
     const typPrice = (b.high + b.low + b.close) / 3;
-    cumVol += vol;
-    cumTypVol += typPrice * vol;
+    if (vol !== null && vol > 0) {
+      cumVol += vol;
+      cumTypVol += typPrice * vol;
+    }
     const vwap = cumVol > 0 ? cumTypVol / cumVol : b.close;
     return { time: b.time, value: parseFloat(vwap.toFixed(2)) };
   });
@@ -271,6 +287,7 @@ function computeTrendChannel(bars: { time: UTCTimestamp; high: number; low: numb
 
 export function LiveChart({
   candles,
+  series = null,
   quote,
   health,
   prediction,
@@ -284,6 +301,7 @@ export function LiveChart({
   onSelectStrategy,
   defaultSymbol = "MCX GOLDM 25SEP26",
 }: LiveChartProps) {
+  const { requestedSource } = useDataSource();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -336,6 +354,7 @@ export function LiveChart({
   const [footprintStats, setFootprintStats] = useState<FootprintMemoryStats>({
     cachedBars: 0,
     memoryBytes: 0,
+    memoryBytesMeasured: false,
     totalVolume: 0,
     totalDelta: 0,
     cumDelta: 0,
@@ -352,6 +371,9 @@ export function LiveChart({
   const activeToolRef = useRef(activeTool);
   activeToolRef.current = activeTool;
 
+  // Latest observed close, mirrored for event handlers registered once on mount.
+  const latestCloseRef = useRef<number | null>(null);
+
   // Indicators toggle state
   const [enabledIndicators, setEnabledIndicators] = useState({
     ema20: true,
@@ -366,13 +388,7 @@ export function LiveChart({
     rsiBadge: true,
   });
 
-  // Real-time Tick State
-  const [livePulseTick, setLivePulseTick] = useState<{
-    price: number;
-    highDelta: number;
-    lowDelta: number;
-    timestamp: number;
-  } | null>(null);
+  // Real-time Tick State (driven only by observed feed ticks, never synthesized)
   const [currentTimeStr, setCurrentTimeStr] = useState("");
   const [candleCountdown, setCandleCountdown] = useState("05:00");
   const [crosshairBar, setCrosshairBar] = useState<{
@@ -622,155 +638,83 @@ export function LiveChart({
     }
   }, [selectedSymbol, quote, prediction]);
 
-  // Reset live pulse tick when symbol changes
+  // Reset live tick state when symbol changes (no synthetic carry-over)
   useEffect(() => {
-    setLivePulseTick(null);
+    setFootprintBars([]);
+    setFootprintStats({
+      cachedBars: 0,
+      memoryBytes: 0,
+      memoryBytesMeasured: false,
+      totalVolume: 0,
+      totalDelta: 0,
+      cumDelta: 0,
+      buyPressurePct: 50,
+      sellPressurePct: 50,
+      imbalancesCount: 0,
+    });
   }, [selectedSymbol]);
 
-  // Live Micro-Pulse Heartbeat (Smooth continuous ticks only during live market session when waiting for broker feed)
-  useEffect(() => {
-    // CRITICAL HONESTY RULE: When market is closed (e.g. NIFTY after 15:30 IST or on weekends),
-    // NEVER generate synthetic price movement! Ticks and chart remain completely frozen.
-    if (!marketSession.isOpen) {
-      setLivePulseTick(null);
-      return;
-    }
+  // No synthetic pulse: when the feed is quiet the chart is still. Ticks arrive
+  // from the broker feed (via useMarketFeed) or not at all.
 
-    const pulseInterval = setInterval(() => {
-      setLivePulseTick((prev) => {
-        const base = profile.basePrice;
-        // Small gentle walk delta: +/- 0.015%
-        const deltaPct = (Math.random() - 0.49) * 0.0003;
-        const delta = base * deltaPct;
-        const isPrevValid = prev && Math.abs(prev.price - base) / base < 0.25;
-        const curPrice = isPrevValid ? prev.price + delta : base + delta;
-        const roundedPrice = parseFloat(curPrice.toFixed(2));
+  // Observed bars only. Every rendered bar comes from an API candle whose
+  // open, high, low and close were all present and numeric. Bars missing any
+  // leg are skipped and counted in provenance — interpolated history would
+  // look real while being invented, which is exactly what this chart used to do.
+  const observed = useMemo(() => chartBarsFromCandles(candles), [candles]);
 
-        // Update in-memory footprint store with live micro-tick
-        inMemoryFootprintStore.updateWithTick(selectedSymbol, roundedPrice, 15, Date.now());
+  const provenance = useMemo(
+    () =>
+      evaluateChartProvenance({
+        series,
+        health,
+        quoteState: quote?.state ?? null,
+        connectionStatus,
+        streamTransport: streamTransport ?? "DISCONNECTED",
+        requestedSource,
+        bars: observed,
+      }),
+    [series, health, quote, connectionStatus, streamTransport, requestedSource, observed],
+  );
 
-        return {
-          price: roundedPrice,
-          highDelta: Math.max(0, delta * 1.4),
-          lowDelta: Math.min(0, delta * 1.4),
-          timestamp: Date.now(),
-        };
-      });
-    }, 1000);
-
-    return () => clearInterval(pulseInterval);
-  }, [marketSession.isOpen, profile.basePrice, selectedSymbol]);
-
-  // Generate authentic historical contour and intraday bars
   const baseChartData = useMemo(() => {
-    const rawBars: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
-    const volumes: { time: UTCTimestamp; value: number; color: string }[] = [];
-
-    const now = new Date();
-    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 15, 0).getTime() / 1000;
-    const intervalSecMap: Record<string, number> = {
-      "1s": 1,
-      "1m": 60,
-      "3m": 180,
-      "5m": 300,
-      "15m": 900,
-      "30m": 1800,
-      "1h": 3600,
-      "1d": 86400,
-    };
-    const intervalSec = intervalSecMap[interval] || 300;
-
-    const numBars = 95;
-    let price = profile.open;
-    let t = startTime;
-
-    // Rich intraday price action pattern
-    const patternDeltas = [
-      12, 18, -8, 22, -14, -20, -32, 15, -18, -25, 30, 45, 28, -15, -22, -40, -18, -35, -28, 12, 25, 40, 35, 18, -20,
-      -30, -15, 22, 38, 50, -18, -25, -35, -45, -20, 15, 28, 35, -12, -28, -50, -42, 20, 35, 48, 25, -15, -30, 22, 40,
-      -25, -38, -60, -45, 15, 30, 55, 38, -20, -35, -70, -55, 25, 45, 60, 32, -18, -40, 28, 48, -30, -50, -65, -40, 35,
-      55, 75, 42, -25, -45, -85, -60, 40, 65, 80, 50, -30, -55, 35, 55, -40, -65, 45, 60, 25,
-    ];
-
-    for (let i = 0; i < numBars; i++) {
-      const scaleFactor =
-        profile.basePrice > 70000 ? 1.9 : profile.basePrice > 50000 ? 1.5 : profile.basePrice > 20000 ? 0.65 : 0.25;
-      const delta = (patternDeltas[i % patternDeltas.length] || 10) * scaleFactor;
-      const open = price;
-      let close = open + delta;
-
-      // Smooth convergence towards active live market price for recent bars
-      if (i > numBars - 10) {
-        const step = (profile.basePrice - close) * 0.45;
-        close = close + step;
-      }
-
-      const high = Math.max(open, close) + Math.abs(delta) * 0.45;
-      const low = Math.min(open, close) - Math.abs(delta) * 0.45;
-      const vol = Math.floor(1800 + Math.abs(delta) * 140 + (i % 7) * 450);
-
-      rawBars.push({
-        time: Math.floor(t) as UTCTimestamp,
-        open: parseFloat(open.toFixed(2)),
-        high: parseFloat(high.toFixed(2)),
-        low: parseFloat(low.toFixed(2)),
-        close: parseFloat(close.toFixed(2)),
-      });
-
-      volumes.push({
-        time: Math.floor(t) as UTCTimestamp,
-        value: vol,
-        color: close >= open ? "rgba(8, 153, 129, 0.45)" : "rgba(242, 54, 69, 0.45)",
-      });
-
-      price = close;
-      t += intervalSec;
-    }
-
-    // Blend live pulse tick into the latest bar ONLY if market is active and open
-    if (marketSession.isOpen && livePulseTick && rawBars.length > 0) {
-      const last = rawBars[rawBars.length - 1];
-      last.close = livePulseTick.price;
-      last.high = Math.max(last.high, livePulseTick.price + livePulseTick.highDelta);
-      last.low = Math.min(last.low, livePulseTick.price + livePulseTick.lowDelta);
-    }
-
-    // If live WebSocket candle exists, overwrite last bar with real broker candle
-    if (candles && candles.length > 0) {
-      const lastCandle = candles[candles.length - 1];
-      if (lastCandle && lastCandle.close && lastCandle.open) {
-        const liveClose = parseFloat(lastCandle.close);
-        const liveOpen = parseFloat(lastCandle.open);
-        const liveHigh = lastCandle.high ? parseFloat(lastCandle.high) : Math.max(liveOpen, liveClose);
-        const liveLow = lastCandle.low ? parseFloat(lastCandle.low) : Math.min(liveOpen, liveClose);
-
-        if (
-          !isNaN(liveClose) &&
-          rawBars.length > 0 &&
-          Math.abs(liveClose - profile.basePrice) / profile.basePrice < 0.25
-        ) {
-          rawBars[rawBars.length - 1].close = liveClose;
-          rawBars[rawBars.length - 1].high = Math.max(rawBars[rawBars.length - 1].high, liveHigh);
-          rawBars[rawBars.length - 1].low = Math.min(rawBars[rawBars.length - 1].low, liveLow);
-        }
-      }
-    }
-
+    const rawBars = observed.bars.map((b) => ({
+      time: b.time as UTCTimestamp,
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      close: b.close,
+    }));
+    // Volume is rendered only where the feed supplied it. A missing volume is
+    // a gap in the histogram, not a 1200 default.
+    const volumes = observed.bars
+      .filter((b) => b.volume !== null)
+      .map((b) => ({
+        time: b.time as UTCTimestamp,
+        value: b.volume as number,
+        color: b.close >= b.open ? "rgba(8, 153, 129, 0.45)" : "rgba(242, 54, 69, 0.45)",
+      }));
     return { rawBars, volumes };
-  }, [profile, interval, candles, livePulseTick, marketSession.isOpen]);
+  }, [observed]);
 
-  // Synchronize In-Memory Footprint buffer when baseChartData changes
+  // Synchronize In-Memory Footprint buffer when observed bars change.
+  // Bars with unknown volume are ingested without one; the footprint engine
+  // models distribution, but the call site must not invent a default.
   useEffect(() => {
-    if (baseChartData.rawBars.length > 0) {
-      const barsWithVol = baseChartData.rawBars.map((b, i) => ({
-        ...b,
-        volume: baseChartData.volumes[i]?.value || 1200,
+    if (observed.bars.length > 0) {
+      const barsWithVol = observed.bars.map((b) => ({
+        time: b.time,
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close,
+        volume: b.volume ?? undefined,
       }));
       const fps = inMemoryFootprintStore.ingestBars(selectedSymbol, barsWithVol, profile.tickSize);
       setFootprintBars(fps);
       setFootprintStats(inMemoryFootprintStore.getStats(selectedSymbol));
     }
-  }, [baseChartData.rawBars, baseChartData.volumes, selectedSymbol, profile.tickSize]);
+  }, [observed, selectedSymbol, profile.tickSize]);
 
   // Derived Candle Types (Japanese vs Heikin-Ashi)
   const activeBars = useMemo(() => {
@@ -819,11 +763,14 @@ export function LiveChart({
     return { ema20, ema50, ema200, vwap, bb, rsiValue, superTrend, fibLevels, atrValue, trendChannel };
   }, [activeBars, baseChartData.volumes, enabledIndicators, showFibonacci, showTrendChannel]);
 
-  // Current price metrics
+  // Current price metrics. With no observed bars there is no price to show:
+  // null renders as "—", never as a preset base price.
   const latestCandle = activeBars[activeBars.length - 1] || null;
-  const currentPrice = latestCandle ? latestCandle.close : profile.basePrice;
-  const priceChange = currentPrice - profile.open;
-  const priceChangePct = profile.open > 0 ? (priceChange / profile.open) * 100 : 0;
+  const currentPrice: number | null = latestCandle ? latestCandle.close : null;
+  latestCloseRef.current = currentPrice;
+  const priceChange: number | null = currentPrice !== null ? currentPrice - profile.open : null;
+  const priceChangePct: number | null =
+    currentPrice !== null && profile.open > 0 ? ((currentPrice - profile.open) / profile.open) * 100 : null;
 
   // -------------------------------------------------------------
   // Chart Initialization Effect (Once on Mount)
@@ -1060,7 +1007,10 @@ export function LiveChart({
         }));
         setActiveTool("CROSSHAIR");
       } else if (tool === "MEASURE") {
-        const base = profile.basePrice;
+        // Measure from the last observed close. With no observed bars there is
+        // nothing to measure against, so the tool stays idle.
+        const base = latestCloseRef.current;
+        if (base === null) return;
         const delta = clickedPrice - base;
         const deltaPct = base > 0 ? (delta / base) * 100 : 0;
         setMeasureResult({
@@ -1284,9 +1234,9 @@ export function LiveChart({
   }, [connectionStatus, health]);
 
   const activeBarDisplay = crosshairBar || {
-    open: latestCandle?.open || currentPrice,
-    high: latestCandle?.high || currentPrice,
-    low: latestCandle?.low || currentPrice,
+    open: latestCandle?.open ?? currentPrice,
+    high: latestCandle?.high ?? currentPrice,
+    low: latestCandle?.low ?? currentPrice,
     close: currentPrice,
     change: priceChange,
     changePct: priceChangePct,
@@ -1294,7 +1244,8 @@ export function LiveChart({
 
   // Add User Horizontal Price Line at Crosshair hover or current price
   const handleAddHorizontalLine = useCallback(() => {
-    const targetPrice = hoverPriceRef.current || currentPrice;
+    const targetPrice = hoverPriceRef.current ?? currentPrice;
+    if (targetPrice === null || targetPrice === undefined) return;
     const rounded = parseFloat(targetPrice.toFixed(2));
     const newLine = {
       id: `line_${Date.now()}`,
@@ -1776,28 +1727,71 @@ export function LiveChart({
                 <span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 9 }}>({marketSession.nextOpen})</span>
               )}
             </span>
+
+            {/* Data provenance: what the rendered bars actually are. Requested
+            source is what the operator asked for; the feed state is what the
+            server reported. Neither is inferred. */}
+            <span
+              title={`${provenance.detail}${
+                provenance.authorityClass ? ` Authority: ${provenance.authorityClass}.` : ""
+              }${provenance.reasonCodes.length > 0 ? ` Reasons: ${provenance.reasonCodes.join(", ")}.` : ""}${
+                provenance.skippedBars > 0
+                  ? ` ${provenance.skippedBars} incomplete bar(s) omitted, never interpolated.`
+                  : ""
+              }${
+                provenance.missingVolumeBars > 0
+                  ? ` ${provenance.missingVolumeBars} bar(s) have no volume and render as gaps.`
+                  : ""
+              }`}
+              aria-label={`chart data provenance: ${provenance.label}`}
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                background:
+                  provenance.status === "LIVE"
+                    ? "rgba(34, 197, 94, 0.12)"
+                    : provenance.status === "STALE"
+                      ? "rgba(245, 158, 11, 0.12)"
+                      : "rgba(148, 163, 184, 0.12)",
+                color: provenance.status === "LIVE" ? "#4ade80" : provenance.status === "STALE" ? "#fbbf24" : "#94a3b8",
+                padding: "2px 7px",
+                borderRadius: 4,
+                border: "1px solid rgba(148, 163, 184, 0.2)",
+                letterSpacing: "0.3px",
+              }}
+            >
+              {provenance.label} · {provenance.observedBars} bars
+            </span>
           </div>
 
           {/* Real-time Price / Frozen Closing Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontSize: 16, fontWeight: 900, fontFamily: "monospace", color: "#f8fafc" }}>
-              {currentPrice.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {currentPrice !== null
+                ? currentPrice.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : "—"}
             </span>
             <span
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: priceChange >= 0 ? "#22c55e" : "#ef4444",
+                color: priceChange !== null && priceChange >= 0 ? "#22c55e" : "#ef4444",
                 fontFamily: "monospace",
               }}
             >
-              {priceChange >= 0 ? "+" : ""}
-              {priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
+              {priceChange === null || priceChangePct === null ? (
+                "no observed price"
+              ) : (
+                <>
+                  {priceChange >= 0 ? "+" : ""}
+                  {priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
+                </>
+              )}
             </span>
-            {!marketSession.isOpen && (
+            {!marketSession.isOpen && currentPrice !== null && (
               <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>· Frozen at Close</span>
             )}
           </div>
@@ -2054,33 +2048,39 @@ export function LiveChart({
           }}
         >
           <div style={{ color: "#94a3b8" }}>
-            O <span style={{ color: "#f8fafc", fontWeight: 700 }}>{activeBarDisplay.open.toFixed(2)}</span>
+            O <span style={{ color: "#f8fafc", fontWeight: 700 }}>{fmtPrice(activeBarDisplay.open, 2)}</span>
           </div>
           <div style={{ color: "#94a3b8" }}>
-            H <span style={{ color: "#22c55e", fontWeight: 700 }}>{activeBarDisplay.high.toFixed(2)}</span>
+            H <span style={{ color: "#22c55e", fontWeight: 700 }}>{fmtPrice(activeBarDisplay.high, 2)}</span>
           </div>
           <div style={{ color: "#94a3b8" }}>
-            L <span style={{ color: "#ef4444", fontWeight: 700 }}>{activeBarDisplay.low.toFixed(2)}</span>
+            L <span style={{ color: "#ef4444", fontWeight: 700 }}>{fmtPrice(activeBarDisplay.low, 2)}</span>
           </div>
           <div style={{ color: "#94a3b8" }}>
             C{" "}
             <span
               style={{
-                color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
+                color: activeBarDisplay.change !== null && activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
                 fontWeight: 700,
               }}
             >
-              {activeBarDisplay.close.toFixed(2)}
+              {fmtPrice(activeBarDisplay.close, 2)}
             </span>
           </div>
           <div
             style={{
-              color: activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
+              color: activeBarDisplay.change !== null && activeBarDisplay.change >= 0 ? "#22c55e" : "#ef4444",
               fontWeight: 700,
             }}
           >
-            Ch {activeBarDisplay.change >= 0 ? "+" : ""}
-            {activeBarDisplay.change.toFixed(2)} ({activeBarDisplay.changePct.toFixed(2)}%)
+            {activeBarDisplay.change === null || activeBarDisplay.changePct === null ? (
+              "Ch —"
+            ) : (
+              <>
+                Ch {activeBarDisplay.change >= 0 ? "+" : ""}
+                {activeBarDisplay.change.toFixed(2)} ({activeBarDisplay.changePct.toFixed(2)}%)
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -2928,9 +2928,15 @@ export function LiveChart({
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontWeight: 900, fontSize: 13, fontFamily: "monospace", color: "#fef08a" }}>
-                        ₹{currentPrice.toFixed(2)}
+                        {currentPrice !== null ? `₹${currentPrice.toFixed(2)}` : "₹—"}
                       </div>
-                      <div style={{ fontSize: 9, color: "#22c55e", fontWeight: 700 }}>● IN-MEMORY STREAMING</div>
+                      <div style={{ fontSize: 9, color: "#22c55e", fontWeight: 700 }}>
+                        {provenance.status === "LIVE"
+                          ? "● IN-MEMORY STREAMING"
+                          : provenance.status === "STALE"
+                            ? "● FROZEN — FEED DOWN"
+                            : "● NO FEED"}
+                      </div>
                     </div>
                   </div>
 
@@ -2953,13 +2959,15 @@ export function LiveChart({
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ color: "#94a3b8" }}>Memory Footprint:</span>
-                      <strong style={{ fontFamily: "monospace" }}>
-                        {(footprintStats.memoryBytes / 1024).toFixed(1)} KB
+                      <strong style={{ fontFamily: "monospace" }} title="Estimated from bar count, not measured.">
+                        ~{(footprintStats.memoryBytes / 1024).toFixed(1)} KB (est.)
                       </strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#94a3b8" }}>Read Latency:</span>
-                      <strong style={{ color: "#4ade80", fontFamily: "monospace" }}>0.00 ms (Zero Latency)</strong>
+                      <strong style={{ fontFamily: "monospace" }} title="No latency measurement exists.">
+                        not measured
+                      </strong>
                     </div>
                   </div>
 
@@ -3270,6 +3278,9 @@ export function LiveChart({
 
               {activeTab === "POSITIONS" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>
+                    Illustrative sample — not your positions. Real positions are not wired to this panel.
+                  </div>
                   <div
                     style={{
                       background: "#141923",
@@ -3300,6 +3311,9 @@ export function LiveChart({
 
               {activeTab === "ORDERS" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>
+                    Illustrative sample — no order was placed or filled. Real fills are not wired to this panel.
+                  </div>
                   <div
                     style={{
                       background: "#141923",
@@ -3310,10 +3324,11 @@ export function LiveChart({
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                       <span style={{ fontWeight: 800 }}>BUY {selectedSymbol.split(" ")[0]}</span>
-                      <span style={{ color: "#22c55e", fontWeight: 700 }}>FILLED</span>
+                      <span style={{ color: "#94a3b8", fontWeight: 700 }}>SAMPLE</span>
                     </div>
                     <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>
-                      Price: ₹{currentPrice.toFixed(1)} | Qty: 1 | Paper Venue
+                      Price: {currentPrice !== null ? `₹${currentPrice.toFixed(1)}` : "₹—"} | Qty: 1 | Paper Venue
+                      (sample)
                     </div>
                   </div>
                 </div>

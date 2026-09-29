@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { Shell } from "../components/Shell";
+import { DataSourceProvider } from "../lib/dataSource";
+import type { SystemState, SseStatus } from "@ats/api-client";
 import {
   SystemPanel,
   PolicyPanel,
@@ -24,9 +26,11 @@ vi.mock("next/link", () => ({
 describe("shell", () => {
   it("renders header/nav/main and skip link", () => {
     render(
-      <Shell systemState="READY" sseStatus="connected">
-        <div>content</div>
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="connected">
+          <div>content</div>
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByText("ATS CONTROL CENTER")).toBeInTheDocument();
     expect(screen.getByText("A2_PAPER")).toBeInTheDocument();
@@ -37,9 +41,11 @@ describe("shell", () => {
 
   it("UNKNOWN system state looks unknown not healthy", () => {
     render(
-      <Shell systemState="UNKNOWN" sseStatus="disconnected">
-        x
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="UNKNOWN" sseStatus="disconnected">
+          x
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByLabelText("system state UNKNOWN")).toBeInTheDocument();
     expect(screen.getByText(/unknown, not healthy/i)).toBeInTheDocument();
@@ -285,30 +291,98 @@ describe("token status", () => {
   });
 });
 
+describe("feed pill", () => {
+  function renderShell(systemState: SystemState | null, sseStatus: SseStatus) {
+    return render(
+      <DataSourceProvider>
+        <Shell systemState={systemState} sseStatus={sseStatus}>
+          x
+        </Shell>
+      </DataSourceProvider>,
+    );
+  }
+
+  it("says LIVE READY only when the system is ready and the stream is connected", () => {
+    renderShell("READY", "connected");
+    expect(screen.getByLabelText("feed LIVE READY")).toBeInTheDocument();
+  });
+
+  it("reports READY with a down feed instead of claiming liveness", () => {
+    renderShell("READY", "disconnected");
+    expect(screen.getByLabelText("feed READY · FEED DOWN")).toBeInTheDocument();
+  });
+
+  it("never reports liveness for an unknown system", () => {
+    renderShell("UNKNOWN", "disconnected");
+    expect(screen.getByLabelText("feed NOT LIVE")).toBeInTheDocument();
+  });
+
+  it("shows CHECKING before the first control-plane poll", () => {
+    renderShell(null, "connecting");
+    expect(screen.getByLabelText("feed CHECKING")).toBeInTheDocument();
+  });
+});
+
+describe("data source request", () => {
+  it("defaults to the broker feed and labels the control as a request", () => {
+    render(
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="connected">
+          x
+        </Shell>
+      </DataSourceProvider>,
+    );
+    const select = screen.getByLabelText("Requested data source") as HTMLSelectElement;
+    expect(select.value).toBe("BROKER_LIVE");
+    expect(screen.getByText("requested — see chart provenance")).toBeInTheDocument();
+  });
+
+  it("records an explicit operator request", () => {
+    render(
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="connected">
+          x
+        </Shell>
+      </DataSourceProvider>,
+    );
+    const select = screen.getByLabelText("Requested data source") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "OPEN_TERMINAL" } });
+    expect(select.value).toBe("OPEN_TERMINAL");
+  });
+});
+
 describe("SSE", () => {
   it("connection indicator statuses", async () => {
     const { rerender } = render(
-      <Shell systemState="READY" sseStatus="connecting">
-        x
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="connecting">
+          x
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByLabelText("SSE connecting")).toBeInTheDocument();
     rerender(
-      <Shell systemState="READY" sseStatus="connected">
-        x
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="connected">
+          x
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByLabelText("SSE connected")).toBeInTheDocument();
     rerender(
-      <Shell systemState="READY" sseStatus="disconnected">
-        x
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="disconnected">
+          x
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByLabelText("SSE disconnected")).toBeInTheDocument();
     rerender(
-      <Shell systemState="READY" sseStatus="error">
-        x
-      </Shell>,
+      <DataSourceProvider>
+        <Shell systemState="READY" sseStatus="error">
+          x
+        </Shell>
+      </DataSourceProvider>,
     );
     expect(screen.getByLabelText("SSE error")).toBeInTheDocument();
   });

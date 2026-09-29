@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { ConnectionIndicator, SystemStateBadge } from "@ats/ui";
+import { requestedSourceLabel, useDataSource, type RequestedSource } from "../lib/dataSource";
 import type { SystemState, SseStatus } from "@ats/api-client";
 import { AICopilotPanel } from "./AICopilotPanel";
 
@@ -72,8 +73,33 @@ export function Shell({
   sseStatus: SseStatus;
 }) {
   const pathname = usePathname();
-  const [dataSource, setDataSource] = useState<"BROKER LIVE" | "OPEN TERMINAL">("BROKER LIVE");
+  const { requestedSource, setRequestedSource } = useDataSource();
   const [showCopilot, setShowCopilot] = useState(false);
+
+  // The feed pill reports the conjunction of control-plane state and stream
+  // state. Either one missing means the operator is not looking at a live
+  // system, so the pill must not say otherwise.
+  const feedPill =
+    systemState === null
+      ? { text: "CHECKING", background: "#f1f5f9", color: "#475569", border: "#cbd5e1", dot: "#94a3b8" }
+      : systemState === "READY" && sseStatus === "connected"
+        ? { text: "LIVE READY", background: "#ecfdf5", color: "#047857", border: "#a7f3d0", dot: "#10b981" }
+        : systemState === "READY"
+          ? {
+              text: "READY · FEED DOWN",
+              background: "#fffbeb",
+              color: "#92400e",
+              border: "#fde68a",
+              dot: "#f59e0b",
+            }
+          : { text: "NOT LIVE", background: "#fef2f2", color: "#991b1b", border: "#fecaca", dot: "#ef4444" };
+
+  function handleSourceChange(next: string) {
+    if (next === "BROKER_LIVE" || next === "OPEN_TERMINAL") {
+      const value: RequestedSource = next;
+      setRequestedSource(value);
+    }
+  }
 
   return (
     <div
@@ -154,22 +180,23 @@ export function Shell({
           </span>
 
           <span
+            aria-label={`feed ${feedPill.text}`}
             style={{
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: "0.06em",
               padding: "3px 9px",
               borderRadius: 999,
-              background: "#ecfdf5",
-              color: "#047857",
-              border: "1px solid #a7f3d0",
+              background: feedPill.background,
+              color: feedPill.color,
+              border: `1px solid ${feedPill.border}`,
               display: "inline-flex",
               alignItems: "center",
               gap: 5,
             }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
-            LIVE READY
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: feedPill.dot }} />
+            {feedPill.text}
           </span>
         </div>
 
@@ -189,8 +216,9 @@ export function Shell({
           >
             <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b" }}>DATA SOURCE:</span>
             <select
-              value={dataSource}
-              onChange={(e) => setDataSource(e.target.value as any)}
+              aria-label="Requested data source"
+              value={requestedSource}
+              onChange={(e) => handleSourceChange(e.target.value)}
               style={{
                 fontSize: 11,
                 fontWeight: 700,
@@ -202,9 +230,15 @@ export function Shell({
                 cursor: "pointer",
               }}
             >
-              <option value="BROKER LIVE">BROKER LIVE (Upstox)</option>
-              <option value="OPEN TERMINAL">OPEN TERMINAL (Ref)</option>
+              <option value="BROKER_LIVE">{requestedSourceLabel("BROKER_LIVE")}</option>
+              <option value="OPEN_TERMINAL">{requestedSourceLabel("OPEN_TERMINAL")}</option>
             </select>
+            <span
+              style={{ fontSize: 10, fontWeight: 500, color: "#64748b" }}
+              title="A request label, not a status claim. What the feed is actually serving is reported next to the chart."
+            >
+              requested — see chart provenance
+            </span>
           </div>
 
           {/* Explicit Authority Separation Badges */}

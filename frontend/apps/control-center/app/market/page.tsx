@@ -71,6 +71,7 @@ export default function MarketPage() {
     health,
     prediction,
     candles,
+    series,
     interval,
     error: _error,
     reconnect: _reconnect,
@@ -393,6 +394,7 @@ export default function MarketPage() {
       {showChart && (
         <LiveChart
           candles={candles}
+          series={series}
           quote={quote}
           health={health}
           prediction={prediction}
