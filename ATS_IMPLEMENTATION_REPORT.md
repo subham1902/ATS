@@ -1,9 +1,8 @@
 # ATS Implementation Report
 
-**Status: PAUSED FOR VERIFICATION.** Phases 0-2 are committed, pushed, and green
-in remote CI. Phase 3 (frontend honesty) is committed locally as `d5ef50b` but
-NOT pushed — local checks pass (typecheck, eslint, 38 frontend tests, prod
-build) and remote CI is the pending verification step. Items under
+**Status: IN PROGRESS.** Phases 0-3 are committed, pushed, and green in remote
+CI, including Phase 3 frontend honesty (run `36674326430` on `6d0a7c7` — see
+[Remote CI verification](#remote-ci-verification)). Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
 there as incomplete.
 
@@ -36,7 +35,9 @@ at that point, `uv lock --check` clean) so the history can be bisected.
 
 ---
 
-## Remote CI verification (run `36551337386`, commit `2de1ba1`)
+## Remote CI verification
+
+### Run `36551337386` (commit `2de1ba1`, 2026-09-29)
 
 Pushed to `origin/main`; **all nine active jobs pass**, `Dependency Review`
 skipped as designed.
@@ -68,6 +69,31 @@ Two honest caveats about that job, not hedges:
   path; they are not in the critical-suite list and nothing else is.
 - Coverage is measured on a Linux runner, so its absolute percentages are not
   comparable to the Windows numbers in the table below. The gates passed.
+
+### Run `36674326430` (commit `6d0a7c7`, 2026-09-30) — Phase 3 verification
+
+Pushed `d5ef50b` + `6d0a7c7`; **all nine active jobs pass**, `Dependency Review`
+skipped as designed. This is the run that promotes Phase 3 from
+"DONE locally" to "DONE / remotely verified".
+
+| Job                              | Result                                                    |
+| -------------------------------- | --------------------------------------------------------- |
+| Lint & Typecheck                 | success (ruff 0, mypy strict, eslint, prettier, tsc)      |
+| Smoke / Governance               | success (7 passed)                                        |
+| Contract Tests                   | success (149 passed)                                      |
+| Property Tests                   | success (255 passed)                                      |
+| Unit Tests                       | success (1427 passed, 13 skipped)                         |
+| Durability & Faults (PostgreSQL) | success — **110 integration + 37 fault tests, 0 skipped** |
+| Coverage (risk-weighted)         | success (1838 passed, 13 skipped; gates met)              |
+| Frontend Tests                   | success (**38** control-center + 7 api-client + 7 ui)     |
+| Secret Scan                      | success (0 findings)                                      |
+
+Durability detail, verified from the job log rather than assumed: Postgres 16
+service started, `ATS_TEST_POSTGRES_DSN` populated, `psycopg` imported, real
+connection succeeded, and `assert_critical_tests_ran.py` reported **all 9
+critical suites executed (147 test cases total)** — none absent, skipped, or
+errored. The frontend count (38, up from 20) confirms the new provenance,
+data-source, and pill tests ran remotely, not just locally.
 
 ---
 
@@ -247,7 +273,7 @@ true when the orchestrator constructs `TradingRuntime` without an authority, and
 gates independently, so this is defense-in-depth rather than an open escape
 hatch, but it should be made explicit.
 
-### Phase 3 - Frontend honesty (committed in `d5ef50b`, NOT yet pushed)
+### Phase 3 - Frontend honesty (committed in `d5ef50b`, remotely verified in `36674326430`)
 
 The control center presented several things as measured that were not, and
 every one of them erred in the optimistic direction. This phase removes the
@@ -312,9 +338,9 @@ production build succeeds.
 modules (charter item 6), the two ATR definitions, unimplemented drawing tools,
 and the `AICopilotPanel` backend URL.
 
-**Status: committed locally, NOT pushed. Remote CI has not run on this commit.**
-The numbers above are local; push and the CI check are the pending
-verification step.
+**Status: DONE / remotely verified** (run `36674326430`, 2026-09-30) — the
+numbers above are local; the remote run confirms them, including the 18 new
+frontend tests (control-center 20 → 38). No push is pending for this phase.
 
 ### Latent defects found and fixed (not in any planned scope)
 
@@ -443,14 +469,14 @@ allow_all`. Exit authority and entry _binding_ are both explicit; entry
   provider now gates independently, so this is defense-in-depth - but it is
   still a bypass that should be made explicit.
 
-### P3/P5 - Frontend honesty (DONE locally in `d5ef50b`, awaiting push + CI)
+### P3/P5 - Frontend honesty (DONE, remotely verified in `36674326430`)
 
 Completed and documented under
-[Phase 3](#phase-3---frontend-honesty-committed-in-d5ef50b-not-yet-pushed):
+[Phase 3](#phase-3---frontend-honesty-committed-in-d5ef50b-remotely-verified-in-36674326430):
 synthetic chart history and random-walk pulse deleted, quote fields passed
 through instead of hardcoded, shell pill and data-source selector honest,
-dashboard wired to fetched data, 18 new frontend tests. Verified locally;
-**remote CI has not run on this commit** — that is the pending step.
+dashboard wired to fetched data, 18 new frontend tests (control-center 20 →
+38, confirmed in the remote log).
 
 Left over for a later chart pass (charter item 6, not started):
 
