@@ -1,8 +1,8 @@
 # ATS Implementation Report
 
-**Status: IN PROGRESS.** Phases 0-3 are committed, pushed, and green in remote
-CI, including Phase 3 frontend honesty (run `36674326430` on `6d0a7c7` — see
-[Remote CI verification](#remote-ci-verification)). Items under
+**Status: IN PROGRESS.** Phases 0-3 and the two P2 authorization follow-ups are
+committed, pushed, and green in remote CI (latest run `36818969803` on
+`74d9daa` — see [Remote CI verification](#remote-ci-verification)). Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
 there as incomplete.
 
@@ -29,6 +29,9 @@ AUTHORIZES.** The paper-only invariant (`Literal["A2_PAPER"]`) is untouched.
 | `2de1ba1` | `fix(ci)`: four machine-local test failures made honest; token placeholder reshaped           |
 | `23eff20` | `docs`: replace the CI caveat with the verified remote result                                 |
 | `d5ef50b` | `fix(frontend)`: render only observed market data, never invented state                       |
+| `6d0a7c7` | `docs`: record Phase 3 as done-locally, pending push and CI                                   |
+| `bc58a8b` | `docs`: record remote verification of frontend honesty phase                                  |
+| `74d9daa` | `fix(runtime)`: remove remaining implicit allow authority paths                               |
 
 Each commit was validated on its own (lint, types and its relevant suites pass
 at that point, `uv lock --check` clean) so the history can be bisected.
@@ -95,6 +98,17 @@ critical suites executed (147 test cases total)** — none absent, skipped, or
 errored. The frontend count (38, up from 20) confirms the new provenance,
 data-source, and pill tests ran remotely, not just locally.
 
+### Run `36818969803` (commit `74d9daa`, 2026-10-01) — P2 follow-up closure
+
+Pushed the implicit-allow removal; **all nine active jobs pass**. Counts moved
+exactly as the change predicts and nothing else did: Unit Tests 1427 → **1428
+passed** (the new omission-denies regression test), Contract Tests 149 → **152
+passed** (the three new guards), Coverage 1838 → **1842 passed**, durability
+unchanged at **110 integration + 37 fault tests, 0 skipped**, and
+`assert_critical_tests_ran.py` again reports **all 9 critical suites executed
+(147 test cases total)**. The 13 unit skips are the same stated-path
+evidence-outside-the-repo skips.
+
 ---
 
 ## Verified State (all re-run after the last edit)
@@ -103,9 +117,9 @@ data-source, and pill tests ran remotely, not just locally.
 | ----------------------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
 | Python lint                         | `uv run ruff check backend tests`                              | PASS (0 findings)                                  |
 | Python types                        | `uv run mypy backend/src`                                      | PASS, 316 files, strict                            |
-| Contract + smoke + trading_runtime  | `pytest tests/contract tests/smoke tests/unit/trading_runtime` | **218 passed**                                     |
+| Contract + smoke + trading_runtime  | `pytest tests/contract tests/smoke tests/unit/trading_runtime` | **222 passed**                                     |
 | + property + faults                 | above plus `tests/property tests/faults`                       | **502 passed, 8 skipped**                          |
-| Orchestrator + exit-auth unit suite | `pytest tests/unit/trading_runtime`                            | **62 passed**                                      |
+| Orchestrator + exit-auth unit suite | `pytest tests/unit/trading_runtime`                            | **63 passed**                                      |
 | Integration (API + trading_runtime) | `pytest tests/integration`                                     | **49 passed, 61 skipped** (Postgres-gated)         |
 | Backend tests                       | `pytest backend/tests`                                         | **233 passed**                                     |
 | Whole-tree collection               | `pytest tests backend/tests --collect-only`                    | **1998 collected, 0 errors** (was 1926 + 8 errors) |
@@ -266,12 +280,24 @@ production module imports it.
 `tests/unit/trading_runtime` went from 52 to **62** tests; the phase is verified
 at 62 passed with ruff 0 and mypy strict clean.
 
-**Known follow-up, deliberately not closed here:** `engine.py:511` still sets
-`authorized = isinstance(self.authority, NoopAuthorityService)`, which is always
-true when the orchestrator constructs `TradingRuntime` without an authority, and
-`NoopAuthorityService` answers `ALLOW`. The orchestrator's own provider now
-gates independently, so this is defense-in-depth rather than an open escape
-hatch, but it should be made explicit.
+**P2 follow-ups closed in `74d9daa` (remotely verified in `36818969803`):**
+
+- `NoopAuthorityService.try_reserve_for_candidate` answers UNKNOWN with
+  `AUTHORITY_UNAVAILABLE` instead of ALLOW with `NOOP_ALLOW`. The default
+  capital authority performs no reservation and authorizes nothing.
+- `request_exit` without a durable reduction authority is always listed as
+  unauthorized with `EXIT_EVIDENCE_REQUIRED`; the `authorized = isinstance(...)`
+  derivation is gone. The `_try_authority_for_signal` early return stays as a
+  documented statement (no reservation attempted, not granted): reservation is
+  durable-capital scope, and paper-path entry gating is owned by the
+  orchestrator's fail-closed provider.
+- `build_orchestrator` maps an omitted `authorization_provider` to the
+  orchestrator's own fail-closed DENY default; every test needing entries now
+  passes `allow_all` explicitly. `test_omitted_authorization_provider_denies_by_default`
+  proves omission refuses, and the contract guards forbid `or allow_all`
+  fallbacks, `allow_all` in builder defaults, any ALLOW inside
+  `NoopAuthorityService`, and any `authorized = isinstance` derivation —
+  plus a behavioural proof that a default runtime lists exits unauthorized.
 
 ### Phase 3 - Frontend honesty (committed in `d5ef50b`, remotely verified in `36674326430`)
 
@@ -445,7 +471,7 @@ frontend tests (control-center 20 → 38). No push is pending for this phase.
 Ordered so that safety work lands before ergonomics. Each item names the file
 evidence already gathered.
 
-### P2 - Authorization escape hatches (DONE, except two recorded follow-ups)
+### P2 - Authorization escape hatches (DONE, follow-ups closed in `74d9daa`)
 
 Completed in `e853ea9` and documented under
 [Phase 2](#phase-2---authorization-escape-hatches-committed-in-e853ea9):
@@ -455,19 +481,9 @@ exit-authorization seam with a fail-closed default, removal of
 `_build_order_intent` replaced by an explicit `OrderIntentBinding`, and
 source-scanning guards plus seven-direction refusal tests.
 
-Two items are **not** closed and should not be mistaken for being closed:
-
-- **Entry authority is still an implicit permissive default in tests.**
-  `tests/unit/trading_runtime/helpers.py` still has `authorization_provider or
-allow_all`. Exit authority and entry _binding_ are both explicit; entry
-  _authorization_ is not. Removing it means every entry test states its
-  authority rather than inheriting it.
-- **`engine.py:511`** still computes
-  `authorized = isinstance(self.authority, NoopAuthorityService)`, which is
-  always true when the orchestrator builds `TradingRuntime` without an
-  authority, and `NoopAuthorityService` answers `ALLOW`. The orchestrator's own
-  provider now gates independently, so this is defense-in-depth - but it is
-  still a bypass that should be made explicit.
+Both recorded follow-ups are now closed (see the P2 closure note in Done,
+remotely verified in `36818969803`): entry authority is explicit in every
+test (omission means DENY), and the default capital authority grants nothing.
 
 ### P3/P5 - Frontend honesty (DONE, remotely verified in `36674326430`)
 
