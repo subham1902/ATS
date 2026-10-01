@@ -4,32 +4,62 @@
     {
       "name": "Contracts / Kernel",
       "owner_stream": "A",
-      "paths": ["backend/src/ats/contracts/**", "backend/src/ats/kernel/**"]
+      "paths": [
+        "backend/src/ats/contracts/**",
+        "backend/src/ats/kernel/**",
+        "backend/src/ats/__init__.py",
+        "backend/src/ats/governance/**",
+        "backend/src/ats/persistence/**"
+      ]
     },
     {
       "name": "Data / Forecast / Kronos",
       "owner_stream": "B",
-      "paths": ["backend/src/ats/market/**", "backend/src/ats/forecast/**", "backend/src/ats/kronos_worker/**"]
+      "paths": [
+        "backend/src/ats/market/**",
+        "backend/src/ats/forecast/**",
+        "backend/src/ats/kronos_worker/**",
+        "backend/src/ats/datasets/**"
+      ]
     },
     {
       "name": "Execution / Portfolio / Events",
       "owner_stream": "C",
-      "paths": ["backend/src/ats/execution/**", "backend/src/ats/portfolio/**", "backend/src/ats/events/**"]
+      "paths": [
+        "backend/src/ats/execution/**",
+        "backend/src/ats/portfolio/**",
+        "backend/src/ats/events/**",
+        "backend/src/ats/trading_runtime/**"
+      ]
     },
     {
       "name": "Intelligence",
       "owner_stream": "D",
-      "paths": ["backend/src/ats/intelligence/**"]
+      "paths": [
+        "backend/src/ats/intelligence/**",
+        "backend/src/ats/ai/**",
+        "backend/src/ats/agents/**",
+        "backend/src/ats/strategies/**",
+        "backend/src/ats/optimization/**"
+      ]
     },
     {
       "name": "Dashboard",
       "owner_stream": "E",
-      "paths": ["frontend/**", "backend/src/ats/api/**"]
+      "paths": [
+        "frontend/**",
+        "backend/src/ats/api/**",
+        "backend/src/ats/console/**"
+      ]
     },
     {
       "name": "QA / Failure",
       "owner_stream": "F",
-      "paths": ["tests/**", "benchmarks/**", "backend/src/ats/observability/**"]
+      "paths": [
+        "tests/**",
+        "benchmarks/**",
+        "backend/src/ats/observability/**"
+      ]
     }
   ]
 }
