@@ -46,20 +46,12 @@
     {
       "name": "Dashboard",
       "owner_stream": "E",
-      "paths": [
-        "frontend/**",
-        "backend/src/ats/api/**",
-        "backend/src/ats/console/**"
-      ]
+      "paths": ["frontend/**", "backend/src/ats/api/**", "backend/src/ats/console/**"]
     },
     {
       "name": "QA / Failure",
       "owner_stream": "F",
-      "paths": [
-        "tests/**",
-        "benchmarks/**",
-        "backend/src/ats/observability/**"
-      ]
+      "paths": ["tests/**", "benchmarks/**", "backend/src/ats/observability/**"]
     }
   ]
 }
