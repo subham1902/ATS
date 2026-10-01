@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ats.api.app import _register_exception_handlers, build_a05_router
 from ats.api.providers import ControlPlaneReader
+from ats.console.cors import resolve_cors_origins
 from ats.market.fabric import MarketDataFabric
 
 from .ai_router import router as ai_router
@@ -175,7 +176,7 @@ def create_console_app(
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=resolve_cors_origins(os.environ),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
