@@ -95,6 +95,7 @@ def create_console_app(
     fabric: MarketDataFabric | None = None,
 ) -> FastAPI:
     """Create the served operator console app (workbench + A05 projection)."""
+    from ats.agents.managed_router import router as managed_agents_router
     from ats.agents.router import router as agents_router
     from ats.optimization.router import router as optimization_router
     from ats.trading_runtime.runtime_provider import TradingRuntimeProvider
@@ -197,6 +198,7 @@ def create_console_app(
         app.include_router(router)
     app.include_router(optimization_router)
     app.include_router(agents_router)
+    app.include_router(managed_agents_router)
 
     @app.websocket("/v1/stream/market")
     async def stream_market_ws(websocket: WebSocket) -> None:
