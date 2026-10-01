@@ -1,8 +1,10 @@
 # ATS Implementation Report
 
-**Status: IN PROGRESS.** Phases 0-3 and the two P2 authorization follow-ups are
-committed, pushed, and green in remote CI (latest run `36818969803` on
-`74d9daa` — see [Remote CI verification](#remote-ci-verification)). Items under
+**Status: PAUSED MID-P4.** Phases 0-3 and the P2 follow-ups are committed,
+pushed, and green in remote CI (latest run `36818969803` on `74d9daa` — see
+[Remote CI verification](#remote-ci-verification)). P4 agent management is
+half done: the proposal-only backend is implemented and green locally
+(unpushed); the frontend is not started. Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
 there as incomplete.
 
@@ -504,13 +506,55 @@ Left over for a later chart pass (charter item 6, not started):
 - `AICopilotPanel.tsx:38` still hardcodes `http://127.0.0.1:8000/v1/ai/query`,
   bypassing the proxy.
 
-### P4 - Agent management surface (§23)
+### P4 - Agent management surface (§23) — BACKEND DONE locally, frontend remaining
 
-- Build CRUD on the existing `backend/src/ats/agents/router.py` routes
-  (roster CRUD at 176-250, config at 783-793), which today are largely stubs.
-- Every mutating route must remain a _proposal_ or _advisory_ surface - no agent
-  route may authorize execution. Enforce with a contract test mirroring
-  `test_console_boundary.py`.
+**Status: paused mid-phase.** The proposal-only backend (contract, domain,
+router, CRUD tests) is implemented and green locally; it is committed below
+but NOT pushed. The frontend (/agents list, wizard, detail, api-client) is
+not started.
+
+**Design decision (from inspection, not assumption):** the existing
+`agents/` modules are the strategy-persona playground — principals, lots,
+direction bias, trade ledgers. The §23 system (provider/model, system prompt,
+capabilities, data scopes, runtime limits) is a different domain, so P4 is a
+new separate proposal-only domain rather than an extension of the roster:
+`backend/src/ats/agents/managed.py` + `managed_router.py` mounted at
+`/v1/agents/managed`, leaving all 39 playground routes untouched.
+
+**Done (local, unpushed):**
+
+- P4.1 contract `tests/contract/agents/test_managed_agent_boundary.py` (4
+  tests): source scan forbids order/token/broker/portfolio/live markers in the
+  managed modules, the capability vocabulary contains no financial authority,
+  mounted routes expose no execution-shaped paths, and schemas carry no secret
+  material.
+- P4.2/P4.3 domain `managed.py`: `ManagedAgent` (id, name, type, provider,
+  model, instructions, capabilities, data/data-research scopes, timeout,
+  concurrency, credential_ref-as-env-name, enabled/status, version, timestamps,
+  run/error bookkeeping), append-only `AgentConfigVersion` snapshots,
+  `AgentRun` records bound to the exact config version, JSON-file store with
+  atomic writes following the roster convention.
+- Capability allowlist is the whole vocabulary (11 safe verbs); data and
+  research scopes are closed sets too. Financial authority has no member, so
+  it is unrepresentable, not merely rejected.
+- P4.5/P4.7: archive-by-default DELETE; hard delete requires `hard=true` AND
+  `confirm=true` AND never-ran AND single-v1 history, enforced server-side.
+  New agents are DISABLED; enable/disable flips status without touching
+  versions; duplicate mints a new id with fresh v1 history. Runs: disabled or
+  archived agents cannot start new work; in-flight runs finish undisturbed.
+  Lifecycle audit goes through the unified activity log — the closed 24-entry
+  domain event registry is untouched.
+- P4.14 backend tests `backend/tests/test_managed_agents.py` (16 tests):
+  create/disabled-default, duplicate-name 409, invalid type/capability/secret
+  422s, edit→version bump with history preserved, archive retention, hard-delete
+  guards, run lifecycle incl. failure status, redaction, no-execution-surface.
+
+**Verified locally:** ruff 0, mypy strict clean on both new modules, 16
+backend + 4 contract tests pass.
+
+**Remaining:** api-client types/routes, /agents list + 8-step wizard + detail
+page, frontend tests (CTA, wizard, validation, safe defaults, error states),
+full P4.15 validation, split commits, report, push, remote CI.
 
 ### Later phases (not started, not estimated)
 
