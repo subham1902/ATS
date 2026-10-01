@@ -8,6 +8,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from ats.strategies.identity import resolve_strategy_id
+
 from .strategy_registry_models import (
     BestPerformanceSnapshot,
     EvidenceTier,
@@ -755,14 +757,10 @@ class StrategyRegistryService:
         Strategy Lab and Live Agents.
         """
         self._ensure_loaded()
-        prefix = strategy_id.split("_")[0] if "_" in strategy_id else strategy_id
-        entry = self._entries.get(strategy_id) or self._entries.get(prefix)
-
-        if entry is None:
-            for k, e in self._entries.items():
-                if k.startswith(prefix) or prefix.startswith(k):
-                    entry = e
-                    break
+        # Exact full-ID match only. A prefix such as "S02" is not an identity:
+        # it would attribute this strategy's live performance to another.
+        canonical = resolve_strategy_id(strategy_id, self._entries)
+        entry = self._entries[canonical] if canonical is not None else None
 
         if entry is None:
             # Custom candidate introduced in lab: create a registry entry dynamically
@@ -799,21 +797,23 @@ class StrategyRegistryService:
         d_pf = Decimal(str(round(profit_factor, 2)))
         d_ev = Decimal(str(round(net_pnl / max(trades_count, 1), 2)))
 
-        live_record = None
-        for r in entry.performance_records:
-            if r.execution_context in (
-                ExecutionContext.LIVE_FORWARD,
-                ExecutionContext.REAL_ACCOUNT,
-            ):
-                live_record = r
-                break
-
-        if live_record:
-            live_record.trades_count = trades_count
-            live_record.net_pnl = d_pnl
-            live_record.win_rate = d_wr
-            live_record.profit_factor = d_pf
-            live_record.ev_per_trade = d_ev
+        # Models are frozen: build updated copies and swap them in, so a partly
+        # applied update can never leave a shared record list half-mutated.
+        live_contexts = (ExecutionContext.LIVE_FORWARD, ExecutionContext.REAL_ACCOUNT)
+        records = list(entry.performance_records)
+        live_idx = next(
+            (i for i, r in enumerate(records) if r.execution_context in live_contexts), None
+        )
+        if live_idx is not None:
+            records[live_idx] = records[live_idx].model_copy(
+                update={
+                    "trades_count": trades_count,
+                    "win_rate": d_wr,
+                    "profit_factor": d_pf,
+                    "ev_per_trade": d_ev,
+                    "net_pnl": d_pnl,
+                }
+            )
         else:
             live_record_fields: dict[str, Any] = {
                 "run_id": f"live-forward-{entry.strategy_id}",
@@ -832,20 +832,23 @@ class StrategyRegistryService:
                 # measurement belongs in the documented `dataset` slot.
                 "dataset": "Live Market Feed",
             }
-            live_record = PerformanceRecord(**live_record_fields)
-            entry.performance_records.append(live_record)
+            records.append(PerformanceRecord(**live_record_fields))
 
-        entry.rating = _compute_rating(entry.performance_records)
-        entry.total_trades = sum(r.trades_count for r in entry.performance_records)
-        entry.total_net_pnl = sum((r.net_pnl for r in entry.performance_records), Decimal("0"))
-        traded = [r for r in entry.performance_records if r.trades_count > 0]
+        updates: dict[str, Any] = {
+            "performance_records": records,
+            "rating": _compute_rating(records),
+            "total_trades": sum(r.trades_count for r in records),
+            "total_net_pnl": sum((r.net_pnl for r in records), Decimal("0")),
+            "best_performance": _find_best_performance(records),
+        }
+        traded = [r for r in records if r.trades_count > 0]
         if traded:
-            entry.avg_win_rate = Decimal(
+            updates["avg_win_rate"] = Decimal(
                 str(round(sum(float(r.win_rate) for r in traded) / len(traded), 4))
             )
-        entry.best_performance = _find_best_performance(entry.performance_records)
         if lab_status:
-            entry.shadow_status = lab_status
+            updates["shadow_status"] = lab_status
+        self._entries[entry.strategy_id] = entry.model_copy(update=updates)
 
     def get_strategy_scores_dict(self) -> dict[str, dict[str, Any]]:
         """Return dict of live strategy leaderboard scores, ranks, and ratings."""
@@ -863,8 +866,6 @@ class StrategyRegistryService:
                 "trades_count": le.trades_count,
             }
             result[le.strategy_id] = score_data
-            prefix = le.strategy_id.split("_")[0] if "_" in le.strategy_id else le.strategy_id
-            result[prefix] = score_data
         return result
 
 

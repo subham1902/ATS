@@ -701,8 +701,7 @@ class StrategyLabService:
             lb_scores = reg_svc.get_strategy_scores_dict()
             for s in all_strats:
                 sid = s["id"]
-                prefix = sid.split("_")[0] if "_" in sid else sid
-                score_info = lb_scores.get(sid) or lb_scores.get(prefix)
+                score_info = lb_scores.get(sid)
                 if score_info:
                     s["leaderboard_rank"] = score_info.get("rank")
                     s["leaderboard_score"] = score_info.get("score")
