@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from ats.agents.costs import calculate_charges, pnl_multiplier
+from ats.persistence.json_files import quarantine_after_failure, read_json_or_quarantine
 
 LOGGER = logging.getLogger(__name__)
 
@@ -224,29 +225,40 @@ class UpstoxLiveTradeLedger:
         self._capacity = capacity
         self._ledger_path = ledger_path or LEDGER_FILE_PATH
         self._trades: deque[UpstoxLiveTradeRecord] = deque(maxlen=capacity)
+        self.degraded = False
+        self.quarantined_to: Path | None = None
+        self._save_blocked = False
         self._load_persisted_trades()
 
     def _load_persisted_trades(self) -> None:
-        """Load trades from JSON persistence file if available."""
-        if not self._ledger_path.exists():
+        """Load trades from the JSON file. An unreadable file is preserved
+        (never overwritten by an empty ledger) and the ledger starts degraded."""
+        result = read_json_or_quarantine(self._ledger_path)
+        self.degraded = result.degraded
+        self.quarantined_to = result.quarantined_to
+        self._save_blocked = result.blocked
+        if result.degraded or result.data is None:
             return
         try:
-            with open(self._ledger_path, encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    for item in data[-self._capacity :]:
-                        record = UpstoxLiveTradeRecord(**item)
-                        self._trades.append(record)
-            LOGGER.info(
-                "Loaded %d Upstox live market trades from %s", len(self._trades), self._ledger_path
-            )
-        except Exception as e:
-            LOGGER.warning(
-                "Could not load persisted Upstox trades from %s: %s", self._ledger_path, e
-            )
+            if not isinstance(result.data, list):
+                raise TypeError("ledger root must be a list")
+            records = [UpstoxLiveTradeRecord(**item) for item in result.data[-self._capacity :]]
+        except (TypeError, ValueError, KeyError) as exc:
+            failed = quarantine_after_failure(self._ledger_path, f"schema: {type(exc).__name__}")
+            self.degraded = True
+            self.quarantined_to = failed.quarantined_to
+            self._save_blocked = failed.blocked
+            return
+        self._trades.extend(records)
+        LOGGER.info(
+            "Loaded %d Upstox live market trades from %s", len(self._trades), self._ledger_path
+        )
 
     def _save_to_disk(self) -> None:
         """Persist current trades to file."""
+        if self._save_blocked:
+            LOGGER.error("Refusing to save the Upstox ledger: the existing file is unreadable and could not be preserved")
+            return
         try:
             self._ledger_path.parent.mkdir(parents=True, exist_ok=True)
             serializable = [t.to_dict() for t in self._trades]

@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from ats.agents.portfolio import MANDATES, Mandate, validate_mandates
+from ats.persistence.json_files import quarantine_after_failure, read_json_or_quarantine
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,6 +88,9 @@ class Roster:
     ) -> None:
         self._entries: dict[str, RosterEntry] = {}
         self._path = path or ROSTER_FILE_PATH
+        self.degraded = False
+        self.quarantined_to: Path | None = None
+        self._save_blocked = False
         for e in entries or []:
             self._entries[e.name] = e
         if not self._entries:
@@ -262,6 +266,9 @@ class Roster:
     # -- persistence -------------------------------------------------------
 
     def save(self) -> None:
+        if self._save_blocked:
+            LOGGER.error("Refusing to save the roster: the existing file is unreadable and could not be preserved")
+            return
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text(
@@ -274,14 +281,24 @@ class Roster:
     @classmethod
     def load(cls, path: Path | None = None) -> Roster:
         p = path or ROSTER_FILE_PATH
-        if not p.exists():
+        result = read_json_or_quarantine(p)
+        if result.degraded:
+            roster = cls(path=p)
+            roster.degraded = True
+            roster.quarantined_to = result.quarantined_to
+            roster._save_blocked = result.blocked
+            return roster
+        if result.data is None:
             return cls(path=p)
         try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            entries = [RosterEntry(**a) for a in data.get("agents", [])]
-        except (OSError, ValueError, TypeError) as e:
-            LOGGER.warning("Could not read roster %s: %s", p, e)
-            return cls(path=p)
+            entries = [RosterEntry(**a) for a in result.data.get("agents", [])]
+        except (TypeError, AttributeError) as e:
+            failed = quarantine_after_failure(p, f"schema: {type(e).__name__}")
+            roster = cls(path=p)
+            roster.degraded = True
+            roster.quarantined_to = failed.quarantined_to
+            roster._save_blocked = failed.blocked
+            return roster
         if not entries:
             return cls(path=p)
         return cls(entries, path=p)

@@ -36,6 +36,7 @@ from typing import Any, TypeVar, cast
 from uuid import uuid4
 
 from ats.agents.redaction import scrub_secrets
+from ats.persistence.json_files import quarantine_after_failure, read_json_or_quarantine
 
 LOGGER = logging.getLogger(__name__)
 
@@ -253,6 +254,9 @@ class ManagedAgentStore:
         announce: Callable[[str, str], None] | None = None,
     ) -> None:
         self._lock = threading.RLock()
+        self.degraded = False
+        self.quarantined_to: Path | None = None
+        self._save_blocked = False
         self._path = path or MANAGED_FILE_PATH
         self._announce = announce or (lambda _kind, _summary: None)
         self._agents: dict[str, ManagedAgent] = {}
@@ -591,6 +595,9 @@ class ManagedAgentStore:
         }
 
     def _save(self) -> None:
+        if self._save_blocked:
+            LOGGER.error("Refusing to save managed agents: the existing store is unreadable and could not be preserved")
+            return
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             payload = json.dumps(self.as_dict(), indent=2, default=list)
@@ -611,44 +618,35 @@ class ManagedAgentStore:
             LOGGER.warning("Could not persist managed agents to %s: %s", self._path, exc)
 
     def _load(self) -> None:
-        if not self._path.exists():
+        result = read_json_or_quarantine(self._path)
+        self.degraded = result.degraded
+        self.quarantined_to = result.quarantined_to
+        self._save_blocked = result.blocked
+        if result.degraded or result.data is None:
             return
-        try:
-            data = json.loads(self._path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            LOGGER.warning("Could not read managed agents %s: %s", self._path, exc)
-            self._quarantine()
-            return
+        data = result.data
         try:
             for raw in data.get("agents", []):
                 agent = ManagedAgent(
-                    **{**raw, "capabilities": tuple(raw.get("capabilities", ())),
-                       "data_scopes": tuple(raw.get("data_scopes", ())),
-                       "research_scopes": tuple(raw.get("research_scopes", ()))},
+                    **{
+                        **raw,
+                        "capabilities": tuple(raw.get("capabilities", ())),
+                        "data_scopes": tuple(raw.get("data_scopes", ())),
+                        "research_scopes": tuple(raw.get("research_scopes", ())),
+                    },
                 )
                 self._agents[agent.agent_id] = agent
             for raw in data.get("versions", []):
-                self._versions.setdefault(raw["agent_id"], []).append(
-                    AgentConfigVersion(**raw)
-                )
+                self._versions.setdefault(raw["agent_id"], []).append(AgentConfigVersion(**raw))
             for raw in data.get("runs", []):
                 self._runs.setdefault(raw["agent_id"], []).append(AgentRun(**raw))
-        except (TypeError, KeyError) as exc:
-            LOGGER.warning("Could not parse managed agents %s: %s", self._path, exc)
-            self._agents = {}
-            self._versions = {}
-            self._runs = {}
-            self._quarantine()
-
-    def _quarantine(self) -> None:
-        """Move an unreadable store aside so the next save cannot overwrite
-        (and thereby destroy) the only copy of the evidence."""
-        try:
-            aside = self._path.with_name(f"{self._path.name}.corrupt-{int(datetime.now(UTC).timestamp())}")
-            os.replace(self._path, aside)
-            LOGGER.warning("Quarantined unreadable managed-agent store as %s", aside)
-        except OSError as exc:
-            LOGGER.warning("Could not quarantine %s: %s", self._path, exc)
+        except (TypeError, KeyError, AttributeError) as exc:
+            # Parsed as JSON but not as our schema: still unusable evidence.
+            self._agents, self._versions, self._runs = {}, {}, {}
+            result = quarantine_after_failure(self._path, f"schema: {type(exc).__name__}")
+            self.degraded = True
+            self.quarantined_to = result.quarantined_to
+            self._save_blocked = result.blocked
 
 
 def _config_snapshot(agent: ManagedAgent) -> dict[str, Any]:
