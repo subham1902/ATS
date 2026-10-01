@@ -677,6 +677,4 @@ export interface ManagedAgentSchema {
 export type CreateManagedAgentRequest = Partial<Omit<ManagedAgentConfig, "name">> & { name: string };
 export type UpdateManagedAgentRequest = Partial<ManagedAgentConfig>;
 
-export type ManagedAgentDeleteResult =
-  | { mode: "archived"; agent: ManagedAgent }
-  | { mode: "hard"; deleted: string };
+export type ManagedAgentDeleteResult = { mode: "archived"; agent: ManagedAgent } | { mode: "hard"; deleted: string };

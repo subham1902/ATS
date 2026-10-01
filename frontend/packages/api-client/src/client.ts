@@ -139,8 +139,7 @@ export function createApiClient(options?: ClientOptions) {
       request<StrategyPerformanceReport>(ROUTES.strategyReport(id), { method: "GET" }, opts),
     // Managed agents (proposal-only). There is intentionally no method that
     // executes, authorizes, or mutates capital: the domain has none.
-    getManagedAgentSchema: () =>
-      request<ManagedAgentSchema>(ROUTES.managedAgentSchema, { method: "GET" }, opts),
+    getManagedAgentSchema: () => request<ManagedAgentSchema>(ROUTES.managedAgentSchema, { method: "GET" }, opts),
     listManagedAgents: (includeArchived = false) =>
       request<{ agents: ManagedAgent[] }>(ROUTES.managedAgents(includeArchived), { method: "GET" }, opts),
     getManagedAgent: (id: string) =>

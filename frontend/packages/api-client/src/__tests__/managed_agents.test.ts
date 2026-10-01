@@ -29,8 +29,7 @@ describe("managed-agent client", () => {
   });
 
   it("surfaces the server's FastAPI detail as the error message", async () => {
-    const fetchImpl = async () =>
-      json(422, { detail: "Cannot hard-delete 'X': run history exists; archive instead" });
+    const fetchImpl = async () => json(422, { detail: "Cannot hard-delete 'X': run history exists; archive instead" });
     const c = createApiClient({ baseUrl: "http://x", fetchImpl: fetchImpl as unknown as typeof fetch });
     const err = await c.deleteManagedAgent("a", { hard: true, confirm: true }).catch((e) => e);
     expect(err).toBeInstanceOf(ApiError);
@@ -47,9 +46,17 @@ describe("managed-agent client", () => {
     }
     expect(managed.sort()).toEqual(
       [
-        "createManagedAgent", "deleteManagedAgent", "disableManagedAgent", "duplicateManagedAgent",
-        "enableManagedAgent", "getManagedAgent", "getManagedAgentSchema", "listManagedAgentRuns",
-        "listManagedAgentVersions", "listManagedAgents", "updateManagedAgent",
+        "createManagedAgent",
+        "deleteManagedAgent",
+        "disableManagedAgent",
+        "duplicateManagedAgent",
+        "enableManagedAgent",
+        "getManagedAgent",
+        "getManagedAgentSchema",
+        "listManagedAgentRuns",
+        "listManagedAgentVersions",
+        "listManagedAgents",
+        "updateManagedAgent",
       ].sort(),
     );
   });
