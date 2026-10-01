@@ -1,10 +1,10 @@
 # ATS Implementation Report
 
-**Status: PAUSED MID-P4.** Phases 0-3 and the P2 follow-ups are committed,
-pushed, and green in remote CI (latest run `36818969803` on `74d9daa` — see
-[Remote CI verification](#remote-ci-verification)). P4 agent management is
-half done: the proposal-only backend is implemented and green locally
-(unpushed); the frontend is not started. Items under
+**Status: P4 COMPLETE LOCALLY (UNPUSHED).** Phases 0-3 and the P2 follow-ups
+are committed, pushed, and green in remote CI (latest run `36818969803` on
+`74d9daa` — see [Remote CI verification](#remote-ci-verification)). P4 agent
+management (proposal-only backend + frontend) is implemented and green locally;
+it has **not** been pushed, so **remote CI has not run for it**. Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
 there as incomplete.
 
@@ -506,55 +506,108 @@ Left over for a later chart pass (charter item 6, not started):
 - `AICopilotPanel.tsx:38` still hardcodes `http://127.0.0.1:8000/v1/ai/query`,
   bypassing the proxy.
 
-### P4 - Agent management surface (§23) — BACKEND DONE locally, frontend remaining
+### P4 - Agent management surface (§23) — DONE locally, unpushed
 
-**Status: paused mid-phase.** The proposal-only backend (contract, domain,
-router, CRUD tests) is implemented and green locally; it is committed below
-but NOT pushed. The frontend (/agents list, wizard, detail, api-client) is
-not started.
+**Status:** backend and frontend implemented; validated locally; NOT pushed;
+REMOTE CI NOT RUN for these commits.
 
-**Design decision (from inspection, not assumption):** the existing
-`agents/` modules are the strategy-persona playground — principals, lots,
-direction bias, trade ledgers. The §23 system (provider/model, system prompt,
-capabilities, data scopes, runtime limits) is a different domain, so P4 is a
-new separate proposal-only domain rather than an extension of the roster:
-`backend/src/ats/agents/managed.py` + `managed_router.py` mounted at
-`/v1/agents/managed`, leaving all 39 playground routes untouched.
+**Design decision:** the existing `agents/` modules are the strategy-persona
+playground (principals, lots, trade ledgers). Managed agents are a separate,
+proposal-only administrative domain: `backend/src/ats/agents/managed.py` +
+`managed_router.py` at `/v1/agents/managed`. The playground's 39 routes and its
+3,500-line `/agents` page are untouched; the two are linked, not merged.
 
-**Done (local, unpushed):**
+#### Managed agent backend
 
-- P4.1 contract `tests/contract/agents/test_managed_agent_boundary.py` (4
-  tests): source scan forbids order/token/broker/portfolio/live markers in the
-  managed modules, the capability vocabulary contains no financial authority,
-  mounted routes expose no execution-shaped paths, and schemas carry no secret
-  material.
-- P4.2/P4.3 domain `managed.py`: `ManagedAgent` (id, name, type, provider,
-  model, instructions, capabilities, data/data-research scopes, timeout,
-  concurrency, credential_ref-as-env-name, enabled/status, version, timestamps,
-  run/error bookkeeping), append-only `AgentConfigVersion` snapshots,
-  `AgentRun` records bound to the exact config version, JSON-file store with
-  atomic writes following the roster convention.
-- Capability allowlist is the whole vocabulary (11 safe verbs); data and
-  research scopes are closed sets too. Financial authority has no member, so
-  it is unrepresentable, not merely rejected.
-- P4.5/P4.7: archive-by-default DELETE; hard delete requires `hard=true` AND
-  `confirm=true` AND never-ran AND single-v1 history, enforced server-side.
-  New agents are DISABLED; enable/disable flips status without touching
-  versions; duplicate mints a new id with fresh v1 history. Runs: disabled or
-  archived agents cannot start new work; in-flight runs finish undisturbed.
-  Lifecycle audit goes through the unified activity log — the closed 24-entry
-  domain event registry is untouched.
-- P4.14 backend tests `backend/tests/test_managed_agents.py` (16 tests):
-  create/disabled-default, duplicate-name 409, invalid type/capability/secret
-  422s, edit→version bump with history preserved, archive retention, hard-delete
-  guards, run lifecycle incl. failure status, redaction, no-execution-surface.
+- Domain: `ManagedAgent`, append-only `AgentConfigVersion`, `AgentRun` bound to
+  the exact config version that produced it. JSON-file store (atomic temp-file +
+  `os.replace`) — an interim persistence choice, not Postgres.
+- Boundary: the capability vocabulary is a closed allowlist of 11 research /
+  proposal verbs; data and research scopes are closed too. Financial authority
+  has no member, so it is unrepresentable rather than rejected after parsing.
+  Contract: `tests/contract/agents/test_managed_agent_boundary.py` (4 tests).
+- Credentials: only an env-var NAME (`credential_ref`, `^[A-Z][A-Z0-9_]{1,63}$`)
+  is accepted and persisted; secret-looking values are rejected.
+- Lifecycle: new agents are DISABLED; enable/disable never bumps the version;
+  edit appends a version; duplicate = new id, fresh v1, DISABLED, no runs copied;
+  DELETE archives by default; hard delete needs `hard=true` AND `confirm=true`
+  AND no runs AND a single config version (all server-side). Disabled/archived
+  agents cannot start runs; in-flight runs are not cancelled. Audit goes through
+  the activity log; the closed 24-entry domain event registry is untouched.
+- Added in this continuation (focused fix commit): `GET /v1/agents/managed/schema`
+  serves the canonical vocabularies so no client keeps a second copy; and an
+  unreadable store file is now quarantined (`managed.json.corrupt-<ts>`) instead
+  of loading empty and being overwritten by the next save.
+- Known limits (verified by reading, not changed): no cross-request lock, so
+  concurrent `PATCH`es could in principle assign a duplicate version number;
+  `max_concurrency` is stored but not enforced because runs are only _recorded_;
+  run `error` text is stored as given (length-bounded, not secret-scrubbed).
+  Fine for the interim JSON store; revisit with a database.
 
-**Verified locally:** ruff 0, mypy strict clean on both new modules, 16
-backend + 4 contract tests pass.
+#### Managed agent frontend
 
-**Remaining:** api-client types/routes, /agents list + 8-step wizard + detail
-page, frontend tests (CTA, wizard, validation, safe defaults, error states),
-full P4.15 validation, split commits, report, push, remote CI.
+- api-client: typed methods for every existing managed route; vocabularies stay
+  plain strings sourced from `/schema`; no execution-shaped method exists
+  (asserted by test). `parseError` now also keeps FastAPI `{detail}` messages.
+- `/agents/managed`: list (search, status/type filters, archived toggle,
+  empty/error states), 8-step Add Agent wizard (identity, provider/model with
+  credential-NAME-only field, responsibilities, data access, research scope,
+  capabilities, runtime limits, review with the safety statement; creates
+  DISABLED), and `/agents/managed/[id]` detail (config, exact version, runs with
+  the version they ran under, version history, edit-as-new-version, enable/
+  disable, duplicate, archive with explanatory confirmation, and a secondary
+  "advanced" hard delete whose refusal reason comes from the server).
+- Step 3 has no separate "role/purpose" field: the backend only has
+  `description` and `system_instructions`, so none was invented.
+- Nav: "Managed Agents" entry; active-link logic now picks the most specific
+  entry so `/agents` no longer also highlights on `/agents/managed`.
+
+#### Verified locally (this continuation, after the last edit)
+
+| Check                                                        | Result                                                                             |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `ruff check backend tests`                                   | PASS (0 findings)                                                                  |
+| `mypy backend/src` (strict)                                  | PASS (318 files)                                                                   |
+| `pytest tests/contract backend/tests/test_managed_agents.py` | PASS 174 (156 contract + 18 managed)                                               |
+| `pytest tests backend/tests --collect-only`                  | PASS, 2024 collected (full suite NOT run)                                          |
+| `pnpm -r test`                                               | PASS (api-client 10, ui 7, control-center 57)                                      |
+| `pnpm -r typecheck`                                          | PASS                                                                               |
+| `pnpm lint`                                                  | PASS (0 errors, 56 pre-existing warnings, unchanged)                               |
+| `pnpm --filter @ats/control-center build`                    | PASS (both new routes emitted)                                                     |
+| `pnpm format:check`                                          | FAIL on `.governor/RESUME.auto.md` only — gitignored tool output, not repo content |
+
+The full backend suite (`pytest tests backend/tests`) was **not** executed here,
+only collected; run it (and remote CI) before relying on "all green".
+
+### Parallel strategy research (not P4 work)
+
+- `docs/superpowers/specs/2026-09-30-s5-orb-mcx-gold-design.md` — S5 Opening Range
+  Breakout **design only**. Research instrument is XAUUSD spot as a _proxy_; no
+  MCX intraday data is claimed; maximum outcome is CANDIDATE. Not implemented;
+  awaiting explicit user GO.
+- `docs/research/MCX_GOLD_STRATEGY_READINESS_AUDIT.md` — no workspace strategy is
+  promoted beyond CANDIDATE / RESEARCH_ONLY.
+- Both were reformatted by Prettier only (semantic no-op).
+
+#### Outstanding research findings (NOT fixed)
+
+- **S02 / S03 prefix collision.** `agents/strategies.py` defines `S02_TSMOM` and
+  `S02_MICRO_TICK`, `S03_DONCHIAN_ATR` and `S03_GAP_FILL`. Full IDs are distinct,
+  but `strategy_registry_service.py` (`update_live_performance`,
+  `get_strategy_scores_dict`) and `strategies/lab_service.py` fall back to the
+  `split("_")[0]` prefix, so one strategy's score or live performance can be
+  attributed to the other. The IDs are referenced in ~12 files (paper tournament,
+  runtime router, optimization worker, several pages and tests), so a rename is
+  a migration, not a fix. Safe remediation: stop the prefix fallback first
+  (exact-ID lookups only), then decide on renames with a migration map.
+- **STRAT-04 / STRAT-02 provenance.** STRAT-04's "20 strategies rejected under
+  STRAT-02" corroboration is unverified: the only STRAT-02 artifact found is a
+  hash freeze, not a rejection tournament. No evidence has been created.
+- **BIN_03 report incomplete.** `ATS_BIN_03_FINAL_REPORT.md` is a two-line stub.
+  Sibling artifacts sit in the workspace root (outside this repo, untracked) but are
+  thin: three CSVs of ~11 lines each, two header-only CSVs (complementarity,
+  session ledger) and a two-line cost audit. Whether they suffice to reconstruct
+  a report is undetermined. None was written and no results were synthesized.
 
 ### Later phases (not started, not estimated)
 
