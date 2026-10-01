@@ -1,10 +1,10 @@
 # ATS Implementation Report
 
-**Status: P4 COMPLETE LOCALLY (UNPUSHED).** Phases 0-3 and the P2 follow-ups
-are committed, pushed, and green in remote CI (latest run `36818969803` on
-`74d9daa` — see [Remote CI verification](#remote-ci-verification)). P4 agent
-management (proposal-only backend + frontend) is implemented and green locally;
-it has **not** been pushed, so **remote CI has not run for it**. Items under
+**Status: P4 COMPLETE; INTEGRITY HARDENING PASS DONE.** P4 baseline `220d292`
+plus its two CI fixes (`c12d708`) is remotely green (run `36827915472`: all jobs
+success except Dependency Review, which is PR-only and skipped on push; PostgreSQL
+durability ran 110 tests, none skipped). The hardening commits after it are
+verified locally only until their own CI run is recorded below. Items under
 [Remaining Work](#remaining-work) are either untouched or explicitly recorded
 there as incomplete.
 
@@ -579,6 +579,37 @@ proposal-only administrative domain: `backend/src/ats/agents/managed.py` +
 The full backend suite (`pytest tests backend/tests`) was **not** executed here,
 only collected; run it (and remote CI) before relying on "all green".
 
+### Integrity hardening pass (after P4)
+
+| Area                      | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Evidence                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Remote CI                 | `220d292` failed two jobs: gitleaks flagged a deliberately fake secret in a managed-agent test, and a 5 ms wall-clock latency test failed under coverage tracing. Fixed in `c12d708` (fake secret built at runtime + fingerprint-scoped `.gitleaksignore` for the one pushed commit; latency bound skipped only under coverage, still enforced by the plain unit job).                                                                                                                 | run `36827915472` green on `c12d708`          |
+| Strategy identity         | Root cause: registry/lab lookups reduced `S02_TSMOM` / `S02_MICRO_TICK` (and `S03_*`) to the prefix `S02`, which is also the registry's own STRAT-04 `S02`. The live-performance update also mutated a shared record list before failing on a frozen model, so one strategy's record could pollute another's. Now exact full-ID lookup via `ats/strategies/identity.py`; bare prefixes fail closed; aliases must be explicit (none exist); update is copy-on-write. No ID was renamed. | `backend/tests/test_strategy_identity.py` (8) |
+| Managed-agent concurrency | `RLock` over every store operation (same-process threads); optional `expected_version` -> HTTP 409, UI says to reload and does not retry. Supported envelope is one process; no cross-process file lock.                                                                                                                                                                                                                                                                               | 12-thread race and 2-writer tests             |
+| `max_concurrency`         | Enforced at run admission (`POST .../runs`), the only run boundary this domain has; no scheduler was invented. A finishing run no longer reports IDLE while others run, nor re-activates a disabled agent. `timeout_s` remains **not enforced** (no executor); the wizard says so.                                                                                                                                                                                                     | tests in `test_managed_agents.py`             |
+| Run-error scrubbing       | `ats/agents/redaction.py` removes credential env values, bearer/basic tokens, URL passwords, `key=value` secrets and common token shapes before persistence.                                                                                                                                                                                                                                                                                                                           | persisted store, API, logs asserted           |
+| Corrupt JSON              | `ats/persistence/json_files.py`: an unreadable or wrong-schema store is moved aside intact and saves are blocked if it cannot be. Applied to the managed-agent store, the Upstox trade ledger and the agent roster. `deployment.py` (read-only report, falls back to HOLD) needed no change.                                                                                                                                                                                           | `test_json_store_integrity.py`                |
+| CORS                      | Wildcard + credentials replaced by an explicit allowlist (`ats/console/cors.py`): local control-center origins by default, `ATS_CORS_ORIGINS` override, wildcard/malformed values abort startup.                                                                                                                                                                                                                                                                                       | `test_console_cors.py`                        |
+| Ownership                 | `ownership.json` now covers agents, ai, console, datasets, governance, optimization, persistence, strategies, trading_runtime. Contract test requires exactly one owner per production file and fails on unknown packages. Stream letters are architecture metadata, not CODEOWNERS.                                                                                                                                                                                                   | `tests/contract/architecture`                 |
+
+**Lost data (disclosure).** `data/agents/upstox_live_trades_ledger.json` was found
+corrupt (JSON error near line 10961). During this session it became `[]`: the file is
+gitignored, no backup exists, and the original bytes are **unrecoverable**. The
+overwrite-after-corrupt-load defect is what allowed it; whether a test or script run in
+this session or another process wrote the empty file cannot be established.
+
+**Open: test-isolation leak.** Running backend tests still rewrites the real
+`data/agents/upstox_live_trades_ledger.json` and `agents_config.json`
+(bisected to the agent playground/worker/managed-agent test files). An autouse fixture
+redirecting the path constants and singletons was tried and abandoned: it broke
+`test_history_wipe_and_fresh_start` and did not stop the writes. With quarantine in
+place a corrupt real file is now preserved instead of overwritten, but the leak itself is
+unfixed.
+
+**Not done / still limited:** no executor enforces `timeout_s`; the managed-agent JSON
+store has no cross-process lock; strategy IDs were not renamed; the ledger tests and
+frontend do not cover every API response for full-ID preservation.
+
 ### Parallel strategy research (not P4 work)
 
 - `docs/superpowers/specs/2026-09-30-s5-orb-mcx-gold-design.md` — S5 Opening Range
@@ -644,3 +675,12 @@ only collected; run it (and remote CI) before relying on "all green".
   was pushed, so CI has not yet confirmed the remote results.
 - Local Node is v26.4.0 against a pinned v24.19.0; this produces a warning only
   and does not affect any result above. CI pins 24.19.0.
+
+## Verification after the hardening pass (local)
+
+PASSED: `ruff check backend tests`; `mypy backend/src` (322 files); `pytest tests/contract` (160);
+`pytest backend/tests` (288); `pnpm format:check`; `pnpm lint` (0 errors, 56 pre-existing
+warnings); `pnpm -r typecheck`; `pnpm -r test` (10 + 7 + 58); control-center build.
+COLLECTED ONLY: `pytest tests backend/tests --collect-only` = 2,065 tests.
+NOT RUN LOCALLY: `tests/unit`, `tests/property`, `tests/smoke` in full and the PostgreSQL
+durability suite (CI runs them).
