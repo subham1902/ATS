@@ -222,3 +222,70 @@ def test_corrupt_store_is_quarantined_not_overwritten(tmp_path):
     preserved = [p for p in tmp_path.iterdir() if ".corrupt-" in p.name]
     assert len(preserved) == 1
     assert preserved[0].read_text(encoding="utf-8") == "{not json"
+
+
+def _store(tmp_path):
+    return managed_domain.ManagedAgentStore(path=tmp_path / "c.json")
+
+
+def test_simultaneous_updates_commit_unique_sequential_versions(tmp_path):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = _store(tmp_path)
+    agent = store.create(name="Racer")
+    n = 12
+    barrier = threading.Barrier(n)
+
+    def edit(i):
+        barrier.wait()
+        return store.update(agent.agent_id, model=f"m{i}").current_config_version
+
+    with ThreadPoolExecutor(n) as pool:
+        list(pool.map(edit, range(n)))
+    versions = [v.version for v in store.versions(agent.agent_id)]
+    assert versions == list(range(1, n + 2))  # no duplicate, no gap, no lost update
+    assert store.require(agent.agent_id).current_config_version == n + 1
+
+
+def test_stale_expected_version_conflicts_instead_of_overwriting(tmp_path):
+    store = _store(tmp_path)
+    agent = store.create(name="Racer")
+    store.update(agent.agent_id, model="first", expected_version=1)
+    with pytest.raises(managed_domain.ManagedAgentConflict):
+        store.update(agent.agent_id, model="second", expected_version=1)
+    assert store.require(agent.agent_id).model == "first"
+    assert [v.version for v in store.versions(agent.agent_id)] == [1, 2]
+
+
+def test_two_racing_writers_with_same_expected_version_one_wins(tmp_path):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = _store(tmp_path)
+    agent = store.create(name="Racer")
+    barrier = threading.Barrier(2)
+
+    def edit(label):
+        barrier.wait()
+        try:
+            store.update(agent.agent_id, model=label, expected_version=1)
+            return "ok"
+        except managed_domain.ManagedAgentConflict:
+            return "conflict"
+
+    with ThreadPoolExecutor(2) as pool:
+        results = sorted(pool.map(edit, ["a", "b"]))
+    assert results == ["conflict", "ok"]
+    assert store.require(agent.agent_id).current_config_version == 2
+
+
+def test_patch_with_stale_expected_version_returns_409(client):
+    agent_id = _create(client).json()["agent"]["agent_id"]
+    ok = client.patch(f"/v1/agents/managed/{agent_id}", json={"model": "x", "expected_version": 1})
+    assert ok.status_code == 200 and ok.json()["agent"]["current_config_version"] == 2
+    stale = client.patch(
+        f"/v1/agents/managed/{agent_id}", json={"model": "y", "expected_version": 1}
+    )
+    assert stale.status_code == 409
+    assert "changed since you opened it" in stale.json()["detail"]

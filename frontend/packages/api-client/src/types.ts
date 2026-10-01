@@ -675,6 +675,7 @@ export interface ManagedAgentSchema {
 }
 
 export type CreateManagedAgentRequest = Partial<Omit<ManagedAgentConfig, "name">> & { name: string };
-export type UpdateManagedAgentRequest = Partial<ManagedAgentConfig>;
+/** `expected_version` is the config version the caller read; a stale value is a 409, never a silent overwrite. */
+export type UpdateManagedAgentRequest = Partial<ManagedAgentConfig> & { expected_version?: number };
 
 export type ManagedAgentDeleteResult = { mode: "archived"; agent: ManagedAgent } | { mode: "hard"; deleted: string };

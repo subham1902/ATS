@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { ApiError } from "@ats/api-client";
 import type { ManagedAgent, ManagedAgentConfigVersion, ManagedAgentRun, ManagedAgentSchema } from "@ats/api-client";
 import { ManagedAgentsView } from "../components/managed/ManagedAgentsView";
 import { ManagedAgentWizard, WIZARD_STEPS } from "../components/managed/ManagedAgentWizard";
@@ -312,8 +313,35 @@ describe("managed agent detail", () => {
     expect(screen.getByText(/creates configuration/i)).toHaveTextContent(/v2/);
     type("Model", "acme-xl");
     click("Save new version");
-    await waitFor(() => expect(api.updateManagedAgent).toHaveBeenCalledWith("a1", { model: "acme-xl" }));
+    await waitFor(() =>
+      expect(api.updateManagedAgent).toHaveBeenCalledWith("a1", { model: "acme-xl", expected_version: 1 }),
+    );
     expect(await screen.findByText(/Saved as configuration v2/)).toBeInTheDocument();
+  });
+
+  it("tells the user to reload when the server reports a stale edit, without retrying", async () => {
+    const api = makeApi({
+      updateManagedAgent: vi.fn(async () => {
+        throw new ApiError(
+          409,
+          null,
+          null,
+          "Agent 'Regime Researcher' changed since you opened it (you have v1, current is v2); reload before saving",
+        );
+      }),
+    });
+    render(<ManagedAgentDetail api={api} agentId="a1" />);
+    await screen.findByRole("heading", { name: "Regime Researcher" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).not.toBeDisabled());
+    click("Edit");
+    type("Model", "acme-xl");
+    click("Save new version");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This agent changed since you opened it. Reload before saving.",
+    );
+    expect(api.updateManagedAgent).toHaveBeenCalledTimes(1);
+    click("Reload latest");
+    await waitFor(() => expect(api.getManagedAgent).toHaveBeenCalledTimes(2));
   });
 
   it("duplicates into an independent, disabled agent", async () => {

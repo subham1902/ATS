@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ApiError } from "@ats/api-client";
 import type {
   ManagedAgent,
   ManagedAgentConfig,
@@ -22,6 +23,10 @@ import {
   SAFETY_STATEMENT,
   type ManagedApi,
 } from "./shared";
+
+function isConflict(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 409 && /changed since you opened it/.test(e.message);
+}
 
 const EDITABLE_KEYS: (keyof ManagedAgentConfig)[] = [
   "name",
@@ -154,12 +159,15 @@ export function ManagedAgentDetail(props: {
     if (Object.keys(changed).length === 0) return setActionError("No changes to save.");
     setActionError(null);
     try {
-      const { agent: updated } = await api.updateManagedAgent(agent.agent_id, changed);
+      const { agent: updated } = await api.updateManagedAgent(agent.agent_id, {
+        ...changed,
+        expected_version: agent.current_config_version,
+      });
       setMode("view");
       setNotice(`Saved as configuration v${updated.current_config_version}. Earlier versions and runs are unchanged.`);
       await load();
     } catch (e) {
-      setActionError(errorMessage(e));
+      setActionError(isConflict(e) ? "This agent changed since you opened it. Reload before saving." : errorMessage(e));
     }
   };
 
@@ -406,6 +414,17 @@ export function ManagedAgentDetail(props: {
             </button>
             <button type="button" style={btn} onClick={() => setMode("view")}>
               Cancel
+            </button>
+            <button
+              type="button"
+              style={btn}
+              onClick={() => {
+                setMode("view");
+                setActionError(null);
+                void load();
+              }}
+            >
+              Reload latest
             </button>
           </div>
         </section>

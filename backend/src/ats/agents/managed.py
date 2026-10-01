@@ -26,11 +26,13 @@ import logging
 import os
 import re
 import tempfile
+import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 from uuid import uuid4
 
 LOGGER = logging.getLogger(__name__)
@@ -92,6 +94,10 @@ def _now() -> str:
 
 class ManagedAgentError(ValueError):
     """Raised when a managed-agent mutation is invalid or forbidden."""
+
+
+class ManagedAgentConflict(ManagedAgentError):
+    """The agent changed since the caller read it (stale ``expected_version``)."""
 
 
 def _require_name(name: str) -> str:
@@ -209,8 +215,30 @@ VERSIONED_FIELDS = (
 )
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def _locked(method: _F) -> _F:
+    """Serialize a store operation. Mutations run on FastAPI's thread pool, so
+    two requests in one process can otherwise interleave a read-modify-write
+    (e.g. both reading version 1 and both committing version 2)."""
+
+    @wraps(method)
+    def wrapper(self: ManagedAgentStore, *args: Any, **kwargs: Any) -> Any:
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
 class ManagedAgentStore:
-    """Durable store for managed agents, versions, and runs."""
+    """Durable store for managed agents, versions, and runs.
+
+    Concurrency envelope: safe for concurrent threads within ONE process (an
+    ``RLock`` serializes every operation). The JSON file has no cross-process
+    lock, so running several API workers against the same file is unsupported
+    until this moves to a database.
+    """
 
     def __init__(
         self,
@@ -218,6 +246,7 @@ class ManagedAgentStore:
         path: Path | None = None,
         announce: Callable[[str, str], None] | None = None,
     ) -> None:
+        self._lock = threading.RLock()
         self._path = path or MANAGED_FILE_PATH
         self._announce = announce or (lambda _kind, _summary: None)
         self._agents: dict[str, ManagedAgent] = {}
@@ -227,31 +256,37 @@ class ManagedAgentStore:
 
     # -- reads ----------------------------------------------------------
 
+    @_locked
     def list_agents(self, *, include_archived: bool = False) -> list[ManagedAgent]:
         agents = list(self._agents.values())
         if not include_archived:
             agents = [a for a in agents if a.archived_at is None]
         return sorted(agents, key=lambda a: a.created_at)
 
+    @_locked
     def get(self, agent_id: str) -> ManagedAgent | None:
         return self._agents.get(agent_id)
 
+    @_locked
     def require(self, agent_id: str) -> ManagedAgent:
         agent = self._agents.get(agent_id)
         if agent is None:
             raise ManagedAgentError(f"Unknown agent '{agent_id}'")
         return agent
 
+    @_locked
     def versions(self, agent_id: str) -> list[AgentConfigVersion]:
         self.require(agent_id)
         return list(self._versions.get(agent_id, []))
 
+    @_locked
     def runs(self, agent_id: str, *, limit: int = 50) -> list[AgentRun]:
         self.require(agent_id)
         return list(reversed(self._runs.get(agent_id, [])))[:limit]
 
     # -- mutations ------------------------------------------------------
 
+    @_locked
     def create(
         self,
         *,
@@ -315,9 +350,23 @@ class ManagedAgentStore:
         self._announce("MANAGED_AGENT_CREATED", f"Managed agent '{clean_name}' created (disabled)")
         return agent
 
-    def update(self, agent_id: str, *, reason: str = "edited", **fields: Any) -> ManagedAgent:
+    @_locked
+    def update(
+        self,
+        agent_id: str,
+        *,
+        reason: str = "edited",
+        expected_version: int | None = None,
+        **fields: Any,
+    ) -> ManagedAgent:
         """Edit an agent. Config changes append a version; history is never rewritten."""
         agent = self.require_active(agent_id)
+        if expected_version is not None and expected_version != agent.current_config_version:
+            raise ManagedAgentConflict(
+                f"Agent '{agent.name}' changed since you opened it "
+                f"(you have v{expected_version}, current is v{agent.current_config_version}); "
+                "reload before saving"
+            )
         unknown = [k for k in fields if k not in VERSIONED_FIELDS]
         if unknown:
             raise ManagedAgentError(f"Cannot edit {unknown}: not versioned agent fields")
@@ -374,6 +423,7 @@ class ManagedAgentStore:
         )
         return agent
 
+    @_locked
     def set_enabled(self, agent_id: str, enabled: bool) -> ManagedAgent:
         agent = self.require_active(agent_id)
         agent.enabled = enabled
@@ -388,6 +438,7 @@ class ManagedAgentStore:
         )
         return agent
 
+    @_locked
     def duplicate(self, agent_id: str, *, name: str) -> ManagedAgent:
         """Clone safe configuration under a new id. The clone starts DISABLED
         with a fresh v1 history: runs and evidence stay with the original."""
@@ -409,6 +460,7 @@ class ManagedAgentStore:
             credential_ref=source.credential_ref,
         )
 
+    @_locked
     def archive(self, agent_id: str) -> ManagedAgent:
         """Soft-delete: the agent disappears from the roster but every run,
         version, and proposal stays queryable."""
@@ -423,6 +475,7 @@ class ManagedAgentStore:
         self._announce("MANAGED_AGENT_ARCHIVED", f"Managed agent '{agent.name}' archived")
         return agent
 
+    @_locked
     def hard_delete(self, agent_id: str, *, confirm: bool = False) -> str:
         """Destroy an agent and all its history. Only permitted when there is
         no history to preserve: never run, a single v1 config, and an explicit
@@ -449,6 +502,7 @@ class ManagedAgentStore:
         self._announce("MANAGED_AGENT_DELETED", f"Managed agent '{name}' hard-deleted")
         return name
 
+    @_locked
     def require_active(self, agent_id: str) -> ManagedAgent:
         agent = self.require(agent_id)
         if agent.archived_at is not None:
@@ -457,6 +511,7 @@ class ManagedAgentStore:
 
     # -- runs -----------------------------------------------------------
 
+    @_locked
     def record_run_start(self, agent_id: str) -> AgentRun:
         """Record a run. Disabled or archived agents cannot start new work;
         an in-flight run is never disturbed — disabling only stops new starts."""
@@ -480,6 +535,7 @@ class ManagedAgentStore:
         )
         return run
 
+    @_locked
     def record_run_finish(self, run_id: str, *, ok: bool, error: str | None = None) -> AgentRun:
         for agent_id, runs in self._runs.items():
             for run in runs:
@@ -587,6 +643,7 @@ __all__ = [
     "AgentConfigVersion",
     "AgentRun",
     "ManagedAgent",
+    "ManagedAgentConflict",
     "ManagedAgentError",
     "ManagedAgentStore",
 ]

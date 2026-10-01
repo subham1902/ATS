@@ -24,6 +24,7 @@ from ats.agents.managed import (
     CAPABILITY_ALLOWLIST,
     DATA_SCOPE_ALLOWLIST,
     RESEARCH_SCOPE_ALLOWLIST,
+    ManagedAgentConflict,
     ManagedAgentError,
     ManagedAgentStore,
 )
@@ -69,6 +70,8 @@ def _announce(kind: str, summary: str) -> None:
 
 def _not_found(exc: ManagedAgentError) -> HTTPException:
     message = str(exc)
+    if isinstance(exc, ManagedAgentConflict):
+        return HTTPException(status_code=409, detail=message)
     if message.startswith("Unknown agent '") or message.startswith("Unknown run '"):
         return HTTPException(status_code=404, detail=message)
     if "already taken" in message or "already exists" in message:
@@ -94,6 +97,9 @@ class CreateManagedAgentRequest(BaseModel):
 
 
 class UpdateManagedAgentRequest(BaseModel):
+    expected_version: int | None = Field(
+        None, ge=1, description="Config version the caller read; stale -> 409"
+    )
     name: str | None = Field(None, min_length=1, max_length=64)
     description: str | None = Field(None, max_length=2000)
     agent_type: str | None = None
@@ -170,8 +176,9 @@ def get_managed_agent(agent_id: str) -> dict[str, Any]:
 def update_managed_agent(agent_id: str, body: UpdateManagedAgentRequest) -> dict[str, Any]:
     store = get_managed_store()
     fields = {k: v for k, v in body.model_dump().items() if v is not None}
+    expected = fields.pop("expected_version", None)
     try:
-        agent = store.update(agent_id, **fields)
+        agent = store.update(agent_id, expected_version=expected, **fields)
     except ManagedAgentError as exc:
         raise _not_found(exc) from exc
     return {"agent": agent.as_dict()}
