@@ -26,6 +26,7 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
 from .helpers import (
     NIFTY,
     NOW,
+    allow_all,
     build_orchestrator,
     market_facts,
 )
@@ -77,7 +78,7 @@ def _runner(entry_marks: bool = True):
     feed.set_mark(INDEX, PREV, NOW)
     feed.set_mark(NIFTY, Decimal("101"), NOW)
     trace = _Trace()
-    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed, intent_binding_provider=allow_all_with_binding, exit_authorization_provider=PermissiveExitAuthorization())
+    orch = build_orchestrator(market_facts_provider=_facts_provider, feed=feed, authorization_provider=allow_all, intent_binding_provider=allow_all_with_binding, exit_authorization_provider=PermissiveExitAuthorization())
     orch.listener = _Listener(trace)
     return orch, trace
 

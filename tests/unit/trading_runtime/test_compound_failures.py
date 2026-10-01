@@ -24,6 +24,7 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
 from .helpers import (
     NIFTY,
     NOW,
+    allow_all,
     instrument,
     policy,
 )
@@ -35,7 +36,7 @@ def test_restart_recovers_pending_reduction_without_duplicate_exit() -> None:
     from ats.trading_runtime.orchestrator import AutonomousPaperOrchestrator
 
     # Phase 1: live orchestrator opens a position and requests a reduction.
-    orch = _fresh_orchestrator()
+    orch = _fresh_orchestrator(authorization_provider=allow_all)
     _bull_bar(orch)
     assert len(orch.get_open_positions()) == 1
     pid = next(iter(orch.get_open_positions().keys()))
@@ -81,7 +82,7 @@ def test_restart_recovers_pending_reduction_without_duplicate_exit() -> None:
 def test_stale_feed_blocks_new_risk_but_allows_protective_exit() -> None:
     # A protective reduction still requires real exit authority even when new
     # risk is blocked; the provider below is that authority, stated explicitly.
-    orch = _fresh_orchestrator(exit_authorization_provider=PermissiveExitAuthorization())
+    orch = _fresh_orchestrator(authorization_provider=allow_all, exit_authorization_provider=PermissiveExitAuthorization())
     _bull_bar(orch)
     assert len(orch.get_open_positions()) == 1
     pid = next(iter(orch.get_open_positions().keys()))

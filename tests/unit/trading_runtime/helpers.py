@@ -21,6 +21,7 @@ from ats.trading_runtime.orchestrator import (
     AutonomousPaperOrchestrator,
     IntentBindingProvider,
     MarketFactsProvider,
+    _default_authorization,
 )
 
 NIFTY = "C1"
@@ -84,6 +85,12 @@ def market_facts(
 
 
 def allow_all(result: dict) -> object:
+    """Explicit permissive entry authority for tests that need orders submitted.
+
+    Inject by name at the call site (``authorization_provider=allow_all``).
+    It must never become a default or fallback: omitting the provider means
+    DENY. See ``test_omitted_authorization_provider_denies_by_default``.
+    """
     from ats.kernel.types import ALLOW
 
     _ = result
@@ -115,9 +122,12 @@ def build_orchestrator(
 ) -> AutonomousPaperOrchestrator:
     """Build an orchestrator for tests.
 
-    Exit authority is passed straight through: ``None`` means the orchestrator
-    installs its fail-closed default, so a test that needs positions to be
-    flattened must say so by supplying a provider. There is no implicit permit.
+    Every authority seam passes straight through. ``None`` means the
+    orchestrator installs its own fail-closed default (DENY for entries,
+    UNKNOWN for exits), so a test that needs orders submitted or positions
+    flattened must say so by supplying a provider. There is no implicit
+    permit: ``allow_all`` below exists only for explicit injection at call
+    sites, never as a fallback.
     """
 
     inst = inst or instrument()
@@ -133,7 +143,9 @@ def build_orchestrator(
         policy=pol,
         instrument=inst,
         market_facts_provider=market_facts_provider,
-        authorization_provider=authorization_provider or allow_all,
+        authorization_provider=(
+            authorization_provider if authorization_provider is not None else _default_authorization
+        ),
         intent_binding_provider=intent_binding_provider,
         exit_authorization_provider=exit_authorization_provider,
         opening_capital=opening_capital,

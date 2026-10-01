@@ -126,13 +126,23 @@ class PortfolioAuthorityService:
 
 
 class NoopAuthorityService:
+    """Default authority: performs no reservation and authorizes nothing.
+
+    This is the fail-closed placeholder installed when no real authority is
+    wired. It answers UNKNOWN (never ALLOW): callers must treat the absence of
+    an authority as the absence of permission, not as a free pass. Reservation
+    is a durable-capital operation; entry gating for the in-memory paper path
+    lives in the orchestrator's authorization provider, which is itself
+    fail-closed.
+    """
+
     def try_reserve_for_candidate(
         self, request: ReservationRequest, *, evaluation_time: UTCDateTime
     ) -> AuthorityDecision:
         _ = (request, evaluation_time)
         return AuthorityDecision(
-            outcome=KernelOutcome.ALLOW,
-            reason_codes=("NOOP_ALLOW",),
+            outcome=KernelOutcome.UNKNOWN,
+            reason_codes=("AUTHORITY_UNAVAILABLE",),
             reservation_id=None,
             token=None,
             order_intent=None,

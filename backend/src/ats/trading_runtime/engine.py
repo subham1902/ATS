@@ -508,8 +508,13 @@ class TradingRuntime:
                     "reasons": reason_codes + (type(exc).__name__,),
                 }
         else:
-            authorized = isinstance(self.authority, NoopAuthorityService)
-            reasons = reason_codes if authorized else reason_codes + ("EXIT_EVIDENCE_REQUIRED",)
+            # No durable reduction authority is wired, so there is no evidence
+            # on which to authorize this exit. A listing is bookkeeping, not
+            # permission: it is always recorded as unauthorized here, and the
+            # orchestrator's exit-authorization provider decides independently
+            # whether anything may actually be submitted.
+            authorized = False
+            reasons = reason_codes + ("EXIT_EVIDENCE_REQUIRED",)
         self.state.pending_exits[position_id] = PendingExit(
             position_id=position_id,
             requested_at=at,
@@ -617,6 +622,13 @@ class TradingRuntime:
     def _try_authority_for_signal(
         self, *, signal: StrategySignal, at: UTCDateTime
     ) -> dict[str, Any] | None:
+        # The default authority performs no reservation, so there is nothing
+        # to reserve against: reservation is a durable-capital operation and
+        # this runtime has no capital authority wired. The signal still needs
+        # the orchestrator's own authorization before it can become an order,
+        # and that provider is fail-closed by default.
+        # NOTE: returning None here means "no reservation attempted", not
+        # "reservation granted".
         if isinstance(self.authority, NoopAuthorityService):
             return None
         from uuid import uuid4

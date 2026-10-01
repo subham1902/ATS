@@ -31,6 +31,7 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
 from .helpers import (
     NIFTY,
     NOW,
+    allow_all,
     build_orchestrator,
     market_facts,
 )
@@ -66,6 +67,7 @@ def _entry_orchestrator(exit_authorization_provider=None):
     orch = build_orchestrator(
         market_facts_provider=_facts_provider,
         feed=feed,
+        authorization_provider=allow_all,
         intent_binding_provider=allow_all_with_binding,
         exit_authorization_provider=exit_authorization_provider,
     )

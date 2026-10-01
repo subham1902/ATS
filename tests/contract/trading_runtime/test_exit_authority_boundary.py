@@ -3,8 +3,10 @@
 Reducing a position is not the inverse of opening one. It needs its own
 authority, so the runtime must not be able to (a) assert ALLOW for itself,
 (b) invent the identities that authority evidence is supposed to supply, or
-(c) write its own settlement state. These are source-level guards; companion
-behavioural tests live in tests/unit/trading_runtime.
+(c) write its own settlement state. Entry authority gets the same treatment:
+omitting a provider must deny, and the default capital authority must grant
+nothing. These are source-level guards; companion behavioural tests live in
+tests/unit/trading_runtime.
 """
 
 from __future__ import annotations
@@ -26,6 +28,11 @@ REPO_ROOT = Path(__file__).parents[3]
 ORCHESTRATOR = REPO_ROOT / "backend" / "src" / "ats" / "trading_runtime" / "orchestrator.py"
 BROKER = REPO_ROOT / "backend" / "src" / "ats" / "trading_runtime" / "broker.py"
 SEAM = REPO_ROOT / "backend" / "src" / "ats" / "trading_runtime" / "exit_authorization.py"
+ENGINE = REPO_ROOT / "backend" / "src" / "ats" / "trading_runtime" / "engine.py"
+AUTHORITY_SERVICE = (
+    REPO_ROOT / "backend" / "src" / "ats" / "trading_runtime" / "authority_service.py"
+)
+TEST_HELPERS = REPO_ROOT / "tests" / "unit" / "trading_runtime" / "helpers.py"
 
 
 def _read(path: Path) -> str:
@@ -155,3 +162,83 @@ def test_allow_without_artifacts_is_not_actionable() -> None:
     hollow = ExitAuthorizationResult(decision=ALLOW)
     assert not hollow.allows_exit()
     assert hollow.refusal_reason()  # an explanation exists for refusing
+
+
+def test_no_implicit_allow_fallback_in_test_helpers() -> None:
+    """`allow_all` is for explicit injection, never a default or fallback."""
+    source = _read(TEST_HELPERS)
+    assert "or allow_all" not in source, "permissive fallback reappeared in test helpers"
+    assert "or allow-all" not in source
+    signature = re.search(r"def build_orchestrator\((.*?)\)\s*(?:->|:)", source, re.DOTALL)
+    assert signature is not None, "build_orchestrator signature not found"
+    assert "allow_all" not in signature.group(1), (
+        "allow_all must not appear in build_orchestrator defaults; "
+        "tests that want ALLOW pass it explicitly"
+    )
+
+
+def test_noop_authority_service_cannot_grant_allow() -> None:
+    """The default capital authority answers UNKNOWN, never ALLOW."""
+    import inspect
+    from datetime import UTC, datetime
+
+    from ats.kernel.types import KernelOutcome
+    from ats.trading_runtime.authority_service import NoopAuthorityService
+
+    class_source = inspect.getsource(NoopAuthorityService)
+    assert "KernelOutcome.ALLOW" not in class_source, "Noop grants ALLOW again"
+    assert "NOOP_ALLOW" not in class_source, "the old permissive reason code returned"
+    assert "AUTHORITY_UNAVAILABLE" in class_source, "fail-closed marker missing"
+
+    # The method ignores its inputs by design, so the call below proves the
+    # outcome cannot depend on a crafted request: it is UNKNOWN regardless.
+    decision = NoopAuthorityService().try_reserve_for_candidate(
+        None,  # type: ignore[arg-type]
+        evaluation_time=datetime(2026, 8, 24, 4, 0, tzinfo=UTC),
+    )
+    assert decision.outcome is KernelOutcome.UNKNOWN
+    assert decision.outcome is not KernelOutcome.ALLOW
+    assert decision.reservation_id is None
+    assert decision.token is None
+    assert decision.order_intent is None
+
+
+def test_engine_never_reports_exit_authorized_without_durable_authority() -> None:
+    """A listing is bookkeeping, not permission: no durable authority means
+    the exit is listed as unauthorized, with the reason stated."""
+    from datetime import UTC, date, datetime, time
+    from decimal import Decimal
+
+    from ats.market.calendar.models import SessionCalendar
+    from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
+    from ats.trading_runtime.engine import RuntimeConfig, TradingRuntime
+
+    source = _read(ENGINE)
+    assert not re.search(r"authorized\s*=\s*isinstance", source), (
+        "exit authorization derived from an isinstance check again"
+    )
+
+    at = datetime(2026, 8, 24, 4, 0, tzinfo=UTC)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(
+            calendar=SessionCalendar(
+                calendar_id="T",
+                calendar_version="1.0.0",
+                timezone="Asia/Kolkata",
+                trading_dates=(date(2026, 8, 24),),
+                preopen_start=time(9),
+                market_open=time(9, 15),
+                market_close=time(15, 30),
+                overrides=(),
+            )
+        ),
+        market_feed=InMemoryMarketFeed(),
+        broker=PaperBrokerAdapter(),
+        # No authority wired: the default Noop must grant nothing.
+    )
+    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), at)
+    result = runtime.request_exit("NIFTY:1", at, source="DASHBOARD")
+    assert result["accepted"] is True
+    assert result["authorized"] is False
+    assert "EXIT_EVIDENCE_REQUIRED" in result["reasons"]
+    assert "NIFTY:1" in runtime.state.open_positions

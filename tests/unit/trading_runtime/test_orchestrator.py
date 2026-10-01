@@ -16,6 +16,7 @@ from tests.unit.trading_runtime.exit_authorization_doubles import allow_all_with
 from .helpers import (
     NIFTY,
     NOW,
+    allow_all,
     build_orchestrator,
     deny_all,
     market_facts,
@@ -39,13 +40,19 @@ def _facts_provider(iid: str, at):
     return None
 
 
-def _fresh_orchestrator(at=NOW, exit_authorization_provider=None, intent_binding_provider=allow_all_with_binding):
+def _fresh_orchestrator(
+    at=NOW,
+    authorization_provider=None,
+    exit_authorization_provider=None,
+    intent_binding_provider=allow_all_with_binding,
+):
     feed = InMemoryMarketFeed()
     feed.set_mark(INDEX, PREV, at)
     feed.set_mark(NIFTY, Decimal("101"), at)
     return build_orchestrator(
         market_facts_provider=_facts_provider,
         feed=feed,
+        authorization_provider=authorization_provider,
         exit_authorization_provider=exit_authorization_provider,
         intent_binding_provider=intent_binding_provider,
     )
@@ -73,8 +80,18 @@ def test_candidate_without_authorization_produces_no_order() -> None:
     assert orch.get_open_positions() == {}
 
 
-def test_authorized_candidate_produces_exactly_one_order_and_fill() -> None:
+def test_omitted_authorization_provider_denies_by_default() -> None:
+    # Regression: omitting the provider must not implicitly authorize.
+    # Entries are refused by the fail-closed default, with no order submitted.
     orch = _fresh_orchestrator()
+    _bull_bar(orch)
+    assert orch.counters.submitted_orders == 0
+    assert orch.counters.risk_rejected_candidates == 1
+    assert orch.get_open_positions() == {}
+
+
+def test_authorized_candidate_produces_exactly_one_order_and_fill() -> None:
+    orch = _fresh_orchestrator(authorization_provider=allow_all)
     _bull_bar(orch)
     assert orch.counters.submitted_orders == 1
     positions = orch.get_open_positions()
@@ -84,7 +101,7 @@ def test_authorized_candidate_produces_exactly_one_order_and_fill() -> None:
 
 
 def test_duplicate_event_does_not_double_submit() -> None:
-    orch = _fresh_orchestrator()
+    orch = _fresh_orchestrator(authorization_provider=allow_all)
     _bull_bar(orch)
     _bull_bar(orch)  # same timestamp + direction -> same order_key -> idempotent
     assert orch.counters.submitted_orders == 1
@@ -92,7 +109,7 @@ def test_duplicate_event_does_not_double_submit() -> None:
 
 
 def test_fill_reaches_runtime_open_positions_with_canonical_price() -> None:
-    orch = _fresh_orchestrator()
+    orch = _fresh_orchestrator(authorization_provider=allow_all)
     _bull_bar(orch)
     positions = orch.runtime.state.open_positions
     assert len(positions) == 1
@@ -102,7 +119,7 @@ def test_fill_reaches_runtime_open_positions_with_canonical_price() -> None:
 
 
 def test_exit_fill_reaches_handle_exit_fill() -> None:
-    orch = _fresh_orchestrator()
+    orch = _fresh_orchestrator(authorization_provider=allow_all)
     _bull_bar(orch)
     pid = next(iter(orch.get_open_positions().keys()))
     orch.runtime.handle_exit_fill(pid, NOW)
