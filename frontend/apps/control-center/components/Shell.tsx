@@ -28,6 +28,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/strategies", label: "Strategies & Board", icon: "🏆" },
       { href: "/optimizations", label: "Live Optimizations", icon: "🧬", badge: "AI" },
       { href: "/agents", label: "Agents Playground", icon: "🤖", badge: "₹1L / ₹2L" },
+      { href: "/agents/managed", label: "Managed Agents", icon: "🧠", badge: "Proposal-only" },
       { href: "/upstox-ledger", label: "Upstox Trade Ledger", icon: "⚡", badge: "1,000 Live" },
       { href: "/paper", label: "Paper Trading", icon: "⚡" },
       { href: "/shadow", label: "Shadow Lab", icon: "🔬" },
@@ -358,7 +359,13 @@ export function Shell({
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {section.items.map((n) => {
-                  const active = pathname === n.href || (n.href !== "/" && pathname?.startsWith(n.href));
+                  const matches = (href: string) => pathname === href || (href !== "/" && !!pathname?.startsWith(href));
+                  // Most specific nav entry wins, so /agents/managed does not also light up /agents.
+                  const active =
+                    matches(n.href) &&
+                    !NAV_SECTIONS.some((sec) =>
+                      sec.items.some((o) => o.href.length > n.href.length && matches(o.href)),
+                    );
                   return (
                     <Link
                       key={n.href}
