@@ -31,14 +31,19 @@ Four independent, non-reconciled strategy ID namespaces exist in the workspace s
 | `agents/strategies.py`   | `ats/backend/src/ats/agents/strategies.py` | Internal `sid` values that **collide with each other**: `S02_TSMOM` (line 340) vs. `S02_MICRO_TICK` (line 538); `S03_DONCHIAN_ATR` (line 107) vs. `S03_GAP_FILL` (line 587) |
 | BIN import series        | `ATS_BIN_01/02_FINAL_REPORT.md`            | `BIN_S01`-`BIN_S09`, mapped to real model names (`crabel_orb_nr7_model`, `fabio_amt_playbook`, etc.)                                                                        |
 
-**Confirmed by direct grep this session** (`ats/backend/src/ats/agents/strategies.py`):
-two genuine `sid` collisions exist in code, not just documentation — `S02` and `S03` each
-appear twice with different, unrelated strategies attached. Any report or dashboard that
-joins on these IDs across files risks silently merging two different strategies.
-
-**Recommendation:** Before any strategy ID is used to gate a live/paper promotion decision,
-resolve which namespace it belongs to. Do not treat "S02" or "S03" as a single identity
-across documents without checking the source file.
+**Corrected finding (verified in code, 2026-10-01).** The full IDs are _distinct_
+(`S02_TSMOM` vs `S02_MICRO_TICK`, `S03_DONCHIAN_ATR` vs `S03_GAP_FILL`); there is no
+duplicate full ID. The defect was **prefix aliasing**: `strategy_registry_service.py` and
+`lab_service.py` reduced an ID to the text before the first `_` and looked that up, so
+both `S02_*` strategies resolved to the same `S02` key. That key is also the registry's
+own STRAT-04 registration-order `S02` (a different strategy), so live/paper performance
+and leaderboard scores could be attributed to the wrong strategy. Fixed in commit
+`94a55c0`: lookups are exact full-ID matches via `ats.strategies.identity`, a bare prefix
+is rejected as ambiguous, and any legacy alias must be listed explicitly (none are).
+**Not done:** no ID was renamed; whether to rename for clarity is a separate migration
+decision (about a dozen files reference these IDs). Registry-key `S02`/`S03` (STRAT-04)
+and agent-lab `S02_*`/`S03_*` remain two different namespaces and must not be joined on
+the prefix.
 
 ---
 
