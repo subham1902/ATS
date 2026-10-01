@@ -19,7 +19,11 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ats.agents.managed import (
+    AGENT_STATUSES,
     AGENT_TYPES,
+    CAPABILITY_ALLOWLIST,
+    DATA_SCOPE_ALLOWLIST,
+    RESEARCH_SCOPE_ALLOWLIST,
     ManagedAgentError,
     ManagedAgentStore,
 )
@@ -131,6 +135,25 @@ def create_managed_agent(body: CreateManagedAgentRequest) -> dict[str, Any]:
     except ManagedAgentError as exc:
         raise _not_found(exc) from exc
     return {"agent": agent.as_dict()}
+
+
+@router.get("/schema")
+def managed_agent_schema() -> dict[str, Any]:
+    """Canonical closed vocabularies, so clients never keep a second copy.
+
+    Declared before ``/{agent_id}`` so the literal path wins the match.
+    """
+    return {
+        "agent_types": list(AGENT_TYPES),
+        "statuses": list(AGENT_STATUSES),
+        "capabilities": sorted(CAPABILITY_ALLOWLIST),
+        "data_scopes": sorted(DATA_SCOPE_ALLOWLIST),
+        "research_scopes": sorted(RESEARCH_SCOPE_ALLOWLIST),
+        "limits": {
+            "timeout_s": {"min_exclusive": 0, "max": 86400},
+            "max_concurrency": {"min": 1, "max": 32},
+        },
+    }
 
 
 @router.get("/{agent_id}")

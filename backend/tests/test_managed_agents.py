@@ -200,3 +200,24 @@ def test_domain_has_no_execution_surface() -> None:
         "portfolio",
     ):
         assert not hasattr(managed_domain.ManagedAgentStore, name), name
+
+
+def test_schema_endpoint_serves_the_closed_vocabulary(client):
+    res = client.get("/v1/agents/managed/schema")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["capabilities"] == sorted(managed_domain.CAPABILITY_ALLOWLIST)
+    assert body["data_scopes"] == sorted(managed_domain.DATA_SCOPE_ALLOWLIST)
+    assert body["research_scopes"] == sorted(managed_domain.RESEARCH_SCOPE_ALLOWLIST)
+    assert body["agent_types"] == list(managed_domain.AGENT_TYPES)
+
+
+def test_corrupt_store_is_quarantined_not_overwritten(tmp_path):
+    path = tmp_path / "managed.json"
+    path.write_text("{not json", encoding="utf-8")
+    store = managed_domain.ManagedAgentStore(path=path)
+    assert store.list_agents(include_archived=True) == []
+    store.create(name="Fresh")  # first save must not destroy the evidence
+    preserved = [p for p in tmp_path.iterdir() if ".corrupt-" in p.name]
+    assert len(preserved) == 1
+    assert preserved[0].read_text(encoding="utf-8") == "{not json"

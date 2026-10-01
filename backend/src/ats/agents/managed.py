@@ -537,6 +537,7 @@ class ManagedAgentStore:
             data = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             LOGGER.warning("Could not read managed agents %s: %s", self._path, exc)
+            self._quarantine()
             return
         try:
             for raw in data.get("agents", []):
@@ -557,6 +558,17 @@ class ManagedAgentStore:
             self._agents = {}
             self._versions = {}
             self._runs = {}
+            self._quarantine()
+
+    def _quarantine(self) -> None:
+        """Move an unreadable store aside so the next save cannot overwrite
+        (and thereby destroy) the only copy of the evidence."""
+        try:
+            aside = self._path.with_name(f"{self._path.name}.corrupt-{int(datetime.now(UTC).timestamp())}")
+            os.replace(self._path, aside)
+            LOGGER.warning("Quarantined unreadable managed-agent store as %s", aside)
+        except OSError as exc:
+            LOGGER.warning("Could not quarantine %s: %s", self._path, exc)
 
 
 def _config_snapshot(agent: ManagedAgent) -> dict[str, Any]:
