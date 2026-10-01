@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from ats.contracts.domain import MarketSnapshot
 from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.domain.types import DataQualityState, SessionState
@@ -106,6 +107,14 @@ def test_intelligence_pipeline_e2e() -> None:
     print(f"Pipeline single execution time: {elapsed_ms:.3f} ms")
 
 
+def _coverage_active() -> bool:
+    try:
+        import coverage
+    except ImportError:
+        return False
+    return coverage.Coverage.current() is not None
+
+
 def test_intelligence_pipeline_steady_state_latency() -> None:
     snapshots = _sample_snapshots()
     cutoff_snap = snapshots[-1]
@@ -168,4 +177,8 @@ def test_intelligence_pipeline_steady_state_latency() -> None:
         f"Pipeline 100-run steady state: Total {total_ms:.2f} ms | "
         f"Avg: {avg_ms:.3f} ms ({1000 / avg_ms:.0f} cycles/sec)"
     )
+    if _coverage_active():
+        # Tracing inflates wall-clock time, so the 5ms bound is not meaningful
+        # here. The plain unit-test job (no coverage) still enforces it.
+        pytest.skip(f"latency bound not measurable under coverage (avg {avg_ms:.2f} ms)")
     assert avg_ms < 5.0  # Well within the 5ms threshold!

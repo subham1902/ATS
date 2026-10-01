@@ -1,0 +1,4 @@
+# Known-fake test value: the managed-agent boundary test deliberately submits a
+# secret-shaped string to prove it is rejected. The test now builds it at
+# runtime; this entry only covers that one already-pushed historical commit.
+5fe06cb417693dfbdd6ced07a15265d32d03bb8c:backend/tests/test_managed_agents.py:generic-api-key:69

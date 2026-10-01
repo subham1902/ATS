@@ -66,7 +66,8 @@ def test_forbidden_capability_rejected(client):
 
 
 def test_secret_value_as_credential_ref_rejected(client):
-    res = _create(client, credential_ref="sk-live-abc123")
+    fake_secret = "sk-" + "live-" + "not-a-real-key"  # built at runtime: no secret-shaped literal
+    res = _create(client, credential_ref=fake_secret)
     assert res.status_code == 422
 
 
