@@ -32,13 +32,13 @@ Breakout)** family from `ATS_STRATEGY_RESEARCH_STANDARD_v1.0.md` §2.1, built fr
      `ForwardSessionRecorder` output as the primary empirical truth, with all
      Parquet/CSV historical catalogs subordinate to it. This spec's Phase 3 runs
      entirely on a vendor historical CSV, never on `ForwardSessionRecorder` data.
-  For both reasons, a fully passing Phase 1–3 result under this spec earns, at most,
-  **`CANDIDATE` status with reference-research authority** — never `RESEARCH_VALIDATED`,
-  regardless of how cleanly the numeric gate is cleared. Concretely: this work can
-  produce a candidate ready to be *proposed* for a future shadow-deployment study on the
-  real target instrument once that data exists. It cannot certify anything as live-ready
-  or as validated-on-MCX-Gold, and must never be represented as such in any artifact it
-  produces.
+     For both reasons, a fully passing Phase 1–3 result under this spec earns, at most,
+     **`CANDIDATE` status with reference-research authority** — never `RESEARCH_VALIDATED`,
+     regardless of how cleanly the numeric gate is cleared. Concretely: this work can
+     produce a candidate ready to be _proposed_ for a future shadow-deployment study on the
+     real target instrument once that data exists. It cannot certify anything as live-ready
+     or as validated-on-MCX-Gold, and must never be represented as such in any artifact it
+     produces.
 - Scope for this spec is **S5 only** (user-selected "Approach C"). S9 (Post-News/Event
   Drift) and S12 (Multi-Asset Lead-Lag) are intentionally reduced to Phase-1-hypothesis
   stubs in the companion audit document (`ats/docs/research/MCX_GOLD_STRATEGY_READINESS_AUDIT.md`)
@@ -49,13 +49,13 @@ Breakout)** family from `ATS_STRATEGY_RESEARCH_STANDARD_v1.0.md` §2.1, built fr
 
 ## 1. File Layout
 
-| Path | Contents | Committed? |
-|---|---|---|
-| `ats/docs/superpowers/specs/2026-09-30-s5-orb-mcx-gold-design.md` | This spec. | Yes |
-| `ats/docs/research/MCX_GOLD_STRATEGY_READINESS_AUDIT.md` | Standalone audit: S1–S14 status vs. promotion ladder, "strategy bins" critique, STRAT-02/04 history, S9/S12 stubs. No code. | Yes |
-| `ats/backend/src/ats/research/strategies/s5_orb/` | New code subpackage: Stage 1 scanner, Stage 2 meta-classifier, Phase 2 synthetic harness, Phase 3 PWFCV harness, tests. Exact module breakdown finalized by `writing-plans`. | Yes |
-| `ATS trade data/xauusd-m1-*.csv` (outer workspace) | Raw source data. | No — stays external, too large and not reproducible-from-source |
-| A derived, normalized session-level feature cache + a manifest file recording its source hash, row count, and date range | Generated artifact consumed by Phase 3. | Yes (cache + manifest only, not raw ticks) |
+| Path                                                                                                                     | Contents                                                                                                                                                                     | Committed?                                                      |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `ats/docs/superpowers/specs/2026-09-30-s5-orb-mcx-gold-design.md`                                                        | This spec.                                                                                                                                                                   | Yes                                                             |
+| `ats/docs/research/MCX_GOLD_STRATEGY_READINESS_AUDIT.md`                                                                 | Standalone audit: S1–S14 status vs. promotion ladder, "strategy bins" critique, STRAT-02/04 history, S9/S12 stubs. No code.                                                  | Yes                                                             |
+| `ats/backend/src/ats/research/strategies/s5_orb/`                                                                        | New code subpackage: Stage 1 scanner, Stage 2 meta-classifier, Phase 2 synthetic harness, Phase 3 PWFCV harness, tests. Exact module breakdown finalized by `writing-plans`. | Yes                                                             |
+| `ATS trade data/xauusd-m1-*.csv` (outer workspace)                                                                       | Raw source data.                                                                                                                                                             | No — stays external, too large and not reproducible-from-source |
+| A derived, normalized session-level feature cache + a manifest file recording its source hash, row count, and date range | Generated artifact consumed by Phase 3.                                                                                                                                      | Yes (cache + manifest only, not raw ticks)                      |
 
 Rationale for not committing raw CSVs: they are ~49MB+ each, external market data, and
 regeneration only requires the manifest hash to confirm provenance — not useful or
@@ -120,6 +120,7 @@ from one underlying event).
 
 Feature set attached to each candidate (all computable strictly from information available
 at or before the decision instant — see §6 causality contract):
+
 - Breakout magnitude in ATR units (ATR computed on a trailing window ending at the prior
   session close, never using same-day data before the anchor).
 - Opening range width relative to the trailing 20-day average opening-range width.
@@ -140,6 +141,7 @@ costs/margin do not apply to an XAUUSD spot series — this is called out everyw
 `PROXY_FRICTION_MODEL`, never presented as a real MCX cost).
 
 Outputs:
+
 - `p_cal = P(Y_net > 0 | X)`, calibrated (not raw classifier score — isotonic or Platt
   calibration fit only on the training fold).
 - `EXPECTED_NET_EV = p_cal * Ĝ − (1 − p_cal) * L̂ − PointInTimeFrictions`.
@@ -220,6 +222,7 @@ last possible exit of any training-fold trade).
 ### 5.3 Null-Hypothesis Testing Battery (§4.3 of the Standard)
 
 All three mandatory tests, run on Phase 3 holdout-eligible results:
+
 1. **Permutation test**, B ≥ 1000, label-shuffle, feature matrix held fixed.
 2. **Random-entry null**: replace Stage-1 triggers with Poisson-random entries on
    identical price paths, run through the same Stage 2 + exit stack; net P&L must be

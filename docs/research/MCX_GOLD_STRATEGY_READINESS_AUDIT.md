@@ -24,12 +24,12 @@ exist — it should not be read as a failure of the research process.
 
 Four independent, non-reconciled strategy ID namespaces exist in the workspace simultaneously:
 
-| Namespace | Where | Example IDs |
-|---|---|---|
-| Canonical taxonomy | ATS Strategy Research Standard v1.0 | S1-S14 (by *mechanism family*, e.g. "Opening Range Breakout") |
-| STRAT-04 survivor report | `ATS_STRAT_04_SURVIVOR_REPORT.md` | S01-S35, B00-B04 (by *registration order*, unrelated to canonical S1-S14 meaning) |
-| `agents/strategies.py` | `ats/backend/src/ats/agents/strategies.py` | Internal `sid` values that **collide with each other**: `S02_TSMOM` (line 340) vs. `S02_MICRO_TICK` (line 538); `S03_DONCHIAN_ATR` (line 107) vs. `S03_GAP_FILL` (line 587) |
-| BIN import series | `ATS_BIN_01/02_FINAL_REPORT.md` | `BIN_S01`-`BIN_S09`, mapped to real model names (`crabel_orb_nr7_model`, `fabio_amt_playbook`, etc.) |
+| Namespace                | Where                                      | Example IDs                                                                                                                                                                 |
+| ------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical taxonomy       | ATS Strategy Research Standard v1.0        | S1-S14 (by _mechanism family_, e.g. "Opening Range Breakout")                                                                                                               |
+| STRAT-04 survivor report | `ATS_STRAT_04_SURVIVOR_REPORT.md`          | S01-S35, B00-B04 (by _registration order_, unrelated to canonical S1-S14 meaning)                                                                                           |
+| `agents/strategies.py`   | `ats/backend/src/ats/agents/strategies.py` | Internal `sid` values that **collide with each other**: `S02_TSMOM` (line 340) vs. `S02_MICRO_TICK` (line 538); `S03_DONCHIAN_ATR` (line 107) vs. `S03_GAP_FILL` (line 587) |
+| BIN import series        | `ATS_BIN_01/02_FINAL_REPORT.md`            | `BIN_S01`-`BIN_S09`, mapped to real model names (`crabel_orb_nr7_model`, `fabio_amt_playbook`, etc.)                                                                        |
 
 **Confirmed by direct grep this session** (`ats/backend/src/ats/agents/strategies.py`):
 two genuine `sid` collisions exist in code, not just documentation — `S02` and `S03` each
@@ -120,17 +120,17 @@ This is real, verifiable infrastructure, not a research claim.
 authority `RESEARCH_ONLY`. Maps the frozen `BIN_S01`-`BIN_S09` IDs to their real source
 models:
 
-| BIN ID | Model | Source file |
-|---|---|---|
-| BIN_S01 | crabel_orb_nr7_model | `Setup 167%.py` |
-| BIN_S02 | booming_bulls_holy_grail | `setup 43%21k .sh` |
-| BIN_S03 | booming_bulls_50_absolute | `setup 45%22k.sh` |
-| BIN_S04 | booming_bulls_max_yield | `setup 47%21k 1.sh` |
-| BIN_S05 | fabio_amt_playbook | `Setup 48%.py` |
-| BIN_S06 | desiano_break_retest_model | `Setup 52%.py` |
-| BIN_S07 | apex_chimera_engine | `Setup 84%.py` |
-| BIN_S08 | unified_master_50pct_engine | `setup 90%.py` |
-| BIN_S09 | crudele_pure_framework | `Setup155%.py` |
+| BIN ID  | Model                       | Source file         |
+| ------- | --------------------------- | ------------------- |
+| BIN_S01 | crabel_orb_nr7_model        | `Setup 167%.py`     |
+| BIN_S02 | booming_bulls_holy_grail    | `setup 43%21k .sh`  |
+| BIN_S03 | booming_bulls_50_absolute   | `setup 45%22k.sh`   |
+| BIN_S04 | booming_bulls_max_yield     | `setup 47%21k 1.sh` |
+| BIN_S05 | fabio_amt_playbook          | `Setup 48%.py`      |
+| BIN_S06 | desiano_break_retest_model  | `Setup 52%.py`      |
+| BIN_S07 | apex_chimera_engine         | `Setup 84%.py`      |
+| BIN_S08 | unified_master_50pct_engine | `setup 90%.py`      |
+| BIN_S09 | crudele_pure_framework      | `Setup155%.py`      |
 
 The report explicitly **refuses to credit the percentage claims baked into these filenames**
 ("167%", "84%", etc.) as evidence — correct, since those are vendor marketing claims, not
@@ -159,15 +159,15 @@ Per the ATS Live Eligibility Standard's 7-state ladder
 (CANDIDATE → RESEARCH_VALIDATED → SHADOW_ELIGIBLE → SHADOW_ACTIVE → PAPER_ELIGIBLE →
 PAPER_ACTIVE → LIVE_MICRO_ELIGIBLE):
 
-| Strategy / family | Current state | Blocking factor |
-|---|---|---|
-| S01, S02, S03, S04, S30, S34 (native) | REJECTED | Failed survivor gates under MCX PIT V3 costs |
-| B01-B04 (native) | REJECTED | Failed survivor gates |
-| S17 (native, OI-dependent) | CANDIDATE, SHADOW_RUNNING_AWAITING_OI | No live OI data source |
-| S05-S14, S26 (native) | DATA_BLOCKED (not rejected) | No macro data source |
-| S15/S16/S18-S25/S27-S29/S31-S33/S35 (native) | DATA_BLOCKED (not rejected) | No L2/options/tick data |
-| BIN_S01-BIN_S09 (imported) | CANDIDATE, SHADOW_RUNNING | 0/20 resolved forward outcomes |
-| **S5 ORB (new, this engagement)** | **Phase 1 design spec only** (see §6) | Not yet implemented; XAUUSD proxy caps ceiling at CANDIDATE even after validation |
+| Strategy / family                            | Current state                         | Blocking factor                                                                   |
+| -------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------- |
+| S01, S02, S03, S04, S30, S34 (native)        | REJECTED                              | Failed survivor gates under MCX PIT V3 costs                                      |
+| B01-B04 (native)                             | REJECTED                              | Failed survivor gates                                                             |
+| S17 (native, OI-dependent)                   | CANDIDATE, SHADOW_RUNNING_AWAITING_OI | No live OI data source                                                            |
+| S05-S14, S26 (native)                        | DATA_BLOCKED (not rejected)           | No macro data source                                                              |
+| S15/S16/S18-S25/S27-S29/S31-S33/S35 (native) | DATA_BLOCKED (not rejected)           | No L2/options/tick data                                                           |
+| BIN_S01-BIN_S09 (imported)                   | CANDIDATE, SHADOW_RUNNING             | 0/20 resolved forward outcomes                                                    |
+| **S5 ORB (new, this engagement)**            | **Phase 1 design spec only** (see §6) | Not yet implemented; XAUUSD proxy caps ceiling at CANDIDATE even after validation |
 
 No strategy anywhere in the audited workspace has reached `SHADOW_ACTIVE` or beyond.
 
