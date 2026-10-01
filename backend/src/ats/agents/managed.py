@@ -35,6 +35,8 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 from uuid import uuid4
 
+from ats.agents.redaction import scrub_secrets
+
 LOGGER = logging.getLogger(__name__)
 
 MANAGED_FILE_PATH = Path("data/agents/managed.json")
@@ -94,6 +96,10 @@ def _now() -> str:
 
 class ManagedAgentError(ValueError):
     """Raised when a managed-agent mutation is invalid or forbidden."""
+
+
+class ManagedAgentConcurrencyLimit(ManagedAgentError):
+    """A new run would exceed the agent's configured ``max_concurrency``."""
 
 
 class ManagedAgentConflict(ManagedAgentError):
@@ -518,6 +524,12 @@ class ManagedAgentStore:
         agent = self.require_active(agent_id)
         if not agent.enabled:
             raise ManagedAgentError(f"Agent '{agent.name}' is disabled")
+        in_flight = sum(1 for r in self._runs.get(agent_id, []) if r.status == "STARTED")
+        if in_flight >= agent.max_concurrency:
+            raise ManagedAgentConcurrencyLimit(
+                f"Agent '{agent.name}' is at its concurrency limit "
+                f"({in_flight}/{agent.max_concurrency} runs in flight)"
+            )
         run = AgentRun(
             run_id=uuid4().hex,
             agent_id=agent_id,
@@ -544,10 +556,22 @@ class ManagedAgentStore:
                         raise ManagedAgentError(f"Run '{run_id}' is already finished")
                     run.status = "COMPLETED" if ok else "FAILED"
                     run.finished_at = _now()
-                    run.error = None if ok else (error or "unknown error")
+                    run.error = (
+                        None
+                        if ok
+                        else scrub_secrets(
+                            (error or "unknown error")[:2000],
+                            credential_refs=[self._agents[agent_id].credential_ref],
+                        )
+                    )
                     agent = self._agents[agent_id]
-                    agent.status = "IDLE" if ok else "ERROR"
-                    agent.last_error = run.error
+                    still_running = any(r.status == "STARTED" for r in runs)
+                    if not agent.enabled:
+                        agent.status = "ARCHIVED" if agent.archived_at else "DISABLED"
+                    else:
+                        agent.status = "RUNNING" if still_running else ("IDLE" if ok else "ERROR")
+                    if not ok or not still_running:
+                        agent.last_error = run.error
                     agent.updated_at = _now()
                     self._save()
                     self._announce(
@@ -643,6 +667,7 @@ __all__ = [
     "AgentConfigVersion",
     "AgentRun",
     "ManagedAgent",
+    "ManagedAgentConcurrencyLimit",
     "ManagedAgentConflict",
     "ManagedAgentError",
     "ManagedAgentStore",

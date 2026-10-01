@@ -24,6 +24,7 @@ from ats.agents.managed import (
     CAPABILITY_ALLOWLIST,
     DATA_SCOPE_ALLOWLIST,
     RESEARCH_SCOPE_ALLOWLIST,
+    ManagedAgentConcurrencyLimit,
     ManagedAgentConflict,
     ManagedAgentError,
     ManagedAgentStore,
@@ -70,7 +71,7 @@ def _announce(kind: str, summary: str) -> None:
 
 def _not_found(exc: ManagedAgentError) -> HTTPException:
     message = str(exc)
-    if isinstance(exc, ManagedAgentConflict):
+    if isinstance(exc, ManagedAgentConflict | ManagedAgentConcurrencyLimit):
         return HTTPException(status_code=409, detail=message)
     if message.startswith("Unknown agent '") or message.startswith("Unknown run '"):
         return HTTPException(status_code=404, detail=message)

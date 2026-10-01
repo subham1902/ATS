@@ -289,3 +289,74 @@ def test_patch_with_stale_expected_version_returns_409(client):
     )
     assert stale.status_code == 409
     assert "changed since you opened it" in stale.json()["detail"]
+
+
+def _enabled(client, **kw):
+    agent_id = _create(client, **kw).json()["agent"]["agent_id"]
+    client.post(f"/v1/agents/managed/{agent_id}/enable")
+    return agent_id
+
+
+def test_max_concurrency_is_enforced_at_run_admission(client):
+    agent_id = _enabled(client, max_concurrency=2)
+    codes = [client.post(f"/v1/agents/managed/{agent_id}/runs") for _ in range(3)]
+    assert [r.status_code for r in codes] == [201, 201, 409]
+    assert "concurrency limit" in codes[2].json()["detail"]
+    run_id = codes[0].json()["run"]["run_id"]
+    client.post(f"/v1/agents/managed/runs/{run_id}/finish", json={"ok": True})
+    assert client.post(f"/v1/agents/managed/{agent_id}/runs").status_code == 201
+
+
+def test_agent_stays_running_until_the_last_in_flight_run_finishes(client):
+    agent_id = _enabled(client, max_concurrency=2)
+    first = client.post(f"/v1/agents/managed/{agent_id}/runs").json()["run"]["run_id"]
+    client.post(f"/v1/agents/managed/{agent_id}/runs")
+    client.post(f"/v1/agents/managed/runs/{first}/finish", json={"ok": True})
+    assert client.get(f"/v1/agents/managed/{agent_id}").json()["agent"]["status"] == "RUNNING"
+
+
+def test_finishing_a_run_does_not_re_activate_a_disabled_agent(client):
+    agent_id = _enabled(client)
+    run_id = client.post(f"/v1/agents/managed/{agent_id}/runs").json()["run"]["run_id"]
+    client.post(f"/v1/agents/managed/{agent_id}/disable")
+    client.post(f"/v1/agents/managed/runs/{run_id}/finish", json={"ok": True})
+    assert client.get(f"/v1/agents/managed/{agent_id}").json()["agent"]["status"] == "DISABLED"
+
+
+FAKE_PROVIDER_SECRET = "zz-provider-" + "secret-value-9f8e7d"
+
+
+def test_run_error_secrets_never_reach_store_api_or_logs(client, monkeypatch, caplog):
+    from ats.agents.managed_router import get_managed_store
+
+    monkeypatch.setenv("ACME_API_KEY", FAKE_PROVIDER_SECRET)
+    agent_id = _enabled(client)
+    run_id = client.post(f"/v1/agents/managed/{agent_id}/runs").json()["run"]["run_id"]
+    noisy = (
+        "401 from https://svc:hunter2pw@api.acme.test/v1 Authorization: Bearer abcdefgh12345678 "
+        f"key={FAKE_PROVIDER_SECRET} password=hunter2pw " + "sk-" + "live-abcdef123456 trailing"
+    )
+    with caplog.at_level("DEBUG"):
+        res = client.post(
+            f"/v1/agents/managed/runs/{run_id}/finish", json={"ok": False, "error": noisy}
+        )
+    assert res.status_code == 200
+    surfaces = [
+        res.text,
+        client.get(f"/v1/agents/managed/{agent_id}/runs").text,
+        client.get(f"/v1/agents/managed/{agent_id}").text,
+        managed_domain.json.dumps(get_managed_store().as_dict()),
+        caplog.text,
+    ]
+    for needle in (FAKE_PROVIDER_SECRET, "hunter2pw", "abcdefgh12345678", "abcdef123456"):
+        for surface in surfaces:
+            assert needle not in surface, needle
+    assert "[REDACTED]" in res.json()["run"]["error"]
+    assert "trailing" in res.json()["run"]["error"]  # ordinary text survives
+
+
+def test_scrub_secrets_keeps_ordinary_text():
+    from ats.agents.redaction import scrub_secrets
+
+    msg = "Timeout after 30s calling model acme-large (attempt 3 of 5)"
+    assert scrub_secrets(msg, env={}) == msg

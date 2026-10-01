@@ -263,6 +263,10 @@ export function ManagedAgentWizard(props: {
             value={cfg.max_concurrency}
             onChange={(e) => set("max_concurrency", Number(e.target.value))}
           />
+          <p style={{ opacity: 0.75 }}>
+            Max concurrency is enforced when a run is admitted. Timeout is recorded for the future executor; nothing
+            enforces it yet.
+          </p>
         </div>
       )}
 
