@@ -21,6 +21,13 @@ import type {
   LeaderboardResponse,
   StrategyRegistryEntry,
   StrategyPerformanceReport,
+  ManagedAgent,
+  ManagedAgentConfigVersion,
+  ManagedAgentDeleteResult,
+  ManagedAgentRun,
+  ManagedAgentSchema,
+  CreateManagedAgentRequest,
+  UpdateManagedAgentRequest,
 } from "./types";
 import { ROUTES } from "./types";
 
@@ -52,8 +59,12 @@ function resolveBaseUrl(options?: ClientOptions): string {
 
 async function parseError(res: Response): Promise<ErrorEnvelope | null> {
   try {
-    const j = (await res.json()) as ErrorEnvelope;
+    const j = (await res.json()) as ErrorEnvelope & { detail?: unknown };
     if (j && typeof j.code === "string" && typeof j.message === "string") return j;
+    // FastAPI HTTPException bodies are {detail: "..."}; keep the reason.
+    if (j && typeof j.detail === "string") {
+      return { code: `HTTP_${res.status}`, message: j.detail, correlation_id: "", details: [] };
+    }
     return null;
   } catch {
     return null;
@@ -79,6 +90,10 @@ async function request<T>(path: string, init: RequestInit, opts?: ClientOptions)
   const ct = res.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) return (await res.json()) as T;
   return (await res.json()) as T;
+}
+
+function jsonInit(method: string, body: unknown): RequestInit {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
 export function createApiClient(options?: ClientOptions) {
@@ -122,6 +137,31 @@ export function createApiClient(options?: ClientOptions) {
     getStrategy: (id: string) => request<StrategyRegistryEntry>(ROUTES.strategyById(id), { method: "GET" }, opts),
     getStrategyReport: (id: string) =>
       request<StrategyPerformanceReport>(ROUTES.strategyReport(id), { method: "GET" }, opts),
+    // Managed agents (proposal-only). There is intentionally no method that
+    // executes, authorizes, or mutates capital: the domain has none.
+    getManagedAgentSchema: () =>
+      request<ManagedAgentSchema>(ROUTES.managedAgentSchema, { method: "GET" }, opts),
+    listManagedAgents: (includeArchived = false) =>
+      request<{ agents: ManagedAgent[] }>(ROUTES.managedAgents(includeArchived), { method: "GET" }, opts),
+    getManagedAgent: (id: string) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgentById(id), { method: "GET" }, opts),
+    createManagedAgent: (body: CreateManagedAgentRequest) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgents(), jsonInit("POST", body), opts),
+    updateManagedAgent: (id: string, body: UpdateManagedAgentRequest) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgentById(id), jsonInit("PATCH", body), opts),
+    enableManagedAgent: (id: string) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgentEnable(id), { method: "POST" }, opts),
+    disableManagedAgent: (id: string) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgentDisable(id), { method: "POST" }, opts),
+    duplicateManagedAgent: (id: string, name: string) =>
+      request<{ agent: ManagedAgent }>(ROUTES.managedAgentDuplicate(id), jsonInit("POST", { name }), opts),
+    /** Archives by default. Hard delete needs both flags and is still refused by the server if history exists. */
+    deleteManagedAgent: (id: string, opts2?: { hard?: boolean; confirm?: boolean }) =>
+      request<ManagedAgentDeleteResult>(ROUTES.managedAgentDelete(id, opts2), { method: "DELETE" }, opts),
+    listManagedAgentVersions: (id: string) =>
+      request<{ versions: ManagedAgentConfigVersion[] }>(ROUTES.managedAgentVersions(id), { method: "GET" }, opts),
+    listManagedAgentRuns: (id: string) =>
+      request<{ runs: ManagedAgentRun[] }>(ROUTES.managedAgentRuns(id), { method: "GET" }, opts),
   };
 }
 

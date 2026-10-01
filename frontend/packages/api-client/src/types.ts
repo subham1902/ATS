@@ -575,4 +575,108 @@ export const ROUTES = {
   strategyById: (id: string) => `/v1/strategies/registry/${id}`,
   strategyReport: (id: string) => `/v1/strategies/registry/${id}/report`,
   strategyReload: "/v1/strategies/registry/reload",
+  // Managed agents (proposal-only administrative domain; distinct from the
+  // trading-persona playground under /v1/agents/*)
+  managedAgents: (includeArchived?: boolean) =>
+    includeArchived ? "/v1/agents/managed?include_archived=true" : "/v1/agents/managed",
+  managedAgentSchema: "/v1/agents/managed/schema",
+  managedAgentById: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}`,
+  managedAgentEnable: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}/enable`,
+  managedAgentDisable: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}/disable`,
+  managedAgentDuplicate: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}/duplicate`,
+  managedAgentVersions: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}/versions`,
+  managedAgentRuns: (id: string) => `/v1/agents/managed/${encodeURIComponent(id)}/runs`,
+  managedAgentDelete: (id: string, opts?: { hard?: boolean; confirm?: boolean }) => {
+    const params = new URLSearchParams();
+    if (opts?.hard) params.set("hard", "true");
+    if (opts?.confirm) params.set("confirm", "true");
+    const qs = params.toString();
+    return `/v1/agents/managed/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
+  },
 } as const;
+
+// ---- Managed agents -------------------------------------------------------
+// The capability / scope vocabularies are deliberately plain strings: the
+// canonical closed sets are served by GET /v1/agents/managed/schema and are
+// never re-declared here. Financial authority has no representation anywhere.
+
+export type ManagedAgentStatus = "DISABLED" | "IDLE" | "RUNNING" | "ERROR" | "ARCHIVED";
+export type ManagedRunStatus = "STARTED" | "COMPLETED" | "FAILED";
+
+export interface ManagedAgent {
+  agent_id: string;
+  name: string;
+  description: string;
+  agent_type: string;
+  provider: string;
+  model: string;
+  system_instructions: string;
+  capabilities: string[];
+  data_scopes: string[];
+  research_scopes: string[];
+  timeout_s: number;
+  max_concurrency: number;
+  /** Name of an environment variable; never a secret value. */
+  credential_ref: string | null;
+  enabled: boolean;
+  status: ManagedAgentStatus;
+  current_config_version: number;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  last_run_at: string | null;
+  last_error: string | null;
+}
+
+export interface ManagedAgentConfig {
+  name: string;
+  description: string;
+  agent_type: string;
+  provider: string;
+  model: string;
+  system_instructions: string;
+  capabilities: string[];
+  data_scopes: string[];
+  research_scopes: string[];
+  timeout_s: number;
+  max_concurrency: number;
+  credential_ref: string | null;
+}
+
+export interface ManagedAgentConfigVersion {
+  agent_id: string;
+  version: number;
+  snapshot: ManagedAgentConfig;
+  reason: string;
+  created_at: string;
+}
+
+export interface ManagedAgentRun {
+  run_id: string;
+  agent_id: string;
+  /** The exact configuration version that produced this run. */
+  config_version: number;
+  status: ManagedRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  error: string | null;
+}
+
+export interface ManagedAgentSchema {
+  agent_types: string[];
+  statuses: string[];
+  capabilities: string[];
+  data_scopes: string[];
+  research_scopes: string[];
+  limits: {
+    timeout_s: { min_exclusive: number; max: number };
+    max_concurrency: { min: number; max: number };
+  };
+}
+
+export type CreateManagedAgentRequest = Partial<Omit<ManagedAgentConfig, "name">> & { name: string };
+export type UpdateManagedAgentRequest = Partial<ManagedAgentConfig>;
+
+export type ManagedAgentDeleteResult =
+  | { mode: "archived"; agent: ManagedAgent }
+  | { mode: "hard"; deleted: string };
