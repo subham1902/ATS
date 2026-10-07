@@ -3937,7 +3937,7 @@
     {
       "path": "benchmarks/strategy_lab/bench.py",
       "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "reason": "Retain synthetic benchmark mechanics, replace unsupported fixture identities.",
       "legacy_terms": [
         "nse"
       ],
@@ -5973,8 +5973,8 @@
     },
     {
       "path": "FORWARD_TEST_READINESS_REPORT.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Final review: obsolete provider/session readiness claims, preserved in recovery/Git history.",
       "legacy_terms": [
         "nifty",
         "nse",

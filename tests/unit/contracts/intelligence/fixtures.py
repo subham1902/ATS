@@ -237,7 +237,7 @@ def make_contracts() -> dict[str, object]:
         schema_version="1.0", strategy_definition_id=uid(40), strategy_definition_version=1,
         name="Trend", strategy_family="trend", status=StrategyStatus.VALIDATED,
         feature_formula_refs=(versioned_ref,), entry_formula_ref=versioned_ref, exit_formula_refs=(),
-        compatible_asset_classes=(AssetClass.CASH_EQUITY,), compatible_venues=("NSE",),
+        compatible_asset_classes=(AssetClass.CASH_EQUITY,), compatible_venues=("OTC",),
         compatible_instruments=("ABC",), compatible_timeframes=("5m",), required_features=("close",),
         required_model_families=(), regime_constraints=(), parameters=(parameter,), origin=StrategyOrigin.HUMAN,
         parent_strategy_ref=None, source_instruction_hash=HASH, validation_report_hash=HASH,

@@ -1971,3 +1971,8 @@ Recovery ZIP verified against all 1,012 original file hashes. The following revi
 - `tests/unit/market/providers/upstox/__pycache__/test_capabilities.cpython-311-pytest-8.4.2.pyc`: DELETE
 - `tests/unit/market/providers/upstox/test_capabilities.py`: DELETE
 - `verify_all_features.py`: DELETE
+
+## Final review before additional cleanup
+
+- FORWARD_TEST_READINESS_REPORT.md: DELETE. It claims removed provider/session readiness. Recovery/Git history retain it.
+- benchmarks/strategy_lab/bench.py: REWRITE FOR XAUUSD. Synthetic benchmark only; no performance authority.

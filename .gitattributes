@@ -1,2 +1,2 @@
 # Fixture manifests hash exact bytes. Preserve those bytes on every checkout.
-backend/src/ats/market/fixtures/*.bars.json -text
+backend/src/ats/market/fixtures/*.bars.json -text whitespace=cr-at-eol

@@ -733,3 +733,5 @@ Architecture: [specialization](docs/architecture/XAUUSD_MT5_SPECIALIZATION.md),
 [shorter remaining execution plan](docs/architecture/ATS_REMAINING_EXECUTION_PLAN.md).
 Generated checkpoint reports: ATS_XAUUSD_MT5_MIGRATION_REPORT.md,
 ATS_METATRADER_STEP1_REPORT.md and ATS_MT5_00_ENVIRONMENT_REPORT.md.
+
+CI portability correction: preserved raw hashed fixture bytes across Git checkouts and guarded the DPAPI loader for Linux typing. The initial remote run exposed these defects; gates were retained. Final cleanup also removed an obsolete forward-readiness report and specialized the synthetic benchmark. See the generated Step 1 report for final exact-HEAD CI.

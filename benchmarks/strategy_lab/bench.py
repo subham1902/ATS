@@ -32,9 +32,9 @@ def _make_bars(n: int = 1000) -> ReplayDataset:
     for i in range(n):
         bars.append(
             ReplayBar(
-                instrument_id="NSE_EQ-RELIANCE",
-                exchange="NSE",
-                segment="CASH",
+                instrument_id="XAUUSD",
+                exchange="OTC",
+                segment="SPOT_METAL",
                 timeframe="5m",
                 bar_timestamp=base + timedelta(minutes=5 * i),
                 open=Decimal("100") + Decimal(i % 10),
@@ -52,9 +52,9 @@ def _make_bars(n: int = 1000) -> ReplayDataset:
         dataset_id=uuid4(),
         dataset_version="v1",
         source_description="bench",
-        instrument="NSE_EQ-RELIANCE",
-        exchange="NSE",
-        segment="CASH",
+        instrument="XAUUSD",
+        exchange="OTC",
+        segment="SPOT_METAL",
         timeframe="5m",
         first_bar=bars[0].bar_timestamp,
         last_bar=bars[-1].bar_timestamp,
