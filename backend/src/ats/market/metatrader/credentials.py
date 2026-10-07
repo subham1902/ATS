@@ -27,8 +27,12 @@ def _crypt(payload: bytes, *, decrypt: bool) -> bytes:
     buffer = (ctypes.c_ubyte * len(payload)).from_buffer_copy(payload)
     source = _Blob(len(payload), buffer)
     target = _Blob()
-    crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    # The loader exists only on Windows; the explicit guard above fails closed elsewhere.
+    load_library = getattr(ctypes, "WinDLL", None)
+    if load_library is None:
+        raise RuntimeError("WINDOWS_CREDENTIAL_VAULT_UNAVAILABLE")
+    crypt32 = load_library("crypt32", use_last_error=True)
+    kernel32 = load_library("kernel32", use_last_error=True)
     operation = crypt32.CryptUnprotectData if decrypt else crypt32.CryptProtectData
     operation.argtypes = [
         ctypes.POINTER(_Blob),
