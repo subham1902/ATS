@@ -120,8 +120,8 @@ def make_bar_observation(
 def make_option_quote_observation(
     *,
     event_time: datetime,
-    underlying: str = "NIFTY",
-    trading_symbol: str = "NIFTY24JUN24000CE",
+    underlying: str = "PARTITION_A",
+    trading_symbol: str = "PARTITION_A24JUN24000CE",
     expiry_date: str = EXPIRY_MONTHLY,
     strike: Decimal = Decimal("24000"),
     option_type: Literal["CE", "PE"] = "CE",
@@ -164,7 +164,7 @@ def make_metadata_observation(
     master_version: str,
     trading_symbol: str,
     expiry_date: str,
-    underlying: str = "NIFTY",
+    underlying: str = "PARTITION_A",
     instrument_type: str = "OPTIDX",
     event_time: datetime | None = None,
     source_lag_ms: int = 3_600_000,
@@ -301,12 +301,12 @@ def scenario_revised_pair() -> tuple[MarketObservation, MarketObservation]:
 def scenario_contract_master_change() -> tuple[MarketObservation, MarketObservation]:
     v1_row = make_metadata_observation(
         master_version=MASTER_VERSION_V1,
-        trading_symbol="NIFTY24JUN24000CE",
+        trading_symbol="PARTITION_A24JUN24000CE",
         expiry_date=EXPIRY_MONTHLY,
     )
     v2_row = make_metadata_observation(
         master_version=MASTER_VERSION_V2,
-        trading_symbol="NIFTY24JUN24100CE",
+        trading_symbol="PARTITION_A24JUN24100CE",
         expiry_date=EXPIRY_WEEKLY,
         event_time=SESSION_START - timedelta(days=1),
         source_lag_ms=3_600_000,

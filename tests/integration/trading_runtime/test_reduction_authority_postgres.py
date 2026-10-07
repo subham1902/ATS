@@ -274,7 +274,8 @@ def test_partial_fill_restart_and_duplicate_full_fill_are_exactly_once(
     acknowledged = service.submit(authorized, broker=broker, submitted_at=request.issued_at)
     assert acknowledged.state.value == "ACKNOWLEDGED"
     order_id = f"paper-{request.idempotency_key}"
-    seed_fill(broker, 
+    seed_fill(
+        broker,
         order_id,
         Decimal("101"),
         Decimal("4"),
@@ -295,7 +296,8 @@ def test_partial_fill_restart_and_duplicate_full_fill_are_exactly_once(
     assert snapshot.payload["position"]["net_quantity"] == "6"
     assert snapshot.payload["reductions"][0]["remaining_quantity"] == "6"
 
-    seed_fill(broker, 
+    seed_fill(
+        broker,
         order_id,
         Decimal("102"),
         Decimal("10"),
@@ -347,7 +349,7 @@ def _runtime(
         )
 
     return TradingRuntime(
-        config=RuntimeConfig(calendar=calendar),
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=calendar),
         market_feed=InMemoryMarketFeed(),
         broker=broker,
         reduction_authority=ReductionAuthorityService(manager),
@@ -369,7 +371,8 @@ def test_trading_runtime_dashboard_exit_uses_durable_reduction_path(
     assert result["execution_state"] == "ACKNOWLEDGED"
     assert str(request.position_id) in runtime.state.open_positions
     order_id = f"paper-{request.idempotency_key}"
-    seed_fill(broker, 
+    seed_fill(
+        broker,
         order_id,
         Decimal("101"),
         request.requested_quantity,
@@ -400,7 +403,7 @@ def test_trading_runtime_automatic_exit_uses_same_durable_reduction_path(
     result = runtime.process_event(
         RuntimeEvent(
             kind=RuntimeEventKind.THESIS_INVALIDATED,
-            instrument_id=record.position.instrument_id,
+            instrument_id=None,
             payload={},
             at=request.issued_at,
         )
@@ -418,7 +421,7 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
     second_position = _validated(
         first_record.position,
         position_id=uid(970),
-        instrument_id="BANKNIFTY-TEST-ONLY",
+        instrument_id="BANKSYMBOL-TEST-ONLY",
     )
     second_advisory = _validated(first_request.advisory, advisory_id=uid(978))
     second_candidate = _validated(
@@ -454,7 +457,7 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
         risk_decision=second_risk,
         historical_candidate=second_candidate,
         advisory=second_advisory,
-        idempotency_key="reduction:banknifty:v1:full:flatten",
+        idempotency_key="reduction:partition_b:v1:full:flatten",
     )
     store = PositionAuthorityStore(manager)
     store.persist_open(first_record)
@@ -475,7 +478,8 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
         str(first_request.reduction_id),
         str(second_request.reduction_id),
     }
-    seed_fill(broker, 
+    seed_fill(
+        broker,
         f"paper-{first_request.idempotency_key}",
         Decimal("101"),
         first_request.requested_quantity,
@@ -485,7 +489,8 @@ def test_runtime_flatten_uses_distinct_authority_per_durable_position(
         str(first_request.position_id), first_request.issued_at + timedelta(seconds=1)
     )
     assert len(runtime.state.open_positions) == 1
-    seed_fill(broker, 
+    seed_fill(
+        broker,
         f"paper-{second_request.idempotency_key}",
         Decimal("202"),
         second_request.requested_quantity,

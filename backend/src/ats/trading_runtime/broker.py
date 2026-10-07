@@ -33,7 +33,7 @@ from ats.execution.paper.models import (
     PaperMarketFacts,
 )
 from ats.kernel.types import KernelResult
-from ats.market.derivatives.contract_master import DerivativeInstrument
+from ats.market.domain import InstrumentMetadata
 from ats.trading_runtime.lot_size import LotSizeError, LotSizeRegistry
 
 from .position_monitor import MonitoredPosition
@@ -180,7 +180,7 @@ class PaperBrokerAdapter:
         base_slippage_ticks: int = 0,
         tick_size: Decimal = Decimal("0.05"),
         policy: PaperExecutionPolicy | None = None,
-        instrument: DerivativeInstrument | None = None,
+        instrument: InstrumentMetadata | None = None,
     ) -> None:
         self._healthy = healthy
         self._lot_size_registry = lot_size_registry
@@ -258,9 +258,7 @@ class PaperBrokerAdapter:
                 policy=self._require_policy(),
                 evaluation_time=now,
             )
-            self._orders[order_id] = self._order_status_from_result(
-                order_id, result.order, now
-            )
+            self._orders[order_id] = self._order_status_from_result(order_id, result.order, now)
             if result.fills:
                 self._pending_fills[order_id] = list(result.fills)
         return self._orders[order_id]
@@ -302,9 +300,7 @@ class PaperBrokerAdapter:
                 policy=self._require_policy(),
                 evaluation_time=now,
             )
-            self._orders[order_id] = self._order_status_from_result(
-                order_id, result.order, now
-            )
+            self._orders[order_id] = self._order_status_from_result(order_id, result.order, now)
             if result.fills:
                 self._pending_exit_fills[order_id] = list(result.fills)
         return self._orders[order_id]
@@ -401,7 +397,7 @@ class PaperBrokerAdapter:
             )
         return existing
 
-    def _require_instrument(self) -> DerivativeInstrument:
+    def _require_instrument(self) -> InstrumentMetadata:
         if self._instrument is None:
             raise RuntimeError("PaperBrokerAdapter requires instrument for canonical fills")
         return self._instrument

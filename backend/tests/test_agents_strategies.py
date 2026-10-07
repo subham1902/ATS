@@ -7,9 +7,7 @@ named for, and must derive its geometry from ATR rather than point constants.
 from __future__ import annotations
 
 import pytest
-from ats.agents.features import Bar
-from ats.agents.strategies import (
-    STRATEGY_REGISTRY,
+from ats.strategies.definitions import (
     evaluate_strategy,
     strategy_counter_trend,
     strategy_donchian_trend,
@@ -18,6 +16,7 @@ from ats.agents.strategies import (
     strategy_volatility_expansion,
     strategy_zscore_reversion,
 )
+from ats.strategies.features import Bar
 
 
 def _mk(
@@ -39,13 +38,6 @@ def _mk(
             )
         )
     return out
-
-
-def test_registry_covers_every_signal_source():
-    from ats.agents.portfolio import MANDATES
-
-    for m in MANDATES:
-        assert m.signal_source in STRATEGY_REGISTRY, f"{m.agent}: {m.signal_source} missing"
 
 
 def test_unknown_signal_source_abstains():

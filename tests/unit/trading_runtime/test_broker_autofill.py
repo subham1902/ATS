@@ -21,16 +21,18 @@ from ats.execution.paper.models import (
 from ats.kernel.types import ALLOW, GateCode, KernelOutcome, KernelResult
 from ats.trading_runtime.broker import OrderRequest, PaperBrokerAdapter
 
-from tests.unit.trading_runtime.exit_authorization_doubles import test_intent_binding
+from tests.unit.trading_runtime.exit_authorization_doubles import (
+    test_intent_binding as intent_binding_fixture,
+)
 
-from .helpers import NIFTY, NOW, instrument, market_facts, policy
+from .helpers import NOW, SYMBOL, instrument, market_facts, policy
 
 DENY = KernelResult(outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,))
 
 
 def _request(**updates: object) -> OrderRequest:
     values: dict[str, object] = {
-        "instrument_id": NIFTY,
+        "instrument_id": SYMBOL,
         "side": "BUY",
         "quantity": Decimal("65"),
         "order_type": "MARKET",
@@ -39,7 +41,7 @@ def _request(**updates: object) -> OrderRequest:
         "intent_id": "11111111-1111-1111-1111-111111111111",
         # Sits below the orchestrator, so an unbound request must be refused
         # rather than given invented provenance. Opt in explicitly.
-        "binding": test_intent_binding(),
+        "binding": intent_binding_fixture(),
     }
     values.update(updates)
     return OrderRequest(**values)
@@ -98,7 +100,7 @@ def test_limit_order_not_filled_when_above_limit() -> None:
 def test_rejection_returns_rejected_status() -> None:
     b = _broker()
     facts = PaperMarketFacts(
-        instrument_id=NIFTY,
+        instrument_id=SYMBOL,
         bid=Decimal("99"),
         ask=Decimal("101"),
         bid_quantity=130,

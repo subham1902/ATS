@@ -95,8 +95,8 @@ def test_bid_without_ask_is_rejected() -> None:
     with pytest.raises(ValueError, match="provided together"):
         OptionChainQuotePayload(
             payload_kind=ObservationKind.OPTION_CHAIN_QUOTE,
-            underlying="NIFTY",
-            trading_symbol="NIFTY24JUN24000CE",
+            underlying="PARTITION_A",
+            trading_symbol="PARTITION_A24JUN24000CE",
             expiry_date="2024-06-27",
             strike=Decimal("24000"),
             option_type=HistoricalOptionType.CALL,

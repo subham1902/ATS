@@ -13,7 +13,7 @@ from ats.execution.paper.models import (
     PaperSubmissionScenario,
 )
 from ats.market.calendar.models import SessionCalendar
-from ats.market.derivatives.contract_master import DerivativeInstrument
+from ats.market.domain import InstrumentMetadata
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.exit_authorization import ExitAuthorizationProvider
 from ats.trading_runtime.orchestrator import (
@@ -24,8 +24,8 @@ from ats.trading_runtime.orchestrator import (
     _default_authorization,
 )
 
-NIFTY = "C1"
-NIFTY_FULL = "NIFTY:CE"
+SYMBOL = "XAUUSD"
+SYMBOL_FULL = "XAUUSD"
 
 NOW = datetime(2026, 8, 24, 4, 0, tzinfo=UTC)
 
@@ -43,16 +43,16 @@ def calendar() -> SessionCalendar:
     )
 
 
-def instrument() -> DerivativeInstrument:
-    from tests.unit.market.derivatives.option_chain.helpers import master
+def instrument() -> InstrumentMetadata:
+    from tests.unit.market.xauusd import instrument as market_instrument
 
-    return next(i for i in master().instruments if i.instrument_id == NIFTY)
+    return market_instrument()
 
 
 def policy() -> PaperExecutionPolicy:
     return PaperExecutionPolicy(
-        broker_model_version="DERIVATIVE-PAPER-V1",
-        cost_model_version="NSE-PAPER-COST-V1",
+        broker_model_version="XAUUSD-PAPER-V1",
+        cost_model_version="SYNTHETIC-COST-V1",
         maximum_quote_age_ms=60000,
         slippage_ticks=2,
         fee_fraction=Decimal("0.001"),
@@ -62,7 +62,7 @@ def policy() -> PaperExecutionPolicy:
 
 def market_facts(
     *,
-    instrument_id: str = NIFTY,
+    instrument_id: str = SYMBOL,
     bid: Decimal = Decimal("99"),
     ask: Decimal = Decimal("101"),
     bid_quantity: int = 130,
@@ -101,9 +101,7 @@ def deny_all(result: dict) -> object:
     from ats.kernel.types import GateCode, KernelOutcome, KernelResult
 
     _ = result
-    return KernelResult(
-        outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,)
-    )
+    return KernelResult(outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,))
 
 
 def build_orchestrator(
@@ -117,7 +115,7 @@ def build_orchestrator(
     opening_capital: Decimal = Decimal("100000"),
     at: UTCDateTime = NOW,
     cal: SessionCalendar | None = None,
-    inst: DerivativeInstrument | None = None,
+    inst: InstrumentMetadata | None = None,
     pol: PaperExecutionPolicy | None = None,
 ) -> AutonomousPaperOrchestrator:
     """Build an orchestrator for tests.
@@ -134,7 +132,7 @@ def build_orchestrator(
     pol = pol or policy()
     broker = broker or PaperBrokerAdapter(policy=pol, instrument=inst)
     feed = feed or InMemoryMarketFeed()
-    feed.set_mark("NIFTY", Decimal("25000"), at)
+    feed.set_mark("XAUUSD", Decimal("25000"), at)
     feed.set_mark(inst.instrument_id, Decimal("101"), at)
     orch = AutonomousPaperOrchestrator(
         calendar=cal or calendar(),

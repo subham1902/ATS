@@ -81,6 +81,8 @@ jobs:
       # These were previously never executed by CI at all.
       - name: Smoke tests
         run: uv run python -m pytest tests/smoke -q --junitxml=junit-smoke.xml
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -103,6 +105,8 @@ jobs:
       - run: uv sync --frozen
       - name: Contract tests (architecture guards)
         run: uv run python -m pytest tests/contract -q --junitxml=junit-contract.xml
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -127,6 +131,8 @@ jobs:
         # No -x: fail-fast hides the true failure surface behind the first
         # red test. The JUnit artifact records every outcome instead.
         run: uv run python -m pytest tests/unit backend/tests -q --junitxml=junit-unit.xml
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -149,6 +155,8 @@ jobs:
       - run: uv sync --frozen
       - name: Property tests
         run: uv run python -m pytest tests/property -q --junitxml=junit-property.xml
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -207,6 +215,8 @@ jobs:
         run: >
           uv run python scripts/ci/assert_critical_tests_ran.py
           junit-integration.xml junit-faults.xml --strict-names
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -257,6 +267,8 @@ jobs:
         run: |
           uv run coverage report --include="*/ats/contracts/*" --fail-under=93
           uv run coverage report --include="*/ats/kernel/*" --fail-under=82
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
       - name: Report (informational, all modules)
         if: always()
         run: uv run coverage report || true
@@ -293,6 +305,8 @@ jobs:
         run: pnpm -r test
       - name: Production build
         run: pnpm --filter @ats/control-center build
+      - name: Assert frontend preserves tracked inputs
+        run: git diff --exit-code
 
   secret-scan:
     name: Secret Scan

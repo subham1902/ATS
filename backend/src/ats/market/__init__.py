@@ -1,6 +1,6 @@
 """Deterministic Alpha market replay and explicit session calendars."""
 
-from .calendar import SessionCalendar, SessionOverride, nse_cash_alpha_v1_calendar
+from .calendar import SessionCalendar, SessionOverride, xauusd_test_calendar
 from .fabric import (
     BarInterval,
     BarSnapshot,
@@ -45,5 +45,5 @@ __all__ = [
     "BarInterval",
     "BarSnapshot",
     "FabricCounters",
-    "nse_cash_alpha_v1_calendar",
+    "xauusd_test_calendar",
 ]

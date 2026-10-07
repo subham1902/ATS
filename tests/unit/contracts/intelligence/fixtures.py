@@ -156,10 +156,10 @@ def make_contracts() -> dict[str, object]:
     )
     instrument = InstrumentSpec(
         schema_version="1.0", instrument_spec_id=uid(1), instrument_spec_version=1,
-        instrument_id="ABC", asset_class=AssetClass.CASH_EQUITY, venue="NSE", symbol="ABC",
+        instrument_id="ABC", asset_class=AssetClass.CASH_EQUITY, venue="OTC", symbol="ABC",
         base_asset=None, quote_currency="INR", settlement_currency="INR",
         tick_size=Decimal("0.05"), quantity_step=Decimal("1"), minimum_quantity=Decimal("1"),
-        contract_multiplier=Decimal("1"), timezone="Asia/Calcutta", session_calendar_id="NSE",
+        contract_multiplier=Decimal("1"), timezone="UTC", session_calendar_id="UTC_RESEARCH",
         trading_hours_profile="REGULAR", shortability=Shortability.ALLOWED,
         leverage_allowed=False, maximum_leverage=None, fee_model_id="fees.v1",
         funding_model_id=None, corporate_action_policy_id=None, supported_timeframes=("5m",),

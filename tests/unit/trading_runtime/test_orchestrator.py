@@ -14,23 +14,23 @@ from ats.trading_runtime.broker import InMemoryMarketFeed
 from tests.unit.trading_runtime.exit_authorization_doubles import allow_all_with_binding
 
 from .helpers import (
-    NIFTY,
     NOW,
+    SYMBOL,
     allow_all,
     build_orchestrator,
     deny_all,
     market_facts,
 )
 
-INDEX = "NIFTY"
+INDEX = "XAUUSD"
 PREV = Decimal("25000")
 BULL_MARK = Decimal("25600")  # edge_r 0.24 >= 0.2 and change>=0.003 -> candidate
 
 
 def _facts_provider(iid: str, at):
-    if iid == NIFTY:
+    if iid == SYMBOL:
         return market_facts(
-            instrument_id=NIFTY,
+            instrument_id=SYMBOL,
             bid=Decimal("99"),
             ask=Decimal("101"),
             bid_quantity=130,
@@ -48,7 +48,7 @@ def _fresh_orchestrator(
 ):
     feed = InMemoryMarketFeed()
     feed.set_mark(INDEX, PREV, at)
-    feed.set_mark(NIFTY, Decimal("101"), at)
+    feed.set_mark(SYMBOL, Decimal("101"), at)
     return build_orchestrator(
         market_facts_provider=_facts_provider,
         feed=feed,

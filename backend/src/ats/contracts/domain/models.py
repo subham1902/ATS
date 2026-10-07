@@ -69,8 +69,8 @@ class MarketSnapshot(ATSBaseModel):
     schema_version: SchemaV1 = "1.0"
     snapshot_id: OpaqueId
     instrument_id: InstrumentId
-    exchange: Literal["NSE"]
-    segment: Literal["CASH"]
+    exchange: Literal["OTC"]
+    segment: Literal["SPOT_METAL"]
     timeframe: Literal["5m"]
     bar_timestamp: UTCDateTime
     received_at: UTCDateTime

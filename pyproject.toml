@@ -53,9 +53,6 @@ markers = [
 branch = true
 source = ["backend/src/ats"]
 parallel = true
-omit = [
-  "*/ats/market/feeds/upstox_v3/proto/*",  # generated protobuf
-]
 
 [tool.coverage.report]
 show_missing = true
@@ -78,7 +75,6 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
-"backend/src/ats/market/feeds/upstox_v3/proto/MarketDataFeedV3_pb2.*" = ["ALL"]
 "backend/src/ats/agents/*" = ["E501"]
 "backend/tests/test_agents_playground.py" = ["E501"]
 # Test files carry long literal payloads (seeds, JSON envelopes, SQL). Wrapping
@@ -89,11 +85,3 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.11"
 strict = true
 files = ["backend/src"]
-
-[[tool.mypy.overrides]]
-module = ["google.protobuf.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["ats.market.feeds.upstox_v3.proto.MarketDataFeedV3_pb2"]
-ignore_errors = true

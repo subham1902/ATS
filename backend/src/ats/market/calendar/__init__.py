@@ -1,5 +1,5 @@
-"""Versioned, explicit NSE CASH session calendars."""
+"""Versioned, explicit UTC research session calendars."""
 
-from .models import SessionCalendar, SessionOverride, nse_cash_alpha_v1_calendar
+from .models import SessionCalendar, SessionOverride, xauusd_test_calendar
 
-__all__ = ["SessionCalendar", "SessionOverride", "nse_cash_alpha_v1_calendar"]
+__all__ = ["SessionCalendar", "SessionOverride", "xauusd_test_calendar"]

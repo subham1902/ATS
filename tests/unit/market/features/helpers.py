@@ -28,8 +28,8 @@ def snapshot(
     value = MarketSnapshot(
         snapshot_id=uuid5(ATS_FIXTURE_NAMESPACE, f"r01/snapshot/{sequence}/{instrument}"),
         instrument_id=instrument,
-        exchange="NSE",
-        segment="CASH",
+        exchange="OTC",
+        segment="SPOT_METAL",
         timeframe=timeframe,
         bar_timestamp=timestamp,
         received_at=timestamp + timedelta(milliseconds=250),

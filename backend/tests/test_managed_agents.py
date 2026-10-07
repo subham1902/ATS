@@ -28,7 +28,7 @@ def _create(client, **overrides):
         "model": "acme-large",
         "system_instructions": "Analyze, never execute.",
         "capabilities": ["READ_MARKET_DATA", "RUN_RESEARCH", "GENERATE_REPORT"],
-        "data_scopes": ["MARKET_DATA", "HISTORICAL_DATA"],
+        "data_scopes": ["XAUUSD_LIVE_MARKET", "XAUUSD_HISTORICAL"],
         "research_scopes": ["REGIME"],
         "timeout_s": 300,
         "max_concurrency": 2,

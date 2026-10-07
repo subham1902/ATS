@@ -30,8 +30,8 @@ class ReplayManifest(ATSBaseModel):
     dataset_version: NonEmptyStr
     source_description: NonEmptyStr
     instrument: InstrumentId
-    exchange: Literal["NSE"]
-    segment: Literal["CASH"]
+    exchange: Literal["OTC"]
+    segment: Literal["SPOT_METAL"]
     timeframe: Literal["5m"]
     first_bar: UTCDateTime
     last_bar: UTCDateTime
@@ -49,8 +49,8 @@ class ReplayManifest(ATSBaseModel):
 
 class ReplayBar(ATSBaseModel):
     instrument_id: InstrumentId
-    exchange: Literal["NSE"]
-    segment: Literal["CASH"]
+    exchange: Literal["OTC"]
+    segment: Literal["SPOT_METAL"]
     timeframe: Literal["5m"]
     bar_timestamp: UTCDateTime
     open: PositiveDecimal

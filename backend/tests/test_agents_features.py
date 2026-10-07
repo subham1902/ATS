@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from ats.agents.features import (
+from ats.strategies.features import (
     Bar,
     TickAggregator,
     atr,
@@ -83,9 +83,15 @@ def test_vwap_volume_weighted():
     assert vwap(bars) == pytest.approx(17.5)
 
 
-def test_vwap_falls_back_without_volume():
+def test_vwap_stays_unknown_without_volume():
     bars = [_bar(10, 12, 8, 10), _bar(20, 22, 18, 20)]
-    assert vwap(bars) == pytest.approx(15.0)
+    assert vwap(bars) is None
+
+
+def test_atr_uses_same_wilder_gap_and_seed_definition_as_chart():
+    bars = [_bar(10, 11, 9, 10), _bar(13, 14, 11, 13), _bar(13, 14, 12, 13), _bar(17, 18, 15, 17)]
+    assert atr(bars[:3], period=3) == pytest.approx(8 / 3)
+    assert atr(bars, period=3) == pytest.approx(((8 / 3) * 2 + 5) / 3)
 
 
 def test_donchian_excludes_forming_bar():

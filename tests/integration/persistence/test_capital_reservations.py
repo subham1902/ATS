@@ -47,7 +47,7 @@ def request(index: int, amount: str = "200000") -> CapitalReservationRequest:
         portfolio_id=PORTFOLIO_ID,
         campaign_id=CAMPAIGN_ID,
         candidate_id=UUID(f"62000000-0000-0000-0000-{index:012d}"),
-        instrument_id="NIFTY-CE",
+        instrument_id="PARTITION_A-CE",
         amount=Decimal(amount),
         requested_at=NOW + timedelta(seconds=index),
     )

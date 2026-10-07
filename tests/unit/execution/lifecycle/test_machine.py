@@ -32,7 +32,7 @@ from tests.unit.execution.paper.helpers import (
     market,
     policy,
 )
-from tests.unit.market.derivatives.option_chain.helpers import AS_OF
+from tests.unit.market.xauusd import AS_OF
 
 ALLOW = KernelResult(outcome=KernelOutcome.ALLOW, reason_codes=(GateCode.OK,))
 

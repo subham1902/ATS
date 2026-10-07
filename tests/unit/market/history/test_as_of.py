@@ -69,9 +69,9 @@ def test_known_expiries_grow_only_at_master_change_availability() -> None:
     )
     switch_instant = v2_row.times.available_to_strategy_time
     before = dataset.known_expiries_as_of(
-        "NIFTY", at_time=switch_instant - timedelta(milliseconds=1)
+        "PARTITION_A", at_time=switch_instant - timedelta(milliseconds=1)
     )
-    after = dataset.known_expiries_as_of("NIFTY", at_time=switch_instant)
+    after = dataset.known_expiries_as_of("PARTITION_A", at_time=switch_instant)
     assert before == (EXPIRY_MONTHLY,)
     assert after == tuple(sorted({EXPIRY_MONTHLY, EXPIRY_WEEKLY}))
 
@@ -81,8 +81,8 @@ def test_latest_metadata_switches_with_availability_ordering() -> None:
     dataset = build_test_dataset(
         (v1_row, v2_row), contract_master_version="NSE_TEST_MASTER_V2"
     )
-    symbol_v1 = "NIFTY24JUN24000CE"
-    symbol_v2 = "NIFTY24JUN24100CE"
+    symbol_v1 = "PARTITION_A24JUN24000CE"
+    symbol_v2 = "PARTITION_A24JUN24100CE"
     latest_before = dataset.latest_contract_metadata_as_of(
         symbol_v1,
         at_time=v2_row.times.available_to_strategy_time - timedelta(milliseconds=1),

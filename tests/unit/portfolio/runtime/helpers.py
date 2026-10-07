@@ -67,8 +67,8 @@ def policy(*, maximum: int = 2) -> PortfolioAuthorityPolicy:
     return PortfolioAuthorityPolicy(
         maximum_active_reservations=maximum,
         market_limits=(
-            PartitionCapitalLimit(partition_key="NIFTY", maximum_capital=Decimal("300000")),
-            PartitionCapitalLimit(partition_key="BANKNIFTY", maximum_capital=Decimal("300000")),
+            PartitionCapitalLimit(partition_key="PARTITION_A", maximum_capital=Decimal("300000")),
+            PartitionCapitalLimit(partition_key="PARTITION_B", maximum_capital=Decimal("300000")),
         ),
         strategy_limits=(
             PartitionCapitalLimit(partition_key="STEEL_THREAD", maximum_capital=Decimal("400000")),

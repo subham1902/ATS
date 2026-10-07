@@ -1,0 +1,97 @@
+.page {
+  line-height: 1.5;
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.page h1 {
+  margin-bottom: 8px;
+}
+.page h2 {
+  font-size: 20px;
+  margin-top: 0;
+}
+.page button,
+.page input,
+.page select {
+  font: inherit;
+  min-height: 44px;
+  border: 1px solid #a7b3bf;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.page button {
+  cursor: pointer;
+  background: #fff;
+  color: #142331;
+}
+.page button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.page :focus-visible {
+  outline: 3px solid #245b91;
+  outline-offset: 3px;
+}
+.notice {
+  padding: 16px;
+  border-left: 4px solid #916717;
+  background: #fff7e5;
+}
+.error {
+  color: #812424;
+  padding: 16px;
+  background: #fff0f0;
+}
+.form,
+.card {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #d5dce2;
+  border-radius: 8px;
+  margin-top: 24px;
+}
+.fields,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr;
+  gap: 8px;
+}
+.metrics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.metrics dt {
+  color: #4b5c6a;
+}
+.live,
+.badge {
+  padding: 8px 12px;
+  font-weight: 600;
+  background: #eff3f6;
+}
+.live {
+  background: #fff0eb;
+  color: #882b11;
+  border-left: 4px solid #aa3917;
+}

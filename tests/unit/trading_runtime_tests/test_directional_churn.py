@@ -16,7 +16,7 @@ def test_same_direction_churn_blocked() -> None:
 
     # Exited BULLISH 10 minutes ago, trying to enter BULLISH again (blocked)
     facts_same = ChurnFacts(
-        instrument_id="NIFTY",
+        instrument_id="XAUUSD",
         direction="BULLISH",
         thesis_id=None,
         expected_edge_r=0.25,
@@ -45,7 +45,7 @@ def test_opposite_direction_after_exit_allowed_if_cooldown_passed() -> None:
     # but within 30m directional cooldown).
     # Trying to enter BEARISH -> allowed because direction is different!
     facts_opposite = ChurnFacts(
-        instrument_id="NIFTY",
+        instrument_id="XAUUSD",
         direction="BEARISH",
         thesis_id=None,
         expected_edge_r=0.25,

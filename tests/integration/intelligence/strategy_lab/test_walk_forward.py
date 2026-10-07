@@ -16,8 +16,8 @@ def _bars(n: int = 30) -> ReplayDataset:
         bars.append(
             ReplayBar(
                 instrument_id="NSE_EQ-TCS",
-                exchange="NSE",
-                segment="CASH",
+                exchange="OTC",
+                segment="SPOT_METAL",
                 timeframe="5m",
                 bar_timestamp=base + timedelta(minutes=5 * i),
                 open=Decimal("100"),
@@ -36,8 +36,8 @@ def _bars(n: int = 30) -> ReplayDataset:
         dataset_version="v1",
         source_description="test",
         instrument="NSE_EQ-TCS",
-        exchange="NSE",
-        segment="CASH",
+        exchange="OTC",
+        segment="SPOT_METAL",
         timeframe="5m",
         first_bar=bars[0].bar_timestamp,
         last_bar=bars[-1].bar_timestamp,

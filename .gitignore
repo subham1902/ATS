@@ -40,7 +40,6 @@ ATS_*.jsonl
 
 # Captured market-data journals and runtime ledgers (regenerable)
 backend/data/market_journal/
-data/agents/upstox_live_trades_ledger.json
 
 # Operator runtime state (pids, logs)
 scripts/ats-runtime/
@@ -50,10 +49,6 @@ frontend/**/smoke-test.js
 frontend/**/smoke-test.mjs
 
 # Collected market-data caches (regenerable from live feeds / brokers)
-data/raw/upstox/sessions/
-data/raw/upstox/banknifty_option_chain.json
-data/raw/upstox/nifty_option_chain.json
-data/raw/upstox/upstox_bod_instruments_master.csv
 data/replays/
 data/historical/*/observations.jsonl
 data/historical/calibration_stores/
@@ -61,3 +56,7 @@ data/historical/calibration_store_v1.json
 data/market_journal/
 .coverage
 coverage.xml
+# Local account secrets and canonical market/research runtime artifacts
+data/system/credentials/
+data/system/accounts/
+data/xauusd/

@@ -1,1 +1,0 @@
-"""Contract-master unit tests."""

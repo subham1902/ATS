@@ -13,8 +13,8 @@ from ats.trading_runtime.position_monitor import (
 
 def _pos(**overrides: object) -> MonitoredPosition:
     base: dict[str, object] = {
-        "position_id": "NIFTY:1",
-        "instrument_id": "NIFTY",
+        "position_id": "XAUUSD:1",
+        "instrument_id": "XAUUSD",
         "entry_price": Decimal("100"),
         "current_mark": Decimal("101"),
         "quantity": Decimal("75"),

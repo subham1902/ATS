@@ -67,7 +67,7 @@ def context(
         schema_version="1.0",
         market_context_id=UUID("20000000-0000-0000-0000-000000000001"),
         instrument_spec_id=UUID("20000000-0000-0000-0000-000000000002"),
-        instrument_id="NIFTY",
+        instrument_id="PARTITION_A",
         snapshot_id=current.snapshot_id,
         feature_bundle_id=current.feature_bundle_id,
         timeframe="5m",

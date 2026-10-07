@@ -43,31 +43,31 @@ def _runtime(*, real_authority: bool = False) -> TradingRuntime:
         )
         authority = PortfolioAuthorityService(portfolio_authority=actor)
     runtime = TradingRuntime(
-        config=RuntimeConfig(calendar=calendar),
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=calendar),
         market_feed=InMemoryMarketFeed(),
         broker=PaperBrokerAdapter(),
         authority=authority,
     )
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), NOW)
+    runtime.handle_fill("XAUUSD:1", Decimal("100"), Decimal("75"), NOW)
     return runtime
 
 
 def test_exit_request_is_idempotent_and_does_not_close_before_fill() -> None:
     runtime = _runtime()
-    first = runtime.request_exit("NIFTY:1", NOW, source="DASHBOARD")
-    second = runtime.request_exit("NIFTY:1", NOW, source="DASHBOARD")
+    first = runtime.request_exit("XAUUSD:1", NOW, source="DASHBOARD")
+    second = runtime.request_exit("XAUUSD:1", NOW, source="DASHBOARD")
     assert first["accepted"] and not first["idempotent"]
     assert second["accepted"] and second["idempotent"]
-    assert "NIFTY:1" in runtime.state.open_positions
+    assert "XAUUSD:1" in runtime.state.open_positions
     assert len(runtime.state.pending_exits) == 1
-    runtime.handle_exit_fill("NIFTY:1", NOW)
-    assert "NIFTY:1" not in runtime.state.open_positions
+    runtime.handle_exit_fill("XAUUSD:1", NOW)
+    assert "XAUUSD:1" not in runtime.state.open_positions
     assert runtime.state.pending_exits == {}
 
 
 def test_flatten_is_per_position_idempotent() -> None:
     runtime = _runtime()
-    runtime.handle_fill("BANKNIFTY:1", Decimal("200"), Decimal("15"), NOW)
+    runtime.handle_fill("XAUUSD:second-1", Decimal("200"), Decimal("15"), NOW)
     assert len(runtime.request_flatten(NOW, source="DASHBOARD")) == 2
     repeated = runtime.request_flatten(NOW, source="DASHBOARD")
     assert all(item["idempotent"] for item in repeated)
@@ -77,8 +77,8 @@ def test_flatten_is_per_position_idempotent() -> None:
 
 def test_authority_runtime_fails_closed_without_frozen_exit_evidence() -> None:
     runtime = _runtime(real_authority=True)
-    result = runtime.request_exit("NIFTY:1", NOW, source="DASHBOARD")
+    result = runtime.request_exit("XAUUSD:1", NOW, source="DASHBOARD")
     assert result["accepted"]
     assert not result["authorized"]
     assert "EXIT_EVIDENCE_REQUIRED" in result["reasons"]
-    assert "NIFTY:1" in runtime.state.open_positions
+    assert "XAUUSD:1" in runtime.state.open_positions

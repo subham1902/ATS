@@ -1,179 +1,104 @@
-"""Operator console application factory.
-
-This is the **served** ATS application (``uvicorn ats.console.app:app``). It is a
-different boundary from the A05 read-only control surface in :mod:`ats.api`:
-
-* it mounts the operator workbench routers (market data, strategy registry,
-  strategy lab, datasets, agents, optimizations, settings, broker manifest,
-  AI/Laya bridge) on top of the A05 projection;
-* it owns the process lifespan -- market journal, live feed worker, continuous
-  optimization worker and the agents playground worker;
-* it serves the market WebSocket channels.
-
-It holds **no financial authority**. It cannot construct an ``OrderIntent``,
-cannot mint an ``AutonomyToken`` and cannot route to a broker gateway; order
-authorization remains exclusively in the A04 authority chain. That boundary is
-enforced by ``tests/contract/api/test_console_boundary.py``.
-"""
+"""XAUUSD operator console; deterministic A04 retains all financial authority."""
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC
+from threading import RLock
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
+from ats.agents.managed_router import router as managed_router
 from ats.api.app import _register_exception_handlers, build_a05_router
 from ats.api.providers import ControlPlaneReader
+from ats.console.accounts_router import router as accounts_router
+from ats.console.accounts_router import service_of
+from ats.console.ai_router import router as ai_router
 from ats.console.cors import resolve_cors_origins
+from ats.console.datasets_router import router as datasets_router
+from ats.console.market_router import router as market_router
+from ats.console.providers import LiveControlPlaneReader
+from ats.console.runtime_router import router as runtime_router
+from ats.console.strategy_registry import router as strategy_router
+from ats.market.domain import XauUsdDomain
 from ats.market.fabric import MarketDataFabric
-
-from .ai_router import router as ai_router
-from .broker_router import router as broker_router
-from .datasets_router import router as datasets_router
-from .governance_router import router as governance_router
-from .imported_strategies_router import router as imported_strategies_router
-from .laya_router import router as laya_router
-from .market_router import router as market_router
-from .providers import LiveControlPlaneReader
-from .runtime_router import router as runtime_router
-from .settings_router import router as settings_router
-from .strategy_lab_router import router as strategy_lab_router
-from .strategy_registry import router as strategy_registry_router
+from ats.market.metatrader.account_service import AccountService
+from ats.market.metatrader.connector import MetaTraderConnector
+from ats.market.metatrader.mt4 import Mt4Transport
+from ats.market.metatrader.mt5 import Mt5Transport
+from ats.market.metatrader.worker import MetaTraderWorker
+from ats.trading_runtime.runtime_provider import TradingRuntimeProvider
 
 CONSOLE_ROUTERS = (
+    accounts_router,
     runtime_router,
     market_router,
-    imported_strategies_router,
-    strategy_registry_router,
-    settings_router,
-    broker_router,
-    ai_router,
-    governance_router,
-    strategy_lab_router,
-    laya_router,
     datasets_router,
+    strategy_router,
+    managed_router,
+    ai_router,
 )
-
-
-def _seed_demo_fabric(fabric: MarketDataFabric) -> None:
-    """Attach a single synthetic GOLDM tick so the console has a first paint.
-
-    This is a DEMO seed only. It is published once at startup so an operator can
-    see the console render without a broker session; it is not market data and
-    must never be treated as a price signal. Live sessions overwrite it as soon
-    as a provider attaches.
-    """
-    from datetime import datetime
-    from decimal import Decimal
-
-    from ats.market.feeds.upstox_v3.messages import NormalizedFeedUpdate, UpdateKind
-
-    now = datetime.now(UTC)
-    fabric.publish(
-        NormalizedFeedUpdate(
-            instrument_key="MCX_FO|569003",
-            kind=UpdateKind.OPTION,
-            received_at=now,
-            exchange_timestamp=now,
-            last_traded_price=Decimal("75420.00"),
-            close_price=Decimal("75250.00"),
-            bid_price=Decimal("75418.00"),
-            ask_price=Decimal("75422.00"),
-            bid_quantity=10,
-            ask_quantity=10,
-            volume=14520,
-            open_interest=3240,
-        )
-    )
 
 
 def create_console_app(
     reader: ControlPlaneReader | None = None,
     fabric: MarketDataFabric | None = None,
+    connector: MetaTraderConnector | None = None,
+    account_service: AccountService | None = None,
 ) -> FastAPI:
-    """Create the served operator console app (workbench + A05 projection)."""
-    from ats.agents.managed_router import router as managed_agents_router
-    from ats.agents.router import router as agents_router
-    from ats.optimization.router import router as optimization_router
-    from ats.trading_runtime.runtime_provider import TradingRuntimeProvider
+    domain = XauUsdDomain.from_environment()
+    terminal = connector or MetaTraderConnector(
+        domain, Mt5Transport() if domain.provider == "MT5" else Mt4Transport()
+    )
+    market_fabric = fabric or MarketDataFabric(
+        source_label=domain.provider,
+        authority_class="BROKER_TICK_PROXY",
+        stale_after_seconds=domain.stale_after_seconds,
+    )
 
     @asynccontextmanager
-    async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
-        from ats.market.live.candle_builder import IncrementalCandleEngine
-        from ats.market.live.journal import MarketJournal
-        from ats.market.live.stream_hub import hub
-        from ats.market.live.upstox_v3 import UpstoxV3LiveWorker
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        if os.environ.get("LIVE_MONEY", "FALSE").upper() != "FALSE":
+            raise RuntimeError("PAPER_ONLY_VIOLATION")
+        service_of(Request({"type": "http", "app": application}))
+        worker = MetaTraderWorker(terminal, market_fabric)
+        application.state.standalone_market_worker = worker
 
-        journal = MarketJournal()
-        journal.start()
-        app_instance.state.market_journal = journal
+        async def poll_accounts() -> None:
+            while True:
+                accounts = await asyncio.to_thread(application.state.account_service.registry.list)
+                await asyncio.gather(
+                    *[
+                        asyncio.to_thread(
+                            application.state.account_service.poll, account.account_id
+                        )
+                        for account in accounts
+                    ]
+                )
+                await asyncio.sleep(1)
 
-        candle_engine = IncrementalCandleEngine(
-            instrument_key="MCX_FO|569003",
-            intervals=["1s", "5s", "15s", "1m", "3m", "5m", "15m", "30m", "1h", "1d"],
-        )
-        app_instance.state.candle_engine = candle_engine
-        app_instance.state.stream_hub = hub
-
-        token = (
-            os.environ.get("ATS_UPSTOX_ANALYTICS_TOKEN")
-            or os.environ.get("UPSTOX_ACCESS_TOKEN")
-            or os.environ.get("UPSTOX_ANALYTICS_TOKEN")
-        )
-        worker = None
-        if token and token.strip():
-            worker = UpstoxV3LiveWorker(
-                token=token.strip(),
-                fabric=app_instance.state.market_fabric,
-                candle_engine=candle_engine,
-                journal=journal,
-                hub=hub,
-                primary_instrument="MCX_FO|569003",
-                mode="full",
-            )
+        account_task = asyncio.create_task(poll_accounts())
+        if os.environ.get("ATS_OFFLINE_RESEARCH", "0") != "1":
             worker.start()
-        app_instance.state.upstox_worker = worker
-
-        from ats.optimization.worker import OptimizationWorker
-
-        opt_worker = OptimizationWorker(
-            fabric=app_instance.state.market_fabric,
-            candle_engine=candle_engine,
-            journal=journal,
-        )
-        opt_worker.start()
-        app_instance.state.opt_worker = opt_worker
-
-        from ats.agents.worker import AgentsWorker
-
-        agt_worker = AgentsWorker(fabric=app_instance.state.market_fabric)
-        agt_worker.start()
-        app_instance.state.agt_worker = agt_worker
-
         try:
             yield
         finally:
-            if worker:
-                await worker.stop()
-            if opt_worker:
-                await opt_worker.stop()
-            if agt_worker:
-                await agt_worker.stop()
-            journal.stop()
+            account_task.cancel()
+            try:
+                await account_task
+            except asyncio.CancelledError:
+                pass
+            await asyncio.to_thread(application.state.account_service.shutdown)
+            await worker.stop()
 
-    app = FastAPI(
-        title="ATS Operator Console",
-        version="2.0.0",
-        description=(
-            "ATS Operator Console — research workbench and market data. "
-            "Holds no financial authority; A04 remains the sole order authority."
-        ),
-        lifespan=lifespan,
-    )
+    app = FastAPI(title="ATS XAUUSD Laboratory", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolve_cors_origins(os.environ),
@@ -181,50 +106,32 @@ def create_console_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    if fabric is None:
-        fabric = MarketDataFabric(
-            source_label="UPSTOX_V3", authority_class="LIVE_FEED_ATTACHED"
-        )
-        _seed_demo_fabric(fabric)
-    app.state.market_fabric = fabric
+    app.state.account_service = account_service
+    app.state.account_admin_lock = RLock()
+    app.state.market_fabric = market_fabric
+    app.state.metatrader_connector = terminal
+    app.state.xauusd_domain = domain
     app.state.trading_runtime_provider = TradingRuntimeProvider()
     app.state.control_plane_reader = reader or LiveControlPlaneReader(
         app.state.trading_runtime_provider
     )
-
     _register_exception_handlers(app)
+    prior_validation_handler = app.exception_handlers[RequestValidationError]
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, error: RequestValidationError) -> Response:
+        if not request.url.path.startswith("/v1/accounts"):
+            result = prior_validation_handler(request, error)
+            if inspect.isawaitable(result):
+                result = await result
+            return result
+        # Input values in Pydantic/FastAPI errors can expose login/password.
+        return JSONResponse(status_code=422, content={"detail": "REQUEST_VALIDATION_FAILED"})
+
     app.include_router(build_a05_router())
     for router in CONSOLE_ROUTERS:
         app.include_router(router)
-    app.include_router(optimization_router)
-    app.include_router(agents_router)
-    app.include_router(managed_agents_router)
-
-    @app.websocket("/v1/stream/market")
-    async def stream_market_ws(websocket: WebSocket) -> None:
-        """ATS live market stream WebSocket endpoint."""
-        await websocket.accept()
-        from ats.market.live.stream_hub import hub
-
-        await hub.register(websocket)
-        try:
-            while True:
-                text = await websocket.receive_text()
-                await hub.handle_client_message(websocket, text)
-        except WebSocketDisconnect:
-            pass
-        finally:
-            await hub.unregister(websocket)
-
-    @app.websocket("/v1/market/ws")
-    async def market_ws_alias(websocket: WebSocket) -> None:
-        """Alias for market stream WebSocket."""
-        await stream_market_ws(websocket)
-
     return app
 
 
 app = create_console_app()
-
-__all__ = ["CONSOLE_ROUTERS", "app", "create_console_app"]

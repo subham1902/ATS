@@ -19,11 +19,12 @@ from ats.execution.paper import (
     PaperSubmissionScenario,
 )
 
-from tests.unit.market.derivatives.option_chain.helpers import AS_OF, master
+from tests.unit.market.xauusd import AS_OF
+from tests.unit.market.xauusd import instrument as market_instrument
 
 
 def instrument():
-    return next(item for item in master().instruments if item.instrument_id == "C1")
+    return market_instrument()
 
 
 def intent(
@@ -37,7 +38,7 @@ def intent(
     value = OrderIntent(
         schema_version="1.0",
         intent_id=UUID("70000000-0000-0000-0000-000000000001"),
-        instrument_id="C1",
+        instrument_id="XAUUSD",
         side=side,
         quantity=Decimal(quantity),
         order_type=order_type,
@@ -62,7 +63,7 @@ def intent(
 
 def market(**updates: object) -> PaperMarketFacts:
     values: dict[str, object] = {
-        "instrument_id": "C1",
+        "instrument_id": "XAUUSD",
         "bid": Decimal("99"),
         "ask": Decimal("101"),
         "bid_quantity": 130,
@@ -78,8 +79,8 @@ def market(**updates: object) -> PaperMarketFacts:
 
 def policy() -> PaperExecutionPolicy:
     return PaperExecutionPolicy(
-        broker_model_version="DERIVATIVE-PAPER-V1",
-        cost_model_version="NSE-PAPER-COST-V1",
+        broker_model_version="XAUUSD-PAPER-V1",
+        cost_model_version="SYNTHETIC-COST-V1",
         maximum_quote_age_ms=60_000,
         slippage_ticks=2,
         fee_fraction=Decimal("0.001"),
@@ -96,7 +97,7 @@ def position(*, quantity: str = "130", version: int = 1) -> Position:
         schema_version="1.0",
         position_id=UUID("71000000-0000-0000-0000-000000000001"),
         portfolio_id=UUID("71000000-0000-0000-0000-000000000002"),
-        instrument_id="C1",
+        instrument_id="XAUUSD",
         net_quantity=Decimal(quantity),
         average_entry_price=Decimal("101.10"),
         mark_price=Decimal("110"),

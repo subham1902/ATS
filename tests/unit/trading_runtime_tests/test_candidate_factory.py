@@ -10,7 +10,7 @@ from tests.unit.contracts.intelligence.fixtures import uid
 def test_build_opportunity_candidate_is_production_contract() -> None:
     now = datetime.now(UTC)
     cand = build_opportunity_candidate(
-        instrument_id="NIFTY25JUN100CE",
+        instrument_id="PARTITION_A25JUN100CE",
         campaign_id=uid(1),
         campaign_version=1,
         strategy_id=uid(2),
@@ -22,7 +22,7 @@ def test_build_opportunity_candidate_is_production_contract() -> None:
         created_at=now,
         expires_at=now + timedelta(hours=1),
     )
-    assert cand.instrument_id == "NIFTY25JUN100CE"
+    assert cand.instrument_id == "PARTITION_A25JUN100CE"
     assert cand.candidate_id is not None
     assert cand.payload_hash is not None
     # Binding must survive round-trip
@@ -59,12 +59,16 @@ def test_engine_emits_production_candidate() -> None:
     now = datetime.now(UTC).replace(
         year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
     )
-    feed.set_mark("NIFTY", Decimal("101"), now)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
+    feed.set_mark("XAUUSD", Decimal("101"), now)
+    rt = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
     result = rt.process_event(
         RuntimeEvent(
             kind=RuntimeEventKind.BAR,
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             payload={"previous_close": "100"},
             at=now,
         )
@@ -72,7 +76,7 @@ def test_engine_emits_production_candidate() -> None:
     assert "candidate" in result or "no_action" in result
     # If candidate, it must have production-like instrument
     if "candidate" in result:
-        assert result["candidate"]["instrument"] == "NIFTY"
+        assert result["candidate"]["instrument"] == "XAUUSD"
 
 
 def test_exit_converges_through_single_path() -> None:
@@ -103,12 +107,16 @@ def test_exit_converges_through_single_path() -> None:
     now = datetime.now(UTC).replace(
         year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
     )
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
-    rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
+    rt = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
+    rt.handle_fill("XAUUSD:1", Decimal("100"), Decimal("75"), now)
     # Trigger P1 exit via hard loss
-    feed.set_mark("NIFTY", Decimal("95"), now)
+    feed.set_mark("XAUUSD", Decimal("95"), now)
     result = rt.process_event(
-        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=now)
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="XAUUSD", payload={}, at=now)
     )
     assert "exits" in result
     # No duplicate

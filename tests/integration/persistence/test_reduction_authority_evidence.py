@@ -13,7 +13,7 @@ NOW = datetime(2026, 8, 26, 8, 0, tzinfo=UTC)
 
 
 def _position(position_id: str = "position-1", *, version: int = 1) -> StateSnapshot:
-    payload = {"instrument": "NIFTY-TEST-ONLY", "open_quantity": "100"}
+    payload = {"instrument": "PARTITION_A-TEST-ONLY", "open_quantity": "100"}
     return StateSnapshot(
         identifier=position_id,
         version=version,

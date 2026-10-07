@@ -2,7 +2,7 @@
 
 This domain configures LLM/research agents (provider, model, instructions,
 capabilities, data scopes, runtime limits). It is deliberately separate from
-the strategy-persona playground in :mod:`ats.agents.roster`: those agents
+the strategy-persona playground in the retired persona experiment: those agents
 carry principals and trade, these agents only ever inspect, analyze, and
 propose.
 
@@ -40,7 +40,7 @@ from ats.persistence.json_files import quarantine_after_failure, read_json_or_qu
 
 LOGGER = logging.getLogger(__name__)
 
-MANAGED_FILE_PATH = Path("data/agents/managed.json")
+MANAGED_FILE_PATH = Path("data/system/agents/managed.json")
 
 #: What a managed agent is allowed to do. This is the whole vocabulary:
 #: anything not listed here is rejected at the boundary, and financial
@@ -65,12 +65,12 @@ CAPABILITY_ALLOWLIST = frozenset(
 #: Data the agent may inspect. Closed for the same reason as capabilities.
 DATA_SCOPE_ALLOWLIST = frozenset(
     {
-        "MARKET_DATA",
-        "HISTORICAL_DATA",
-        "DATASETS",
-        "STRATEGIES",
-        "RESEARCH_OUTPUTS",
-        "RISK_STATE",
+        "XAUUSD_LIVE_MARKET",
+        "XAUUSD_HISTORICAL",
+        "XAUUSD_DATASETS",
+        "XAUUSD_STRATEGIES",
+        "XAUUSD_RESEARCH",
+        "SYSTEM_HEALTH",
     }
 )
 
@@ -110,19 +110,17 @@ class ManagedAgentConflict(ManagedAgentError):
 def _require_name(name: str) -> str:
     clean = name.strip()
     if not _NAME_RE.match(clean):
-        raise ManagedAgentError(
-            "Agent name must be 1-64 chars: letters, digits, space, _ or -"
-        )
+        raise ManagedAgentError("Agent name must be 1-64 chars: letters, digits, space, _ or -")
     return clean
 
 
-def _require_subset(values: tuple[str, ...] | list[str], allowed: frozenset[str], field: str) -> tuple[str, ...]:
+def _require_subset(
+    values: tuple[str, ...] | list[str], allowed: frozenset[str], field: str
+) -> tuple[str, ...]:
     items = tuple(values or ())
     unknown = [v for v in items if v not in allowed]
     if unknown:
-        raise ManagedAgentError(
-            f"Unknown {field}: {unknown}. Allowed: {sorted(allowed)}"
-        )
+        raise ManagedAgentError(f"Unknown {field}: {unknown}. Allowed: {sorted(allowed)}")
     if len(set(items)) != len(items):
         raise ManagedAgentError(f"Duplicate entries in {field}")
     return items
@@ -257,7 +255,9 @@ class ManagedAgentStore:
         self.degraded = False
         self.quarantined_to: Path | None = None
         self._save_blocked = False
-        self._path = path or MANAGED_FILE_PATH
+        self._path = (
+            path or Path(os.environ.get("ATS_DATA_ROOT", "data")) / "system/agents/managed.json"
+        )
         self._announce = announce or (lambda _kind, _summary: None)
         self._agents: dict[str, ManagedAgent] = {}
         self._versions: dict[str, list[AgentConfigVersion]] = {}
@@ -336,7 +336,9 @@ class ManagedAgentStore:
             system_instructions=system_instructions,
             capabilities=_require_subset(capabilities, CAPABILITY_ALLOWLIST, "capabilities"),
             data_scopes=_require_subset(data_scopes, DATA_SCOPE_ALLOWLIST, "data_scopes"),
-            research_scopes=_require_subset(research_scopes, RESEARCH_SCOPE_ALLOWLIST, "research_scopes"),
+            research_scopes=_require_subset(
+                research_scopes, RESEARCH_SCOPE_ALLOWLIST, "research_scopes"
+            ),
             timeout_s=timeout_s,
             max_concurrency=max_concurrency,
             credential_ref=_require_credential_ref(credential_ref),
@@ -492,17 +494,14 @@ class ManagedAgentStore:
         confirmation. Everything else must be archived, not deleted."""
         agent = self.require(agent_id)
         if not confirm:
-            raise ManagedAgentError(
-                f"Hard delete of '{agent.name}' requires explicit confirmation"
-            )
+            raise ManagedAgentError(f"Hard delete of '{agent.name}' requires explicit confirmation")
         if self._runs.get(agent_id):
             raise ManagedAgentError(
                 f"Cannot hard-delete '{agent.name}': run history exists; archive instead"
             )
         if len(self._versions.get(agent_id, [])) > 1:
             raise ManagedAgentError(
-                f"Cannot hard-delete '{agent.name}': configuration history exists; "
-                "archive instead"
+                f"Cannot hard-delete '{agent.name}': configuration history exists; archive instead"
             )
         name = agent.name
         del self._agents[agent_id]
@@ -596,7 +595,9 @@ class ManagedAgentStore:
 
     def _save(self) -> None:
         if self._save_blocked:
-            LOGGER.error("Refusing to save managed agents: the existing store is unreadable and could not be preserved")
+            LOGGER.error(
+                "Refusing to save managed agents: the existing store is unreadable and could not be preserved"
+            )
             return
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)

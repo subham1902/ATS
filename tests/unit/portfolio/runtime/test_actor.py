@@ -36,14 +36,14 @@ def test_recovery_is_required_before_financial_authority() -> None:
         transaction_manager=FakeTransactionManager(), policy=policy()
     )
     with pytest.raises(RuntimeError, match="recovery"):
-        authority.reserve(command(1, market="NIFTY"))
+        authority.reserve(command(1, market="PARTITION_A"))
 
 
-def test_concurrent_nifty_banknifty_and_third_request_are_serialized() -> None:
+def test_concurrent_partition_a_partition_b_and_third_request_are_serialized() -> None:
     authority, _ = actor(maximum=2)
     first_two = (
-        command(1, market="NIFTY"),
-        command(2, market="BANKNIFTY"),
+        command(1, market="PARTITION_A"),
+        command(2, market="PARTITION_B"),
     )
 
     def attempt(index: int) -> str:
@@ -57,7 +57,7 @@ def test_concurrent_nifty_banknifty_and_third_request_are_serialized() -> None:
         outcomes = tuple(executor.map(attempt, range(2)))
     assert outcomes.count("RESERVED") == 2
     with pytest.raises(PortfolioPolicyDeniedError, match="active reservation"):
-        authority.reserve(command(3, market="BANKNIFTY", amount="100000"))
+        authority.reserve(command(3, market="PARTITION_B", amount="100000"))
     snapshot = authority.snapshot()
     assert snapshot.inflight_capital == Decimal("400000")
     assert snapshot.account.available_capital == Decimal("100000")
@@ -65,17 +65,17 @@ def test_concurrent_nifty_banknifty_and_third_request_are_serialized() -> None:
 
 def test_market_and_strategy_partitions_fail_closed() -> None:
     authority, _ = actor(maximum=4)
-    authority.reserve(command(1, market="NIFTY", amount="200000"))
+    authority.reserve(command(1, market="PARTITION_A", amount="200000"))
     with pytest.raises(PortfolioPolicyDeniedError, match="partition capital"):
-        authority.reserve(command(2, market="NIFTY", amount="200000"))
-    authority.reserve(command(3, market="BANKNIFTY", amount="200000"))
+        authority.reserve(command(2, market="PARTITION_A", amount="200000"))
+    authority.reserve(command(3, market="PARTITION_B", amount="200000"))
     with pytest.raises(PortfolioPolicyDeniedError, match="partition capital"):
-        authority.reserve(command(4, market="BANKNIFTY", amount="100000"))
+        authority.reserve(command(4, market="PARTITION_B", amount="100000"))
 
 
 def test_unknown_submission_keeps_durable_reservation_and_forbids_retry() -> None:
     authority, _ = actor()
-    reserved = authority.reserve(command(1, market="NIFTY", amount="100000"))
+    reserved = authority.reserve(command(1, market="PARTITION_A", amount="100000"))
     held = authority.hold_unknown_submission(reserved.reservation.reservation_id)
     assert held.reservation.state is CapitalReservationState.RESERVED
     assert held.retry_permitted is False
@@ -84,7 +84,7 @@ def test_unknown_submission_keeps_durable_reservation_and_forbids_retry() -> Non
 
 def test_commit_then_release_updates_used_capital_exactly_once() -> None:
     authority, _ = actor()
-    reserved = authority.reserve(command(1, market="NIFTY", amount="100000"))
+    reserved = authority.reserve(command(1, market="PARTITION_A", amount="100000"))
     reservation_id = reserved.reservation.reservation_id
     authority.commit(reservation_id, updated_at=NOW + timedelta(minutes=1))
     committed = authority.snapshot()
@@ -100,7 +100,7 @@ def test_commit_then_release_updates_used_capital_exactly_once() -> None:
 
 def test_recovery_validates_durable_binding() -> None:
     transactions = FakeTransactionManager()
-    first = command(1, market="NIFTY", amount="100000")
+    first = command(1, market="PARTITION_A", amount="100000")
     transactions.capital.reserve(first.request)
     wrong = first.model_copy(
         update={"request": first.request.model_copy(update={"amount": Decimal("99999")})}

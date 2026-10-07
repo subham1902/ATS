@@ -76,7 +76,8 @@ def test_all_top_level_and_support_schemas_export() -> None:
 
 def test_representative_hash_goldens() -> None:
     expected = {
-        "InstrumentSpec": "4e184915a4dff573a09eccf5a96d68bf113093ae3f84fb9449c1f7fc86a13072",
+        # Generic fixture venue/timezone were migrated to OTC/UTC; hashing is unchanged.
+        "InstrumentSpec": "38c725b18a6b678b4ce974e157940246606e5622be865fdf6f939020b95735cc",
         "MarketContext": "141ecf843615780adde7580fb8963a7bac3068047f897f7192cb99af312a35b3",
         "AnalogueEvidence": "8dab41df8816c4b58b64a0a5c2dc481e59e7ab11634f4e97639cf8a3120c7145",
         "CalibratedOutcomeDistribution": "b77645e8c26b35c7ff8019f48cf70f94ae895d79645fa653442d40914ea3c707",

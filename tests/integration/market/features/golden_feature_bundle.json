@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "feature_bundle_id": "b246c0c5-2df2-5229-977e-fff3692cc6d4",
+  "feature_bundle_id": "8a3399a9-fd4e-5ae1-8154-43f2a33b2bc6",
   "snapshot_id": "364275ad-6f84-57fa-b7fd-06c081786d39",
   "feature_version": "1.0.0",
   "features": {
@@ -19,5 +19,5 @@
   },
   "quality_flags": [],
   "computed_at": "2024-06-03T04:00:00.250000Z",
-  "input_hash": "51b8114a02909fe79ab2b9f667540e919517cce5d510b8a749b491a7126ed4c7"
+  "input_hash": "85313d9487b237ca7d27a9e10b033abeec34385163d45220e663b7e1fd05f734"
 }

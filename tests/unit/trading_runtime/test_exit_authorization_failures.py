@@ -29,23 +29,23 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
 )
 
 from .helpers import (
-    NIFTY,
     NOW,
+    SYMBOL,
     allow_all,
     build_orchestrator,
     market_facts,
 )
 
-INDEX = "NIFTY"
+INDEX = "XAUUSD"
 PREV = Decimal("25000")
 BULL_MARK = Decimal("25600")
 SHUTDOWN_AT = NOW + timedelta(minutes=1)
 
 
 def _facts_provider(iid: str, at):
-    if iid == NIFTY:
+    if iid == SYMBOL:
         return market_facts(
-            instrument_id=NIFTY,
+            instrument_id=SYMBOL,
             bid=Decimal("99"),
             ask=Decimal("101"),
             bid_quantity=130,
@@ -63,7 +63,7 @@ def _entry_orchestrator(exit_authorization_provider=None):
     """
     feed = InMemoryMarketFeed()
     feed.set_mark(INDEX, PREV, NOW)
-    feed.set_mark(NIFTY, Decimal("101"), NOW)
+    feed.set_mark(SYMBOL, Decimal("101"), NOW)
     orch = build_orchestrator(
         market_facts_provider=_facts_provider,
         feed=feed,
@@ -98,7 +98,7 @@ class _StaleSnapshotAuthority:
         assert at is not None, "test requests always carry an evaluation timestamp"
         position = build_test_position(request, at=at)
         stale = position.model_copy(
-            update={"net_quantity": position.net_quantity / 2, "instrument_id": "NIFTY:PE"}
+            update={"net_quantity": position.net_quantity / 2, "instrument_id": "XAUUSD:PE"}
         )
         assert isinstance(stale, Position)
         return ExitAuthorizationResult(

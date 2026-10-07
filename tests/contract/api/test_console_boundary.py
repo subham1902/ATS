@@ -32,9 +32,7 @@ FORBIDDEN_AUTHORITY_MARKERS = (
 
 
 def _console_source() -> str:
-    return "\n".join(
-        path.read_text(encoding="utf-8").lower() for path in CONSOLE_ROOT.glob("*.py")
-    )
+    return "\n".join(path.read_text(encoding="utf-8").lower() for path in CONSOLE_ROOT.glob("*.py"))
 
 
 def test_console_source_does_not_construct_authorization_objects() -> None:
@@ -50,9 +48,7 @@ def test_console_exposes_no_order_execution_or_consume_route() -> None:
     schema = create_console_app().openapi()
     paths = set(schema["paths"])
     offending = {
-        path
-        for path in paths
-        if "order" in path or "execute" in path or "consume" in path
+        path for path in paths if "order" in path or "execute" in path or "consume" in path
     }
     assert not offending, f"console exposes execution-shaped routes: {sorted(offending)}"
 
@@ -62,58 +58,18 @@ def test_console_does_not_mount_a_broker_login_capability() -> None:
     from ats.console.app import create_console_app
 
     schema = create_console_app().openapi()
-    post_paths = {
-        path for path, operations in schema["paths"].items() if "post" in operations
-    }
+    post_paths = {path for path, operations in schema["paths"].items() if "post" in operations}
     assert not any("login" in path for path in post_paths)
 
 
-def test_laya_may_not_authorize_execution() -> None:
-    """An external advisory AI proposes; it can never return AUTHORIZED.
-
-    Regression guard for the authority inversion: the Laya bridge once echoed
-    ``status="AUTHORIZED"`` straight from an inbound callback, which inverted the
-    repository axiom "AI proposes; deterministic ATS authorizes".
-    """
+def test_deleted_external_advisory_routes_cannot_authorize_or_raise_limits() -> None:
     from ats.console.app import create_console_app
     from fastapi.testclient import TestClient
 
     client = TestClient(create_console_app())
-    response = client.post(
-        "/v1/ai/laya/action",
-        json={
-            "action_id": "a-1",
-            "action_type": "authorize_candidate",
-            "card_id": "card-1",
-            "payload": {"candidate_id": "C1", "lots": 2, "instrument": "MCX_GOLDM"},
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["data"]["status"] != "AUTHORIZED"
-    assert body["data"]["status"] == "PENDING_AUTHORITY"
-    assert body["data"]["authority"] == "A04_REQUIRED"
-
-
-def test_laya_may_not_escalate_agent_risk_limits() -> None:
-    """Constitution §1.2.3 -- no model may raise a risk limit or lot ceiling."""
-    from ats.console.app import create_console_app
-    from fastapi.testclient import TestClient
-
-    client = TestClient(create_console_app())
-    response = client.post(
-        "/v1/ai/laya/action",
-        json={
-            "action_id": "a-2",
-            "action_type": "update_agent_principal",
-            "card_id": "card-2",
-            "payload": {"agent_name": "Alpha", "max_principal": 999_999_999.0},
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["success"] is False
-    assert body["data"]["reason_code"] == "RISK_ESCALATION_REQUIRES_OPERATOR"
+    for action in ("authorize_candidate", "update_agent_principal"):
+        response = client.post("/v1/ai/laya/action", json={"action_type": action})
+        assert response.status_code == 404
 
 
 def test_a05_surface_remains_a_strict_subset_of_the_console() -> None:

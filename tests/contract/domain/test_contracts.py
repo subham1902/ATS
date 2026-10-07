@@ -69,9 +69,7 @@ def test_uuid_references_survive_immutable_round_trip() -> None:
 def test_true_probability_fields_reject_out_of_range(value: Decimal) -> None:
     confidence = make_contracts()["ConfidenceEvidence"]
     with pytest.raises(ValidationError):
-        ConfidenceEvidence.model_validate(
-            {**confidence.model_dump(), "raw_probability": value}
-        )
+        ConfidenceEvidence.model_validate({**confidence.model_dump(), "raw_probability": value})
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
@@ -120,9 +118,7 @@ def test_risk_outcomes_are_closed_and_unknown_is_representable(decision: RiskOut
 @pytest.mark.parametrize("recommendation", list(AdvisoryOutcome))
 def test_advisory_outcomes_are_closed(recommendation: AdvisoryOutcome) -> None:
     value = make_contracts()["SupervisorAdvisory"]
-    restored = type(value).model_validate(
-        {**value.model_dump(), "recommendation": recommendation}
-    )
+    restored = type(value).model_validate({**value.model_dump(), "recommendation": recommendation})
     assert restored.recommendation is recommendation  # type: ignore[attr-defined]
 
 
@@ -148,7 +144,7 @@ def test_payload_hash_excludes_only_itself_and_is_order_independent() -> None:
 def test_representative_committed_hash_goldens() -> None:
     values = make_contracts()
     expected = {
-        "MarketSnapshot": "df122f177ef9fa4e4e73e5fa81f07a7ad13a06b2fb465cbbd716c70f6f64637e",
+        "MarketSnapshot": "b7763844c8d32cbd3924085df813d13ec8b6e71fa39651d26bf9dff9b85d2904",
         "FeatureBundle": "5f90a1262cb27721629df7847a6cc84652e17ce4d6205b1e1f939dfa8659a88a",
         "StrategyPolicy": "d4d724e19141a03672c6f8968b5c0057b730ce564100729683519ed26c6e8359",
         "RiskDecision": "c7d4aff8eb8675dec0376c885f6e5638d74d7972cc1992095b6a89230ea52226",

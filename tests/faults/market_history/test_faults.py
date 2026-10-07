@@ -131,29 +131,27 @@ def test_future_option_chain_data_is_invisible_until_available() -> None:
 def test_future_expiry_knowledge_is_gated_by_master_availability() -> None:
     v1_row = make_metadata_observation(
         master_version=MASTER_VERSION_V1,
-        trading_symbol="NIFTY24JUN24000CE",
+        trading_symbol="PARTITION_A24JUN24000CE",
         expiry_date=EXPIRY_MONTHLY,
     )
     v2_row = make_metadata_observation(
         master_version=MASTER_VERSION_V2,
-        trading_symbol="NIFTY24JUN24100CE",
+        trading_symbol="PARTITION_A24JUN24100CE",
         expiry_date=EXPIRY_WEEKLY,
         event_time=SESSION_START - timedelta(days=1),
     )
-    dataset = build_test_dataset(
-        (v1_row, v2_row), contract_master_version=MASTER_VERSION_V2
-    )
+    dataset = build_test_dataset((v1_row, v2_row), contract_master_version=MASTER_VERSION_V2)
     switch = v2_row.times.available_to_strategy_time
     assert EXPIRY_WEEKLY not in dataset.known_expiries_as_of(
-        "NIFTY", at_time=switch - timedelta(milliseconds=1)
+        "PARTITION_A", at_time=switch - timedelta(milliseconds=1)
     )
-    assert EXPIRY_WEEKLY in dataset.known_expiries_as_of("NIFTY", at_time=switch)
+    assert EXPIRY_WEEKLY in dataset.known_expiries_as_of("PARTITION_A", at_time=switch)
 
 
 def test_future_contract_metadata_is_invisible_before_publication() -> None:
     late_master_row = make_metadata_observation(
         master_version=MASTER_VERSION_V2,
-        trading_symbol="NIFTY24JUL24500CE",
+        trading_symbol="PARTITION_A24JUL24500CE",
         expiry_date="2024-07-25",
         event_time=SESSION_START + timedelta(days=20),
         source_lag_ms=3_600_000,
@@ -208,7 +206,7 @@ def test_tampered_persisted_dataset_fails_integrity_on_reload() -> None:
 
 def test_b01_cursor_and_history_gate_diverge_only_when_delays_diverge() -> None:
     calendar_dataset = _load_approved_fixture(
-        ApprovedFixture.NSE_CASH_RELIANCE_5M_V1, nse_calendar()
+        ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1, nse_calendar()
     )
     configuration = ReplayConfiguration(start_at=bar_event_time(1), received_delay_ms=250)
     delayed = HistoryTimeSemantics(
@@ -231,6 +229,6 @@ def create_history_gated_session(dataset, configuration, semantics):
 
 
 def nse_calendar():
-    from ats.market import nse_cash_alpha_v1_calendar
+    from ats.market import xauusd_test_calendar
 
-    return nse_cash_alpha_v1_calendar()
+    return xauusd_test_calendar()

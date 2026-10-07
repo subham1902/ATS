@@ -284,7 +284,7 @@ def build_a05_router() -> APIRouter:
 
     @router.get("/v1/activity", response_model=ActivityPage, tags=["activity"])
     def list_activity(control: ReaderDependency) -> ActivityPage:
-        from ats.trading_runtime.paper_tournament import get_system_activity_items
+        from ats.observability.activity import get_system_activity_items
 
         base_items = list(control.list_activity())
         runtime_items = get_system_activity_items()

@@ -22,8 +22,8 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
 )
 
 from .helpers import (
-    NIFTY,
     NOW,
+    SYMBOL,
     allow_all,
     instrument,
     policy,
@@ -50,8 +50,8 @@ def test_restart_recovers_pending_reduction_without_duplicate_exit() -> None:
     # RuntimeState over a fresh runtime/orchestrator.
     restored_state = orch.runtime.state
     restored_feed = InMemoryMarketFeed()
-    restored_feed.set_mark(NIFTY, Decimal("101"), NOW)
-    restored_feed.set_mark("NIFTY", Decimal("25000"), NOW)
+    restored_feed.set_mark(SYMBOL, Decimal("101"), NOW)
+    restored_feed.set_mark("XAUUSD", Decimal("25000"), NOW)
     restarted = AutonomousPaperOrchestrator(
         calendar=orch.config.calendar,
         market_feed=restored_feed,
@@ -59,7 +59,8 @@ def test_restart_recovers_pending_reduction_without_duplicate_exit() -> None:
         policy=policy(),
         instrument=instrument(),
         market_facts_provider=_facts_provider,
-        authorization_provider=orch._authorization_provider, exit_authorization_provider=PermissiveExitAuthorization(),
+        authorization_provider=orch._authorization_provider,
+        exit_authorization_provider=PermissiveExitAuthorization(),
     )
     restarted.runtime.state = restored_state
 
@@ -82,7 +83,9 @@ def test_restart_recovers_pending_reduction_without_duplicate_exit() -> None:
 def test_stale_feed_blocks_new_risk_but_allows_protective_exit() -> None:
     # A protective reduction still requires real exit authority even when new
     # risk is blocked; the provider below is that authority, stated explicitly.
-    orch = _fresh_orchestrator(authorization_provider=allow_all, exit_authorization_provider=PermissiveExitAuthorization())
+    orch = _fresh_orchestrator(
+        authorization_provider=allow_all, exit_authorization_provider=PermissiveExitAuthorization()
+    )
     _bull_bar(orch)
     assert len(orch.get_open_positions()) == 1
     pid = next(iter(orch.get_open_positions().keys()))
@@ -95,7 +98,7 @@ def test_stale_feed_blocks_new_risk_but_allows_protective_exit() -> None:
     result = orch.runtime.process_event(
         RuntimeEvent(
             kind=RuntimeEventKind.BAR,
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             payload={"previous_close": "25000", "close": "25600"},
             at=stale_at,
         )

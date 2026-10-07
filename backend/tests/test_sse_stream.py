@@ -78,7 +78,7 @@ def test_broadcast_stream_event_delivery():
             event_kind="PAPER_TRADE_EXECUTED",
             occurred_at=datetime.now(UTC),
             correlation_id=uuid4(),
-            payload={"order_id": "ORD-123", "symbol": "GOLDM"},
+            payload={"order_id": "ORD-123", "symbol": "XAUUSD"},
         )
         broadcast_stream_event(event)
 

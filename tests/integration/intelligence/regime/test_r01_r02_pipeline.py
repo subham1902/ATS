@@ -11,7 +11,7 @@ from ats.market import (
     ReplayConfiguration,
     approved_manifest,
     create_approved_replay,
-    nse_cash_alpha_v1_calendar,
+    xauusd_test_calendar,
 )
 from ats.market.features import compute_feature_bundle
 
@@ -19,10 +19,10 @@ from tests.unit.intelligence.regime.helpers import configuration
 
 
 def test_b01_replay_to_r01_features_to_r02_regime() -> None:
-    manifest = approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1)
+    manifest = approved_manifest(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1)
     replay = create_approved_replay(
-        ApprovedFixture.NSE_CASH_RELIANCE_5M_V1,
-        nse_cash_alpha_v1_calendar(),
+        ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1,
+        xauusd_test_calendar(),
         ReplayConfiguration(start_at=manifest.first_bar, received_delay_ms=250),
     )
     snapshots = tuple(replay.advance() for _ in range(manifest.bar_count))

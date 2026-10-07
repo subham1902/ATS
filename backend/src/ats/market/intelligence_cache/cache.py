@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.types import DataQualityState
-from ats.market.derivatives.contract_master import DerivativeUnderlying
 
 from .models import IntelligenceCacheRead, IntelligenceStaleness, MarketIntelligenceSnapshot
 
 
 class MarketIntelligenceCache:
     def __init__(self) -> None:
-        self._latest: dict[DerivativeUnderlying, MarketIntelligenceSnapshot] = {}
+        self._latest: dict[Literal["XAUUSD"], MarketIntelligenceSnapshot] = {}
 
     def update(self, snapshot: MarketIntelligenceSnapshot) -> bool:
         previous = self._latest.get(snapshot.underlying)
@@ -25,9 +26,7 @@ class MarketIntelligenceCache:
         self._latest[snapshot.underlying] = snapshot
         return True
 
-    def read(
-        self, *, underlying: DerivativeUnderlying, at_time: UTCDateTime
-    ) -> IntelligenceCacheRead:
+    def read(self, *, underlying: Literal["XAUUSD"], at_time: UTCDateTime) -> IntelligenceCacheRead:
         snapshot = self._latest.get(underlying)
         if snapshot is None:
             return IntelligenceCacheRead(status=IntelligenceStaleness.UNKNOWN, snapshot=None)

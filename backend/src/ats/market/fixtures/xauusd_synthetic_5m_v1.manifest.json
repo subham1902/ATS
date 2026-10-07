@@ -1,0 +1,15 @@
+{
+  "dataset_id": "f37dd555-f596-5af8-a434-808a2208c721",
+  "dataset_version": "1.0.0",
+  "source_description": "SYNTHETIC_TEST_ONLY; no market evidence or promotion authority",
+  "instrument": "XAUUSD",
+  "exchange": "OTC",
+  "segment": "SPOT_METAL",
+  "timeframe": "5m",
+  "first_bar": "2024-06-03T03:45:00Z",
+  "last_bar": "2024-06-03T04:00:00Z",
+  "bar_count": 4,
+  "content_sha256": "2ba55dd2919304e3aec6f516f1155d8014f31215b8f7347fe71df7c5eb11ed77",
+  "calendar_id": "XAUUSD_TEST",
+  "calendar_version": "1.0.0"
+}

@@ -17,10 +17,16 @@ def postgres_dsn() -> str:
     dsn = os.environ.get(DSN_VARIABLE)
     if dsn is None:
         pytest.skip(f"{DSN_VARIABLE} is required for PostgreSQL integration tests")
+    psycopg = pytest.importorskip("psycopg")
+    connection = psycopg.connect(dsn)
+    try:
+        apply_migrations(connection, MIGRATIONS)
+    finally:
+        connection.close()
     return dsn
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def migrated_database(postgres_dsn: str) -> None:
     psycopg = pytest.importorskip("psycopg")
     connection = psycopg.connect(postgres_dsn)

@@ -8,7 +8,7 @@ from decimal import Decimal
 from ats.market import (
     ApprovedFixture,
     ReplayConfiguration,
-    nse_cash_alpha_v1_calendar,
+    xauusd_test_calendar,
 )
 from ats.market.fixtures.loader import _load_approved_fixture
 from ats.market.history import (
@@ -31,8 +31,8 @@ REALISTIC = HistoryTimeSemantics(
 
 
 def _dataset():
-    calendar = nse_cash_alpha_v1_calendar()
-    return _load_approved_fixture(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1, calendar)
+    calendar = xauusd_test_calendar()
+    return _load_approved_fixture(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1, calendar)
 
 
 def _configuration(dataset):
@@ -53,8 +53,8 @@ def test_converters_emit_canonical_kinds() -> None:
     quote = historical_option_quote_observation(
         instrument="RELIANCE",
         event_time=event_time,
-        underlying="NIFTY",
-        trading_symbol="NIFTY_TEST_CE",
+        underlying="PARTITION_A",
+        trading_symbol="PARTITION_A_TEST_CE",
         expiry_date="2030-01-01",
         strike=Decimal("24000"),
         option_type="CE",
@@ -64,11 +64,11 @@ def test_converters_emit_canonical_kinds() -> None:
         semantics=REALISTIC,
     )
     metadata = historical_contract_metadata_observation(
-        instrument="NIFTY",
+        instrument="PARTITION_A",
         event_time=event_time,
         contract_master_id="TEST_MASTER_V1",
-        trading_symbol="NIFTY_TEST_CE",
-        underlying="NIFTY",
+        trading_symbol="PARTITION_A_TEST_CE",
+        underlying="PARTITION_A",
         instrument_type="OPTIDX",
         expiry_date="2030-01-01",
         strike=Decimal("24000"),
@@ -95,11 +95,11 @@ def test_sidecar_observations_obey_availability_gate() -> None:
     bars = dataset.bars
     first_event = bars[0].bar_timestamp
     metadata_visible_after_first = historical_contract_metadata_observation(
-        instrument="NIFTY",
+        instrument="PARTITION_A",
         event_time=first_event,
         contract_master_id="TEST_MASTER_V1",
-        trading_symbol="NIFTY_TEST_CE",
-        underlying="NIFTY",
+        trading_symbol="PARTITION_A_TEST_CE",
+        underlying="PARTITION_A",
         instrument_type="OPTIDX",
         expiry_date="2030-01-01",
         provenance=_provenance("meta-visible-late"),
@@ -112,8 +112,8 @@ def test_sidecar_observations_obey_availability_gate() -> None:
     quote_always_future = historical_option_quote_observation(
         instrument="RELIANCE",
         event_time=bars[-1].bar_timestamp + timedelta(days=365),
-        underlying="NIFTY",
-        trading_symbol="NIFTY_FUTURE_CE",
+        underlying="PARTITION_A",
+        trading_symbol="PARTITION_A_FUTURE_CE",
         expiry_date="2040-01-01",
         strike=Decimal("25000"),
         option_type="PE",

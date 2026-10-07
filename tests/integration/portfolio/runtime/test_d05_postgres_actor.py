@@ -65,8 +65,8 @@ def test_serialized_owner_preserves_r17_atomic_capital_truth(
         policy=PortfolioAuthorityPolicy(
             maximum_active_reservations=2,
             market_limits=(
-                PartitionCapitalLimit(partition_key="NIFTY", maximum_capital=Decimal("250000")),
-                PartitionCapitalLimit(partition_key="BANKNIFTY", maximum_capital=Decimal("250000")),
+                PartitionCapitalLimit(partition_key="PARTITION_A", maximum_capital=Decimal("250000")),
+                PartitionCapitalLimit(partition_key="PARTITION_B", maximum_capital=Decimal("250000")),
             ),
             strategy_limits=(
                 PartitionCapitalLimit(
@@ -83,12 +83,12 @@ def test_serialized_owner_preserves_r17_atomic_capital_truth(
             reconciliation_complete=True,
         )
     )
-    first_two = (command(1, "NIFTY"), command(2, "BANKNIFTY"))
+    first_two = (command(1, "PARTITION_A"), command(2, "PARTITION_B"))
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = tuple(executor.map(authority.reserve, first_two))
     assert len(results) == 2
     with pytest.raises(PortfolioPolicyDeniedError):
-        authority.reserve(command(3, "BANKNIFTY"))
+        authority.reserve(command(3, "PARTITION_B"))
     snapshot = authority.snapshot()
     assert snapshot.account.reserved_capital == Decimal("400000")
     assert snapshot.account.available_capital == Decimal("100000")

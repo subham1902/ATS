@@ -684,3 +684,52 @@ warnings); `pnpm -r typecheck`; `pnpm -r test` (10 + 7 + 58); control-center bui
 COLLECTED ONLY: `pytest tests backend/tests --collect-only` = 2,065 tests.
 NOT RUN LOCALLY: `tests/unit`, `tests/property`, `tests/smoke` in full and the PostgreSQL
 durability suite (CI runs them).
+
+## 2026-10-07: XAUUSD specialization and MetaTrader Step 1 checkpoint
+
+**Current capability: Step 1 software implemented and locally green; physical
+acceptance incomplete.** This section supersedes earlier market/provider/runtime
+claims in this historical implementation log. AI proposes; deterministic ATS
+and portfolio authority authorize. External execution has not been implemented.
+
+- Removed the old provider/Indian-derivatives stack, related active data and derived
+  performance, unsafe persona execution playground, obsolete routes and dependencies.
+  The pre-deletion inventory and local recovery marker remain available.
+- Canonical XAUUSD observations, MetaTrader adapters, account-separated journals and
+  fabric, immutable CSV/Parquet ingestion, proxy footprint provenance and XAUUSD
+  research-only definitions replace the removed product paths.
+- Added transactional multi-account registry, Windows DPAPI credentials, bounded
+  spawned MT5 account workers, verified identity/profile isolation, account monitoring
+  and explicit connection/consent UI. Demo/live share connection architecture;
+  LIVE is not rejected for its mode. MT4 authenticated accounts are NOT_CONFIGURED.
+- Account consent reports EXTERNAL_ROUTING_NOT_IMPLEMENTED. Restart/reconnect/error
+  revoke consent. Risk profiles and full broker reconciliation remain Step 3 work.
+- Fixed cross-thread SSE delivery, journal-before-fanout admission, future/bar timing,
+  standalone shutdown and independent account failure. No terminal order surface exists.
+- Unified chart/research Wilder ATR and removed unobserved-volume VWAP fallback.
+  All surviving strategy evidence is empty and RESEARCH_ONLY; S5 remains DESIGN with
+  its fifteen unresolved review topics. Heuristic confidence is not probability.
+- Pure kernel, portfolio, persistence and deterministic hashing source are unchanged.
+  The domain venue/segment literals changed to OTC/SPOT_METAL. Fixture metadata
+  changes required explicit golden rebaselines; hash algorithms/gates were preserved.
+
+Final local checks: **1,511 Python tests passed, 0 failed, 0 skipped** with PostgreSQL;
+1,511 tests collected; Ruff green; strict mypy green (231 modules); contracts coverage
+95% (gate 93%), kernel 86% (gate 82%). Frontend: 10 API-client + 7 UI + 41 control-center
+checks passed; format/types/lint/build passed (lint: 0 errors, 3 existing copilot warnings).
+`uv lock --check`, `uv sync --frozen` and `pnpm install --frozen-lockfile` passed.
+A fresh isolated frozen Python environment also installed/imported the pinned SDK and
+Parquet dependencies. CI now checks tracked-file cleanliness after test/build gates.
+Remote exact-HEAD CI is recorded separately in the generated boundary report.
+
+Actual terminal: pinned SDK imports, IPC initializes and an authenticated DEMO account
+supplies XAUUSD metadata/quotes. Its tick epoch is approximately three hours ahead of
+verified UTC; the connector rejects it. Real concurrent account-worker acceptance has
+not been demonstrated. No orders were sent; no strategy edge or calibration is claimed.
+**Step 2 has not started.** Resolve physical acceptance before advancing.
+
+Architecture: [specialization](docs/architecture/XAUUSD_MT5_SPECIALIZATION.md),
+[account foundation](docs/architecture/METATRADER_MULTI_ACCOUNT_EXECUTION.md), and
+[shorter remaining execution plan](docs/architecture/ATS_REMAINING_EXECUTION_PLAN.md).
+Generated checkpoint reports: ATS_XAUUSD_MT5_MIGRATION_REPORT.md,
+ATS_METATRADER_STEP1_REPORT.md and ATS_MT5_00_ENVIRONMENT_REPORT.md.

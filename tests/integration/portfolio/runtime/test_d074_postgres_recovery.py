@@ -25,7 +25,7 @@ PORTFOLIO_ID = UUID("77000000-0000-0000-0000-000000000001")
 
 
 def _command(
-    index: int, *, market: str = "NIFTY", amount: str = "100000"
+    index: int, *, market: str = "PARTITION_A", amount: str = "100000"
 ) -> PortfolioReservationCommand:
     return PortfolioReservationCommand(
         request=CapitalReservationRequest(
@@ -45,8 +45,8 @@ def _policy() -> PortfolioAuthorityPolicy:
     return PortfolioAuthorityPolicy(
         maximum_active_reservations=4,
         market_limits=(
-            PartitionCapitalLimit(partition_key="NIFTY", maximum_capital=Decimal("300000")),
-            PartitionCapitalLimit(partition_key="BANKNIFTY", maximum_capital=Decimal("300000")),
+            PartitionCapitalLimit(partition_key="PARTITION_A", maximum_capital=Decimal("300000")),
+            PartitionCapitalLimit(partition_key="PARTITION_B", maximum_capital=Decimal("300000")),
         ),
         strategy_limits=(
             PartitionCapitalLimit(partition_key="D074", maximum_capital=Decimal("500000")),

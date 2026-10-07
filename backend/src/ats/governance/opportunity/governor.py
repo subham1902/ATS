@@ -25,9 +25,9 @@ from ats.contracts.intelligence.models import (
     StrategyDefinition,
 )
 from ats.contracts.intelligence.types import MarketThesisStatus, StrategyStatus
-from ats.intelligence.instrument_selector import InstrumentCandidate
 
 from .errors import OpportunityGovernorError
+from .instrument import InstrumentCandidate
 from .models import (
     OpportunityConstructionConfiguration,
     OpportunityConstructionResult,
@@ -87,7 +87,7 @@ def construct_opportunity_candidate(
         < instrument_candidate.entry_ask
         < economics.proposed_target_price
     ):
-        raise OpportunityGovernorError("long-option stop/entry/target ordering is invalid")
+        raise OpportunityGovernorError("long stop/entry/target ordering is invalid")
     if instrument_candidate.instrument_id not in campaign.instrument_universe:
         return _ineligible("INSTRUMENT_OUTSIDE_CAMPAIGN")
     if thesis.timeframe not in campaign.allowed_timeframes:

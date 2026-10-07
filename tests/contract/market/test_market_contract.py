@@ -22,8 +22,8 @@ def test_every_output_is_the_frozen_a02_market_snapshot() -> None:
     replay = make_replay()
     snapshots = tuple(replay.advance() for _ in range(replay.state.total_bars))
     assert all(type(item) is MarketSnapshot for item in snapshots)
-    assert all(item.exchange == "NSE" for item in snapshots)
-    assert all(item.segment == "CASH" for item in snapshots)
+    assert all(item.exchange == "OTC" for item in snapshots)
+    assert all(item.segment == "SPOT_METAL" for item in snapshots)
     assert all(item.timeframe == "5m" for item in snapshots)
     assert all(item.payload_hash == compute_payload_hash(item) for item in snapshots)
 

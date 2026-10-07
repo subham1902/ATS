@@ -13,7 +13,7 @@ def test_spread_fraction_gating() -> None:
 
     # Spread is 2% of premium (allowed)
     facts_ok = ChurnFacts(
-        instrument_id="NIFTY:CE:1",
+        instrument_id="XAUUSD:CE:1",
         direction="BULLISH",
         thesis_id=None,
         expected_edge_r=0.25,
@@ -29,7 +29,7 @@ def test_spread_fraction_gating() -> None:
 
     # Spread is 5% of premium (blocked)
     facts_bad = ChurnFacts(
-        instrument_id="NIFTY:CE:1",
+        instrument_id="XAUUSD:CE:1",
         direction="BULLISH",
         thesis_id=None,
         expected_edge_r=0.25,

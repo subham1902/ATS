@@ -12,15 +12,15 @@ from ats.market import (
     ReplayTerminalError,
     approved_manifest,
     create_approved_replay,
-    nse_cash_alpha_v1_calendar,
+    xauusd_test_calendar,
 )
 
 
 def test_approved_fixture_replays_end_to_end_against_committed_golden() -> None:
-    calendar = nse_cash_alpha_v1_calendar()
-    manifest = approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1)
+    calendar = xauusd_test_calendar()
+    manifest = approved_manifest(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1)
     replay = create_approved_replay(
-        ApprovedFixture.NSE_CASH_RELIANCE_5M_V1,
+        ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1,
         calendar,
         ReplayConfiguration(start_at=manifest.first_bar, received_delay_ms=250),
     )

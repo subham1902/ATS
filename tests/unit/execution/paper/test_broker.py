@@ -21,7 +21,7 @@ from ats.execution.paper import (
 )
 from ats.kernel.types import GateCode, KernelOutcome, KernelResult
 
-from tests.unit.market.derivatives.option_chain.helpers import AS_OF
+from tests.unit.market.xauusd import AS_OF
 
 from .helpers import evaluation_time, exit_intent, instrument, intent, market, policy, position
 

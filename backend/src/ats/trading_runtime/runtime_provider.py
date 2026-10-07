@@ -35,8 +35,8 @@ class RuntimeProviderState:
     loss_state: LossState = LossState.NORMAL
     open_positions: list[dict[str, object]] = field(default_factory=list)
     recent_decisions: list[dict[str, object]] = field(default_factory=list)
-    feed_healthy: bool = True
-    broker_healthy: bool = True
+    feed_healthy: bool = False
+    broker_healthy: bool = False
     paused: bool = False
     updated_at: UTCDateTime | None = None
 

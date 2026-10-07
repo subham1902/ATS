@@ -1,0 +1,737 @@
+[
+  {
+    "path": "reports/operator-runtime/backend.err.log",
+    "bytes": 11617,
+    "sha256": "bdd09a6db325b2cf87ebaeede8771f6805c6083975312b404646061f5b6edaf6"
+  },
+  {
+    "path": "reports/operator-runtime/backend.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "reports/operator-runtime/frontend.err.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "reports/operator-runtime/frontend.log",
+    "bytes": 155,
+    "sha256": "b3097fb802b7993038973ec410302d9e23a2df07ae8eaa113cdd457e5f1ab81a"
+  },
+  {
+    "path": "reports/operator-runtime/processes.json",
+    "bytes": 195,
+    "sha256": "3ffaa5cf1c4d557e85ebf5a6069cb39f0c4adfa7ca248d64d391aaf4e0ab52b4"
+  },
+  {
+    "path": "scripts/baseline_research_nifty.py",
+    "bytes": 5176,
+    "sha256": "d4f8b13156cfc28691734a712bd236a051c64a64e24e1a9b7f0e97fe6f6d85d8"
+  },
+  {
+    "path": "scripts/comprehensive_ats_acceptance.py",
+    "bytes": 14259,
+    "sha256": "5e272cb755833946f77e4811fcf653cd7c0aca660030dcd4b61a0ea326acf051"
+  },
+  {
+    "path": "scripts/cost_stress_check.py",
+    "bytes": 9745,
+    "sha256": "ad07c3dfa63ce920e7e92496a544d2a4dc8b09a9939d11514e975ab79e96f90e"
+  },
+  {
+    "path": "scripts/evolve_families.py",
+    "bytes": 8552,
+    "sha256": "41231a7c99dc2a61a3ee1e176cd04065c7979ac294fdbbe66a416bd317cecf83"
+  },
+  {
+    "path": "scripts/probe_diverse_families.py",
+    "bytes": 1940,
+    "sha256": "4ebb1fdac817afd957fb2c2ce32f792da40b4ccb77ed2cc44160c768c2ca5632"
+  },
+  {
+    "path": "scripts/run_paper_sessions.py",
+    "bytes": 14582,
+    "sha256": "d7f8b8804eee1b96edcac93ce54eb4760c7b6f58484becde96a0644c0a1a636b"
+  },
+  {
+    "path": "scripts/start_ats_a2_live_paper.ps1",
+    "bytes": 2540,
+    "sha256": "5a4ff6e34e080cadbcdc5036f0591234b2e469d2b754fd38f6066ebdb5026242"
+  },
+  {
+    "path": "scripts/test_chart360_atomic_audit.py",
+    "bytes": 9994,
+    "sha256": "fd838ed4e37df888a4dbefdc5fe8bdaf1f7564c3086aa0842130cbe1f8af526e"
+  },
+  {
+    "path": "scripts/test_dynamic_datasets_and_chart360.py",
+    "bytes": 6425,
+    "sha256": "0bde26cbcde20adcec02d23e651b962664b252d6cc95fb61b342201442f274fb"
+  },
+  {
+    "path": "scripts/test_laya_integration.py",
+    "bytes": 5794,
+    "sha256": "05c6bffc35a42c4e60ae1e9903f8d97d72bd1f1f1d359bbff12ee395ed9484bd"
+  },
+  {
+    "path": "scripts/test_lc1_live_streaming_acceptance.py",
+    "bytes": 7031,
+    "sha256": "72486b6ab2e1ad27e0dbecdbc93c5dc801106f1061734fb984f9e770ab2880a9"
+  },
+  {
+    "path": "scripts/test_ui_interactions.py",
+    "bytes": 12107,
+    "sha256": "2e414425f1f39be4949ffb217c55f5218c5ab75173652319443a619b6e95b3b7"
+  },
+  {
+    "path": "scripts/validate_strategies.py",
+    "bytes": 16700,
+    "sha256": "0759650cf7c244c668965f91338a697202e7ed26f8a1048f003fb99908600121"
+  },
+  {
+    "path": "tests/contract/market/derivatives/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 174,
+    "sha256": "a02f27a21d6f38141663e11115c480e8076da5828301efa331fdaec7501c46be"
+  },
+  {
+    "path": "tests/contract/market/derivatives/__pycache__/test_contract_master_schema.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 5447,
+    "sha256": "209ebc9c0b3a329035d3d5659c9028b788dffc049d34947a592f73bbdc6c2621"
+  },
+  {
+    "path": "tests/contract/market/derivatives/__pycache__/test_option_chain_contract.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 7755,
+    "sha256": "2108e2ceb0957649f448d78a18b345be3d192a0572e7c7b3ef464f9a9ae808ad"
+  },
+  {
+    "path": "tests/contract/market/derivatives/acquisition/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 186,
+    "sha256": "37bed966d3fc39d00e7c8c110b1ac9baba13e7a6208d475951960456e0b26727"
+  },
+  {
+    "path": "tests/contract/market/derivatives/acquisition/__pycache__/test_d03_read_only_contract.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 3254,
+    "sha256": "0d0ba6f15dee01ab46e278b30477fc740ff9c86984716fb36fc8a80e8753d6d2"
+  },
+  {
+    "path": "tests/contract/market/derivatives/acquisition/test_d03_read_only_contract.py",
+    "bytes": 668,
+    "sha256": "f83116cf60f171a902598bcd58cb6035d56fbf2057489a7b09f587845e2ccc6b"
+  },
+  {
+    "path": "tests/contract/market/derivatives/normalization/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 188,
+    "sha256": "b015eae903da4ba7d364b1f7412a64775d0ab899828a79d05363221a2a078e96"
+  },
+  {
+    "path": "tests/contract/market/derivatives/normalization/__pycache__/test_d02_contract.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 2637,
+    "sha256": "13317e050ebd466b6115fc1af2b93063b36b197ef75a8ff1f1facbd6987c8acf"
+  },
+  {
+    "path": "tests/contract/market/derivatives/normalization/test_d02_contract.py",
+    "bytes": 455,
+    "sha256": "efaf5abe91fdae3b8a234ecd21f659da29a9be374b64bc72210b51262c83d59f"
+  },
+  {
+    "path": "tests/contract/market/derivatives/providers/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 184,
+    "sha256": "788526d06c021697a508a32bc9ce509fc1fa6679ca9e3c884af885b6ae281956"
+  },
+  {
+    "path": "tests/contract/market/derivatives/providers/__pycache__/test_provider_boundary.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 1621,
+    "sha256": "a23aade37fcd8f250af69caac570da891483b6725be9ae3ad414ddf9367fcd61"
+  },
+  {
+    "path": "tests/contract/market/derivatives/providers/test_provider_boundary.py",
+    "bytes": 285,
+    "sha256": "aef1feb9b7220ec68b38bcfe187b49a7ebf913858c85d2e30e7ce39f538d2651"
+  },
+  {
+    "path": "tests/contract/market/derivatives/test_contract_master_schema.py",
+    "bytes": 1088,
+    "sha256": "4ed10d23325dac08d9ddc389ae80b3127b74f2d70d2915d6e275b0d1a3f250b3"
+  },
+  {
+    "path": "tests/contract/market/derivatives/test_option_chain_contract.py",
+    "bytes": 1346,
+    "sha256": "3f879a9e4d4c26c6fad81d4e07c6b142151f3e8e786603effbabaf4a7bbadf6c"
+  },
+  {
+    "path": "tests/integration/market/derivatives/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 177,
+    "sha256": "56177ecb88cd81160b5cb146ea178601b9c89bdc8b89a1bdb4cc6699575517d9"
+  },
+  {
+    "path": "tests/integration/market/derivatives/__pycache__/test_contract_master_fixture.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 6824,
+    "sha256": "e81693fd55f14f208c1b04a56af777ae351840978102d32f7e69c249f9769f95"
+  },
+  {
+    "path": "tests/integration/market/derivatives/__pycache__/test_end_to_end_readiness.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 28239,
+    "sha256": "182fb7a2118f1aded059f9705b0fd15901dc6efb275bdc631cf6ffcb23848962"
+  },
+  {
+    "path": "tests/integration/market/derivatives/__pycache__/test_option_chain_pipeline.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 5413,
+    "sha256": "b89845d92c0d6f0b5cdbd67d70098591874a23b48f447e99d412d566eeaba644"
+  },
+  {
+    "path": "tests/integration/market/derivatives/active_window/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 191,
+    "sha256": "af22e6d7895c790e8bb1a86028bc281e312a4feb2205952e6160867e683fe694"
+  },
+  {
+    "path": "tests/integration/market/derivatives/active_window/__pycache__/test_d02_d04_integration.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 6722,
+    "sha256": "44235c8cb61bb65057630553736e0bd042c9585674c153875e3bf228bde188d6"
+  },
+  {
+    "path": "tests/integration/market/derivatives/active_window/test_d02_d04_integration.py",
+    "bytes": 3364,
+    "sha256": "33139275cc24302fa0913dc9fd5113a927bffc21585e4da800f7cdbfb692b4b3"
+  },
+  {
+    "path": "tests/integration/market/derivatives/fixtures/nse_index_derivatives_20260824.csv",
+    "bytes": 741,
+    "sha256": "666d290cef9bae1944afb0d77283688a9b679bcb9d1d91ec30f1690b107b3b9e"
+  },
+  {
+    "path": "tests/integration/market/derivatives/test_contract_master_fixture.py",
+    "bytes": 1904,
+    "sha256": "2d2d0ea9c6c9f9e6cc2679db3b5684a227020cdd8b91ba38c262802960a2a632"
+  },
+  {
+    "path": "tests/integration/market/derivatives/test_end_to_end_readiness.py",
+    "bytes": 9250,
+    "sha256": "05011d25c7bd547ea47281b27e44d110aced2e8a7cff7e8da592b81f76245d1e"
+  },
+  {
+    "path": "tests/integration/market/derivatives/test_option_chain_pipeline.py",
+    "bytes": 778,
+    "sha256": "9b5c55d3435af42041eee0a90a93b5cd689922581a1102c9803169b70c3bdeb2"
+  },
+  {
+    "path": "tests/property/market/derivatives/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 174,
+    "sha256": "be0f4a40d7fd42d8a81f21b2bdd6be15d185a4390f634008b036545cd91d57c0"
+  },
+  {
+    "path": "tests/property/market/derivatives/active_window/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 188,
+    "sha256": "14b13c916b261c9c8953ee2fcbf42008a705af0ff6a555bab277f36f38429a06"
+  },
+  {
+    "path": "tests/property/market/derivatives/active_window/__pycache__/test_d04_window_properties.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 10106,
+    "sha256": "c4da3c773048be759bbb2888b03fec90fe39c413354f26488f853e6a1adca442"
+  },
+  {
+    "path": "tests/property/market/derivatives/active_window/test_d04_window_properties.py",
+    "bytes": 3378,
+    "sha256": "5ea5e3d63d3e94f424aaeb845eb9eb6f19c55ef6e0bcba094442ccf3e462ace4"
+  },
+  {
+    "path": "tests/property/market/derivatives/contract_master/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 190,
+    "sha256": "3590eedeafc48915e024aa117380d3cfe7fdec48b259cdf818de38ea09f355ad"
+  },
+  {
+    "path": "tests/property/market/derivatives/contract_master/__pycache__/test_contract_master_properties.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 10433,
+    "sha256": "56354a2607e9537ec7bf043d09506cf228496bfab87f0e0e35f5355e23febdfe"
+  },
+  {
+    "path": "tests/property/market/derivatives/contract_master/test_contract_master_properties.py",
+    "bytes": 1897,
+    "sha256": "4aaa4c405b9791793339cd98c5b559ed9a19b1dd1e81c32fa69a761db3b2515c"
+  },
+  {
+    "path": "tests/property/market/derivatives/normalization/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 188,
+    "sha256": "9a43799f18d1b13aa4e6778ced2b87ba70b624fc44aef73c66822a9956b52956"
+  },
+  {
+    "path": "tests/property/market/derivatives/normalization/__pycache__/test_canonical_stability.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 11253,
+    "sha256": "3a0fbfd34abb1a45c9a10e6a499d47752c959699277c9e94b9cbc28e79f90b86"
+  },
+  {
+    "path": "tests/property/market/derivatives/normalization/test_canonical_stability.py",
+    "bytes": 4942,
+    "sha256": "644b41291969ebc40f9d0fecf6a6489720597a492be24c13d18487ebba861e5a"
+  },
+  {
+    "path": "tests/property/market/derivatives/option_chain/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 187,
+    "sha256": "b82b697a3508a2e16589735edd123a6c4f2bb25106f8796458782c8bf93ceaf6"
+  },
+  {
+    "path": "tests/property/market/derivatives/option_chain/__pycache__/test_option_chain_properties.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 6773,
+    "sha256": "33044021cf079ef0b34162f9dec332d063a4c5bb23bda6570690d4234bbbba07"
+  },
+  {
+    "path": "tests/property/market/derivatives/option_chain/test_option_chain_properties.py",
+    "bytes": 1550,
+    "sha256": "6a01f4d04002c7cc66375ac9fa240cbac76b4a59cec9e2205dccc3e0bdfe2acf"
+  },
+  {
+    "path": "tests/property/market/derivatives/replay_data/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 186,
+    "sha256": "b734b84a7bbf2a5bba7ad9f4508f2e94c605b8ea5e654324ff3f5cdd129c99fb"
+  },
+  {
+    "path": "tests/property/market/derivatives/replay_data/__pycache__/test_d03_temporal_properties.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 7876,
+    "sha256": "b6e60e42d22ee8c00c9574db3f440eb45feadd9f9bfe10910f1bb1c1d5bee23b"
+  },
+  {
+    "path": "tests/property/market/derivatives/replay_data/test_d03_temporal_properties.py",
+    "bytes": 2680,
+    "sha256": "e13abc57347c73d0542cd4c83394f07406eb1b171cc63006f2cdd46178f36174"
+  },
+  {
+    "path": "tests/unit/market/data_acquisition/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 175,
+    "sha256": "c1e5529cebf23e18a6e7c281b3f35e16ed4320a2f0bdbaf6308fcc378a5cf3b7"
+  },
+  {
+    "path": "tests/unit/market/data_acquisition/__pycache__/test_real_session_ingestion.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 30065,
+    "sha256": "01f5775652be66a219ee9388edb0d213d70411eccd29bb31220eb401d2e2efd7"
+  },
+  {
+    "path": "tests/unit/market/data_acquisition/test_real_session_ingestion.py",
+    "bytes": 5989,
+    "sha256": "4999c4f1f12fbfdb07814f47ea048561872523c433049df1e2bb26da1b40f4c7"
+  },
+  {
+    "path": "tests/unit/market/derivatives/__init__.py",
+    "bytes": 37,
+    "sha256": "23d8274615e8e15515ed961276d8edad9718333fb4cf10b626898cbe0db90b22"
+  },
+  {
+    "path": "tests/unit/market/derivatives/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 213,
+    "sha256": "d4a6a1ded6b0e73aa00662d461255e82160149e753b8fcf52a7bd322f3d5d351"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 182,
+    "sha256": "46af6aa2aa20e9d305df7ba5c2a02063a4c6733951711d718491b2f8392c163b"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/test_client.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 16898,
+    "sha256": "f69a8ea738dfee3b971d57813682bdff6f4fbbc54339ca768bcf8fc06bb14b3f"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/test_parsers.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 14846,
+    "sha256": "3625f835e88fcbe37c69fbd050e6c722acc74b9cdb1948965229a41cb0def48a"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/test_plan.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 13403,
+    "sha256": "395136fd4abb459773e01c8bbe3d4f5727f7feef783279b02964689ce2dca6d2"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/test_redaction.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 3467,
+    "sha256": "0ae804ca70408f750039bea97985ea10ca9f6dde8da04df18a6dcb7479718172"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/__pycache__/test_secrets.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 6921,
+    "sha256": "cd49552acbd98922783d38906cc1d85f04dc51c255f2c71e526c527eb45c159b"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/test_client.py",
+    "bytes": 4484,
+    "sha256": "6be3cc51eff0a67fc772566b6d5d164dd5b892008102b25a8ca99d17a0e0a7d7"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/test_parsers.py",
+    "bytes": 3698,
+    "sha256": "79fc63d865603221c251fa7e2f189e85e0da7cc15380773c68d7f34296751a97"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/test_plan.py",
+    "bytes": 3534,
+    "sha256": "33d8bca799119b70d4cdc50da37784f1f38b7c82cfdee87629a438544151f66b"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/test_redaction.py",
+    "bytes": 539,
+    "sha256": "07be97f43222f1a09cbd0a1d320102b76b68b910d7f2724b556adc9ca8bf8ca4"
+  },
+  {
+    "path": "tests/unit/market/derivatives/acquisition/test_secrets.py",
+    "bytes": 982,
+    "sha256": "718f74c5fd97987ef7d3b789b101b2643b4656c4d51b53207ed16e424d67a619"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/__init__.py",
+    "bytes": 37,
+    "sha256": "7d5cc3f7f443ea23db83c0f2677e4061748646a41c3be073af5c5523d86a74a9"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 227,
+    "sha256": "a19c84059286e1a9e3ad5e8f980b32c6caa112756d01008cc04164b98f2c0d8a"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/__pycache__/test_cache.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 27743,
+    "sha256": "8c78a8787eb90e21f67460eb22f31adaabfdd7ef02d288b35b614692b0c00007"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/__pycache__/test_engine.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 22678,
+    "sha256": "011152073e165b1369dffa5680ef62343839c0a2719630a6dfa9025140d4801e"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/test_cache.py",
+    "bytes": 5508,
+    "sha256": "0c0fb3b5ac4e515c5eb8e0df3ccf050a5a2a815446fcafc04fd6f602432bdc5e"
+  },
+  {
+    "path": "tests/unit/market/derivatives/active_window/test_engine.py",
+    "bytes": 7268,
+    "sha256": "fd3eec304d137ece8ff1719f8b592796c91c56c1b0915dfef2137190b09310e4"
+  },
+  {
+    "path": "tests/unit/market/derivatives/artifacts/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 180,
+    "sha256": "58fe5264b9d4ef39a61f3919147618ca7ae393f8e2a2320a9f622f00c2bbb76d"
+  },
+  {
+    "path": "tests/unit/market/derivatives/artifacts/__pycache__/test_artifact_provenance.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 35065,
+    "sha256": "f60494f9ad60e2ea13fb4bc4d72fc25c845118d433c0cffc8faf86229e17886a"
+  },
+  {
+    "path": "tests/unit/market/derivatives/artifacts/__pycache__/test_store.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 9572,
+    "sha256": "620f4ac6bc7da0d574188025189764e37fd936e007cc45f156af7657c5a02dd4"
+  },
+  {
+    "path": "tests/unit/market/derivatives/artifacts/test_artifact_provenance.py",
+    "bytes": 6924,
+    "sha256": "75895a432b88b9660374c198e2e3cb46b78250615d1a71bc8f1021e144b1e912"
+  },
+  {
+    "path": "tests/unit/market/derivatives/artifacts/test_store.py",
+    "bytes": 2678,
+    "sha256": "a88d9f04b065e186ed9fa03d6dbe630f0c5deef9637af0720ee4f7417f6c031f"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__init__.py",
+    "bytes": 35,
+    "sha256": "cd4148e84725de902aef97b67e4195f5bd27bf2654b9f7a756c816aafbb9e3f7"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 227,
+    "sha256": "81d55687b1edd918379db47beeba7d8afb03ef70a1eaf489e1969e85064b4b9b"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/expiry_helpers.cpython-311.pyc",
+    "bytes": 3619,
+    "sha256": "0c40f58cc2bfac8d1e2e7d32b406a183049cbec3b9ae6f3e8f884fe1dbfd83a0"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/helpers.cpython-311.pyc",
+    "bytes": 2125,
+    "sha256": "dc3488ac2d054301a24bacff20713f071cfabae08480276ec850c7aae46bef19"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/test_expiry_engine.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 34376,
+    "sha256": "4460fb60cf76ff6cca7f7de6cedc9e5afb17bb8783a3daae8e548d1bd648b319"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/test_normalization.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 28625,
+    "sha256": "98dd3c5a0799f4b2eb915ac1246f927565c4618784c28b7ba30572e22612b17e"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/__pycache__/test_registry.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 9712,
+    "sha256": "d2da83512c12ece7bee1ffbbb2c7bfe9732bb5c6094ea5f0be74de74241cae87"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/expiry_helpers.py",
+    "bytes": 2390,
+    "sha256": "bd05fb31fb2fdfcc637a6c43e566614666a9796ad4cb2db2ddae70ad81950180"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/helpers.py",
+    "bytes": 1316,
+    "sha256": "a5cb8715dcdf22299ec30cc6494f2fca3d07dad9e4fcb3a7c3f068f66a04f2b1"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/test_expiry_engine.py",
+    "bytes": 10279,
+    "sha256": "0113303703ae3ddafca35883249663cb4a9c46321cf5c3f5edfd9a9575a008d7"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/test_normalization.py",
+    "bytes": 6289,
+    "sha256": "bee1f1ca079506ea74edbd9df9ffd1a463dc56415462d23e5064ff4c5ac1b2b1"
+  },
+  {
+    "path": "tests/unit/market/derivatives/contract_master/test_registry.py",
+    "bytes": 2607,
+    "sha256": "59fd98162cfecb9cfce61f37c86c07d9b81d042b6e4883207200bb722085ffb0"
+  },
+  {
+    "path": "tests/unit/market/derivatives/normalization/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 184,
+    "sha256": "64cff8954274b71a36b372d1c43f90b9706b12234a370252e5a1ce7299392fb0"
+  },
+  {
+    "path": "tests/unit/market/derivatives/normalization/__pycache__/test_normalizer.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 19662,
+    "sha256": "247d5feec40cec192c9fcc2895acac1ffdbe8cfd5939adf9287230738af68892"
+  },
+  {
+    "path": "tests/unit/market/derivatives/normalization/test_normalizer.py",
+    "bytes": 6379,
+    "sha256": "8cecc0374bf133df343d78af97ec3365b56beea96b8b3081c003df9f19720bf6"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__init__.py",
+    "bytes": 32,
+    "sha256": "1829c5b69a86c9aeda086a6dc4f076c073a0f6ebfe73f231dec1962ee8a8af7f"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 221,
+    "sha256": "a0ec2af3284aa2740f6d4668f9d20017385e337f98a4d0ad0a146663818890ff"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__pycache__/helpers.cpython-311.pyc",
+    "bytes": 4857,
+    "sha256": "5127e04136c6083ed3683a451763fdd824de9cebf636d8a789eb9839243fad37"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__pycache__/test_builder.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 24586,
+    "sha256": "8314457703fc46681e4b800bfde02bd9932d335bf2c606afb4dbdc37f44bb7d6"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__pycache__/test_features.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 15967,
+    "sha256": "f406428288b132dd439d858ac9c16bc7546425c1f88b34932819b31495060fe6"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/__pycache__/test_greeks_calculator.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 21317,
+    "sha256": "4f265e03869a7533c6a04bbda9457a283680c47ee6b43e879746e9ca632aea15"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/helpers.py",
+    "bytes": 3334,
+    "sha256": "2769e8ec335e3f6cf4f2267111eec2786d9eb758ef75414ed5ad4031099d814e"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/test_builder.py",
+    "bytes": 5918,
+    "sha256": "361c29c87b19ad725253efe83aada6f92e6ed5ff0f3bda759c4a783c87c4d8b1"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/test_features.py",
+    "bytes": 2518,
+    "sha256": "bd73046aaa04c221e160480a69249a717e6bd52957ccae7950edab9d23d788f1"
+  },
+  {
+    "path": "tests/unit/market/derivatives/option_chain/test_greeks_calculator.py",
+    "bytes": 4192,
+    "sha256": "10e829259ef7e9d838b885ee8cc4bd02663d6b16572a14e4a8f26741ef44c880"
+  },
+  {
+    "path": "tests/unit/market/derivatives/providers/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 180,
+    "sha256": "76393c0b5290a1d118d5eb320c1275cb034533ebb34d0cb3a4262e228f4da694"
+  },
+  {
+    "path": "tests/unit/market/derivatives/providers/__pycache__/test_provenance.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 5763,
+    "sha256": "33e7d5e86769c6d99898ce400efa4351a9bbea236f07565c78fe3c08810083b5"
+  },
+  {
+    "path": "tests/unit/market/derivatives/providers/test_provenance.py",
+    "bytes": 2301,
+    "sha256": "41cc81b67a9f6e43062c8b1d0297e90da1c60234ca3b5d4b9da1322c69f2c318"
+  },
+  {
+    "path": "tests/unit/market/derivatives/replay_data/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 182,
+    "sha256": "9c5d690e090471708e477c470d293108beedafa44fd61cb623835f9783399453"
+  },
+  {
+    "path": "tests/unit/market/derivatives/replay_data/__pycache__/test_builder.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 13747,
+    "sha256": "da6d2dda378f150785801d03148976c239ba0397aa7cb3e1fdc295a0d9a82000"
+  },
+  {
+    "path": "tests/unit/market/derivatives/replay_data/__pycache__/test_resampler.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 29930,
+    "sha256": "832c64e906660a8d11c6b7104572efe180c296fb796c3d9ca6c2d48fded7f532"
+  },
+  {
+    "path": "tests/unit/market/derivatives/replay_data/test_builder.py",
+    "bytes": 4323,
+    "sha256": "e91b784e0012ebf53c260fae7794310b2a390357d24cd4194ff211cfd24106cb"
+  },
+  {
+    "path": "tests/unit/market/derivatives/replay_data/test_resampler.py",
+    "bytes": 5151,
+    "sha256": "b1f0cc688ca6d3659d45a531c91c48ee6f42e040a0c4f2f8cc1d5f3f6f4dbd5c"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 184,
+    "sha256": "e9665804057118223613601569af3b1b9974a965900fae51700081907d3c001b"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/__pycache__/helpers.cpython-311.pyc",
+    "bytes": 3736,
+    "sha256": "06d3f18ad4d714bcb70a6abe12b6fdf23caffa8ac6720c8b1fd68a6ad7a5a2c3"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/__pycache__/test_strike_window.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 42523,
+    "sha256": "2da7fff3f3a80ced2189e5626a88e284aa2b35673109c9208afd1386d4e4afdf"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/helpers.py",
+    "bytes": 2325,
+    "sha256": "ba956852e0130f14a3f2b24e7e029cd315ecbd63c69a7e9be62d50d8640175aa"
+  },
+  {
+    "path": "tests/unit/market/derivatives/strike_window/test_strike_window.py",
+    "bytes": 9809,
+    "sha256": "ba252dfabd608ccf1515f7870afad57968624628023ea69dc1a31dea580519a0"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 174,
+    "sha256": "4493cad3859f97bb59d41df37ac9c3ed1f1150761044cf7b9a2af8529568ca99"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/helpers.cpython-311.pyc",
+    "bytes": 6647,
+    "sha256": "d10de738d4d9815c7f82eb044ddc6403ac5c9af9ffb4382f6da05ccd485ed7d3"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_adapter.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 60919,
+    "sha256": "3695af0be26265869320b0a158356f08916c134bdc52baafc2b5c35858ac2f72"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_codec.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 35295,
+    "sha256": "bedf84a9c8425aeb2473b0575e68ac4658fc0a7568b09f6f781bd472288e3aa7"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_frames.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 17453,
+    "sha256": "36d892375866737065f8a95e895f86f3cb43061f2871bf8ce220e4ffd62c8226"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_freshness.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 44158,
+    "sha256": "aaa89a85ed4b5536a2d79b41fbf7b427efadc20f061d966b34be26edd651a37c"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_protobuf_codec.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 22108,
+    "sha256": "756856d1d4c01048b13525621f41964f464428b7b6c6733e2347ef72891b0ab2"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_subscription.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 16265,
+    "sha256": "bd86d7ce4d7e76feee5fd4c5891d237759b6a2be285179750f87885f14dfc635"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/__pycache__/test_transport.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 21278,
+    "sha256": "4085d934ef8b4d413a1b9ab5ada591f3526a626c86e4ae381a0afc852be1ea8f"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/helpers.py",
+    "bytes": 4316,
+    "sha256": "b68a81a07ed9d5e980cea4a412bf67a3235ad5bea8e9d74982fefcb2259a1594"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_adapter.py",
+    "bytes": 12146,
+    "sha256": "de4d82c405a1faabb3aa8bca69088c36572b5c61e2b64c988bf957f1b07b6abb"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_codec.py",
+    "bytes": 6196,
+    "sha256": "c0ec2e0715f0bbd5acbc972fb93c9f09c04814a35889bf771c6eeeb37e30c3a5"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_frames.py",
+    "bytes": 3611,
+    "sha256": "430e863b869914821853fad58c596d83958cc9b39e47ee6280050ff824e7a640"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_freshness.py",
+    "bytes": 7177,
+    "sha256": "f03bf9081450b9f19978dbd92758081efa00a1b63dc248c596bcb6a3310159a5"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_protobuf_codec.py",
+    "bytes": 3499,
+    "sha256": "47f65b7e17135ab1fe6d530a187714a4d6032ae4a5e13b84ef1054f333d08e2d"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_subscription.py",
+    "bytes": 2933,
+    "sha256": "c7cabd85e8e2b5e6ab71b7507b781f8127c3f0106267f0a6228e269aecd39854"
+  },
+  {
+    "path": "tests/unit/market/feeds/upstox_v3/test_transport.py",
+    "bytes": 4891,
+    "sha256": "a4838e7fca52a88a7e29aa8d3a5f0a076f4d4a4f4f2dc83a1a28d90354f99abb"
+  },
+  {
+    "path": "tests/unit/market/providers/upstox/__pycache__/__init__.cpython-311.pyc",
+    "bytes": 175,
+    "sha256": "88f220fcec3118418b919f4766784cd478c2bc3ba7fde4bfa807de5887d6169c"
+  },
+  {
+    "path": "tests/unit/market/providers/upstox/__pycache__/test_capabilities.cpython-311-pytest-8.4.2.pyc",
+    "bytes": 21931,
+    "sha256": "99a42ddfd03168943f798d799d64b59dc487d3f0827b7536e4ef500e0ea619cf"
+  },
+  {
+    "path": "tests/unit/market/providers/upstox/test_capabilities.py",
+    "bytes": 4117,
+    "sha256": "3a3f0e6d71bf121229ee48f474164ba7607e779bad6fa7400dda8e6bcd4232ea"
+  },
+  {
+    "path": "verify_all_features.py",
+    "bytes": 7249,
+    "sha256": "9ff875e023f00c5529270566b66c287d74e72cee98cd964288487d4a2d6e7cbd"
+  }
+]

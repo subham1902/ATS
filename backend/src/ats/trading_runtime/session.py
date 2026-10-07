@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import time, timedelta, timezone
+from datetime import time
 from enum import StrEnum
+from zoneinfo import ZoneInfo
 
 from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.types import SessionState
 from ats.market.calendar.models import SessionCalendar
-
-_INDIA_TZ = timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
 
 
 class RuntimeSessionPhase(StrEnum):
@@ -87,7 +86,7 @@ def resolve_session_status(
             must_flatten=False,
             is_halted=False,
         )
-    local = now.astimezone(_INDIA_TZ)
+    local = now.astimezone(ZoneInfo(calendar.timezone))
     local_time = local.timetz().replace(tzinfo=None)
     assert isinstance(local_time, time)
     if frozen is SessionState.PREOPEN:

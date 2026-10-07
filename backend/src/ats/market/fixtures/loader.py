@@ -18,13 +18,13 @@ from ats.market.replay.models import (
 
 
 class ApprovedFixture(ATSStringEnum):
-    NSE_CASH_RELIANCE_5M_V1 = "NSE_CASH_RELIANCE_5M_V1"
+    XAUUSD_SYNTHETIC_5M_V1 = "XAUUSD_SYNTHETIC_5M_V1"
 
 
 _APPROVED_FILES = {
-    ApprovedFixture.NSE_CASH_RELIANCE_5M_V1: (
-        "nse_cash_reliance_5m_v1.manifest.json",
-        "nse_cash_reliance_5m_v1.bars.json",
+    ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1: (
+        "xauusd_synthetic_5m_v1.manifest.json",
+        "xauusd_synthetic_5m_v1.bars.json",
     )
 }
 

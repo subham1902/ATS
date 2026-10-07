@@ -10,7 +10,6 @@ from pydantic import model_validator
 from ats.contracts.common import ATSBaseModel, Probability, UTCDateTime
 from ats.contracts.domain.types import DataQualityState, NonEmptyStr, Sha256
 from ats.contracts.hashing import canonical_sha256
-from ats.market.derivatives.contract_master import DerivativeUnderlying
 
 
 class IntelligenceStaleness(StrEnum):
@@ -21,7 +20,7 @@ class IntelligenceStaleness(StrEnum):
 
 class MarketIntelligenceSnapshot(ATSBaseModel):
     schema_version: Literal["1.0"]
-    underlying: DerivativeUnderlying
+    underlying: Literal["XAUUSD"]
     data_cutoff: UTCDateTime
     as_of_time: UTCDateTime
     valid_until: UTCDateTime
@@ -48,7 +47,7 @@ class IntelligenceCacheRead(ATSBaseModel):
 
 def build_market_intelligence_snapshot(
     *,
-    underlying: DerivativeUnderlying,
+    underlying: Literal["XAUUSD"],
     data_cutoff: UTCDateTime,
     as_of_time: UTCDateTime,
     valid_until: UTCDateTime,

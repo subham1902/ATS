@@ -17,7 +17,7 @@ from ats.contracts.domain.types import (
     Side,
 )
 from ats.kernel.types import KernelOutcome, KernelResult
-from ats.market.derivatives.contract_master import DerivativeInstrument
+from ats.market.domain import InstrumentMetadata
 
 from .errors import PaperExecutionError
 from .models import (
@@ -40,7 +40,7 @@ def submit_paper_order(
     *,
     intent: OrderIntent,
     authorization: KernelResult,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: UTCDateTime,
@@ -112,7 +112,7 @@ def process_paper_order(
     *,
     order: PaperOrder,
     intent: OrderIntent,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: UTCDateTime,
@@ -145,7 +145,7 @@ def submit_paper_exit(
     intent: ExitIntent,
     position: Position,
     authorization: KernelResult,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: UTCDateTime,
@@ -243,7 +243,7 @@ def submit_paper_exit(
 def _process_acknowledged_order(
     *,
     order: PaperOrder,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: datetime,
@@ -303,7 +303,8 @@ def _process_acknowledged_order(
         }
     )
     try:
-        from ats.trading_runtime.paper_tournament import record_system_activity
+        from ats.observability.activity import record_system_activity
+
         record_system_activity(
             event_kind=f"PAPER_{fill.side.value}_FILL",
             summary=(
@@ -324,7 +325,8 @@ def cancel_paper_order(order: PaperOrder, *, cancelled_at: UTCDateTime) -> Paper
     if cancelled_at < order.updated_at:
         raise PaperExecutionError("cancellation time moved backwards")
     try:
-        from ats.trading_runtime.paper_tournament import record_system_activity
+        from ats.observability.activity import record_system_activity
+
         record_system_activity(
             event_kind="PAPER_ORDER_CANCELLED",
             summary=(
@@ -382,7 +384,7 @@ def _validate_boundary(
     *,
     intent: OrderIntent,
     authorization: KernelResult,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: datetime,
@@ -417,7 +419,7 @@ def _validate_market_values(
     *,
     instrument_id: str,
     side: Side,
-    instrument: DerivativeInstrument,
+    instrument: InstrumentMetadata,
     market: PaperMarketFacts,
     policy: PaperExecutionPolicy,
     evaluation_time: datetime,

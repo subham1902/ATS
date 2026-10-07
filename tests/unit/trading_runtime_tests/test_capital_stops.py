@@ -25,8 +25,8 @@ def _base_pos(
 ) -> MonitoredPosition:
     unrealized = (current_mark - entry_price) * quantity
     return MonitoredPosition(
-        position_id="NIFTY:CE:1",
-        instrument_id="NIFTY",
+        position_id="XAUUSD:CE:1",
+        instrument_id="XAUUSD",
         entry_price=entry_price,
         current_mark=current_mark,
         quantity=quantity,

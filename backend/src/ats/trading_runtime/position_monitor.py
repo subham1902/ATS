@@ -55,7 +55,7 @@ class MonitoredPosition:
     greeks_theta: float | None = None
     greeks_iv: float | None = None
     entry_at: UTCDateTime | None = None
-    lot_size: int = 1
+    lot_size: Decimal | int = 1
     expected_edge_r: float = 0.0
     direction: str = "BULLISH"
 

@@ -17,26 +17,33 @@ from tests.unit.trading_runtime.exit_authorization_doubles import (
     PermissiveExitAuthorization,
 )
 
-from .helpers import NIFTY, NOW, build_orchestrator, market_facts
+from .helpers import NOW, SYMBOL, build_orchestrator, market_facts
 
 
 def _facts(instrument_id: str, at):
-    return market_facts(instrument_id=NIFTY, at=at) if instrument_id == NIFTY else None
+    return market_facts(instrument_id=SYMBOL, at=at) if instrument_id == SYMBOL else None
 
 
 def test_replay_harness_persists_only_final_reconciled_result(tmp_path) -> None:
     ledger = ForwardValidationLedger(tmp_path / "validation.jsonl")
     listener = ValidationListener(
-        ledger=ledger, source=ValidationSource.REPLAY, code_version="6cbb53d",
-        strategy_version="A2-FROZEN", policy_version="A04-V1",
+        ledger=ledger,
+        source=ValidationSource.REPLAY,
+        code_version="6cbb53d",
+        strategy_version="A2-FROZEN",
+        policy_version="A04-V1",
     )
     feed = InMemoryMarketFeed()
-    feed.set_mark("NIFTY", Decimal("25000"), NOW)
-    feed.set_mark(NIFTY, Decimal("101"), NOW)
-    orchestrator = build_orchestrator(market_facts_provider=_facts, feed=feed, exit_authorization_provider=PermissiveExitAuthorization())
+    feed.set_mark("XAUUSD", Decimal("25000"), NOW)
+    feed.set_mark(SYMBOL, Decimal("101"), NOW)
+    orchestrator = build_orchestrator(
+        market_facts_provider=_facts,
+        feed=feed,
+        exit_authorization_provider=PermissiveExitAuthorization(),
+    )
     orchestrator.listener = listener
-    orchestrator.runtime.market_feed.set_mark("NIFTY", Decimal("25600"), NOW)
-    orchestrator.bar("NIFTY", close=Decimal("25600"), previous_close=Decimal("25000"), at=NOW)
+    orchestrator.runtime.market_feed.set_mark("XAUUSD", Decimal("25600"), NOW)
+    orchestrator.bar("XAUUSD", close=Decimal("25600"), previous_close=Decimal("25000"), at=NOW)
     orchestrator.request_shutdown(NOW + timedelta(minutes=2))
     assert listener.result is not None
     assert listener.result.source is ValidationSource.REPLAY

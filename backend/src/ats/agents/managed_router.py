@@ -54,15 +54,13 @@ def set_managed_store(store: ManagedAgentStore) -> ManagedAgentStore:
 def reset_managed_store(*, path: Path | str | None = None) -> ManagedAgentStore:
     """Drop the cached store (tests point it at a tmp file)."""
     global _STORE
-    _STORE = ManagedAgentStore(
-        path=Path(path) if path is not None else None, announce=_announce
-    )
+    _STORE = ManagedAgentStore(path=Path(path) if path is not None else None, announce=_announce)
     return _STORE
 
 
 def _announce(kind: str, summary: str) -> None:
     try:
-        from ats.trading_runtime.paper_tournament import record_system_activity
+        from ats.observability.activity import record_system_activity
 
         record_system_activity(event_kind=kind, summary=summary)
     except Exception:
@@ -245,9 +243,7 @@ def list_managed_agent_versions(agent_id: str) -> dict[str, Any]:
 
 
 @router.get("/{agent_id}/runs")
-def list_managed_agent_runs(
-    agent_id: str, limit: int = Query(50, ge=1, le=200)
-) -> dict[str, Any]:
+def list_managed_agent_runs(agent_id: str, limit: int = Query(50, ge=1, le=200)) -> dict[str, Any]:
     store = get_managed_store()
     try:
         runs = store.runs(agent_id, limit=limit)

@@ -57,27 +57,11 @@ function Open-AtsTerminal([int]$Port) {
     return "OPENED"
 }
 
-function Get-SessionFacts {
+function Get-MetaTraderStatus {
     try {
-        $backendSrc = (Join-Path $repo 'backend\src').Replace('\', '/')
-        $cmd = "import sys, json; sys.path.insert(0, '$backendSrc'); from datetime import datetime, timezone, timedelta; ist = timezone(timedelta(hours=5, minutes=30)); now = datetime.now(ist); print(json.dumps({'state': 'OPEN' if (9 <= now.hour < 23 or (now.hour == 23 and now.minute <= 30)) and now.weekday() < 5 else 'CLOSED', 'new_risk': False, 'session_id': 'MCX-SESSION'}))"
-        $raw = & $pythonExe -c $cmd 2>$null
-        if ($raw) {
-            return ($raw | ConvertFrom-Json)
-        }
-    } catch {}
-    return @{ state = "CLOSED"; new_risk = $false; session_id = "MCX-SESSION" }
-}
-
-function Get-UpstoxStatus {
-    $token = $env:ATS_UPSTOX_ACCESS_TOKEN
-    if ([string]::IsNullOrWhiteSpace($token)) {
-        $token = [Environment]::GetEnvironmentVariable('ATS_UPSTOX_ACCESS_TOKEN', 'User')
-    }
-    if ([string]::IsNullOrWhiteSpace($token)) {
-        return "DATA_BLOCKED (token missing)"
-    }
-    return "AUTHENTICATED READ-ONLY"
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$BackendPort/v1/market/health" -TimeoutSec 3
+        return "$($health.provider) $($health.state) - $($health.reason)"
+    } catch { return "UNKNOWN - backend unavailable or explicit account selection required" }
 }
 
 function Show-Status {
@@ -88,24 +72,16 @@ function Show-Status {
     $appStatus = if ($bListener -and $fListener) { "READY" } elseif ($bListener -or $fListener) { "PARTIAL" } else { "STOPPED" }
     $chromePath = Get-ChromeExe
     $chromeStatus = if ($chromePath) { $chromePath } else { "NOT_FOUND" }
-    $facts = Get-SessionFacts
-    $market = if ($facts.state -eq 'OPEN') { 'OPEN' } else { 'CLOSED' }
-    $session = if ($facts.state -eq 'OPEN') { 'GENUINE_SESSION_OPEN' } else { 'WAITING_FOR_GENUINE_SESSION' }
-    $upstox = Get-UpstoxStatus
-
+    $market = Get-MetaTraderStatus
     Write-Host "ATS STATUS" -ForegroundColor Cyan
     Write-Host ("  {0,-18} {1}" -f "Application", $appStatus)
     Write-Host ("  {0,-18} {1}" -f "Backend", $bStatus)
     Write-Host ("  {0,-18} {1}" -f "Frontend", $fStatus)
     Write-Host ("  {0,-18} {1}" -f "Chrome", $chromeStatus)
     Write-Host ("  {0,-18} {1}" -f "Market", $market)
-    Write-Host ("  {0,-18} {1}" -f "Session", $session)
-    Write-Host ("  {0,-18} {1}" -f "Provider", "Upstox · $upstox")
-    Write-Host ("  {0,-18} {1}" -f "Freshness", "RECORDED_READ_ONLY_SNAPSHOT")
-    Write-Host ("  {0,-18} {1}" -f "GOLDM", "MCX_FO|569003 · GOLDM FUT 05 OCT 26")
-    Write-Host ("  {0,-18} {1}" -f "Strategies", "40 Strategies · Performance Registry & Leaderboard")
-    Write-Host ("  {0,-18} {1}" -f "PaperBroker", "ACTIVE")
-    Write-Host ("  {0,-18} {1}" -f "Live money", "FALSE (STRICT INVARIANT)")
+    Write-Host ("  {0,-18} {1}" -f "Freshness", "SEE OBSERVED FEED HEALTH")
+    Write-Host ("  {0,-18} {1}" -f "PaperBroker", "INTERNAL PAPER EXECUTION")
+    Write-Host ("  {0,-18} {1}" -f "Live money", "EXTERNAL ROUTING NOT IMPLEMENTED (STEP 1)")
 }
 
 function Stop-Owned {
@@ -235,21 +211,16 @@ if (-not $NoOpen) {
     $chromeResult = Open-AtsTerminal $FrontendPort
 }
 
-# STAGE 1 — MARKET & SESSION FACTS
-$facts = Get-SessionFacts
-$marketState = if ($facts.state -eq 'OPEN') { 'OPEN' } else { 'CLOSED' }
-$sessionState = if ($facts.state -eq 'OPEN') { 'GENUINE_SESSION_OPEN' } else { 'WAITING_FOR_GENUINE_SESSION' }
-$upstoxState = Get-UpstoxStatus
+# STAGE 1 — OBSERVED METATRADER HEALTH
+$marketState = Get-MetaTraderStatus
 
 Write-Host "ATS START" -ForegroundColor Green
 Write-Host ("  {0,-18} {1}" -f "Application", "READY")
 Write-Host ("  {0,-18} {1}" -f "Backend", "READY · $BackendPort")
 Write-Host ("  {0,-18} {1}" -f "Frontend", "READY · $FrontendPort")
-Write-Host ("  {0,-18} {1}" -f "Upstox", $upstoxState)
 Write-Host ("  {0,-18} {1}" -f "Market", $marketState)
-Write-Host ("  {0,-18} {1}" -f "Session", $sessionState)
-Write-Host ("  {0,-18} {1}" -f "Strategies", "40 Active (Registry & Leaderboard)")
-Write-Host ("  {0,-18} {1}" -f "PaperBroker", "ACTIVE")
+Write-Host ("  {0,-18} {1}" -f "Strategies", "RESEARCH_ONLY - SEE REGISTRY")
+Write-Host ("  {0,-18} {1}" -f "PaperBroker", "INTERNAL PAPER EXECUTION")
 Write-Host ("  {0,-18} {1}" -f "Live money", "FALSE")
 Write-Host ("  {0,-18} {1}" -f "Chrome", $chromeResult)
 Write-Host ("  {0,-18} {1}" -f "URL", "http://127.0.0.1:$FrontendPort/")

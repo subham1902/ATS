@@ -44,7 +44,7 @@ from ats.execution.paper.models import (
 )
 from ats.kernel.types import GateCode, KernelOutcome, KernelResult
 from ats.market.calendar.models import SessionCalendar
-from ats.market.derivatives.contract_master import DerivativeInstrument
+from ats.market.domain import InstrumentMetadata, require_xauusd
 from ats.trading_runtime.broker import (
     MarketDataFeed,
     OrderIntentBinding,
@@ -146,9 +146,7 @@ def _default_authorization(result: dict[str, Any]) -> KernelResult:
     invariant ``candidate != authorization`` when no provider is wired.
     """
     _ = result
-    return KernelResult(
-        outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,)
-    )
+    return KernelResult(outcome=KernelOutcome.DENY, reason_codes=(GateCode.TOKEN_INVALID,))
 
 
 class AutonomousPaperOrchestrator:
@@ -162,7 +160,7 @@ class AutonomousPaperOrchestrator:
         market_feed: MarketDataFeed,
         broker: PaperBrokerAdapter,
         policy: PaperExecutionPolicy,
-        instrument: DerivativeInstrument,
+        instrument: InstrumentMetadata,
         market_facts_provider: MarketFactsProvider,
         authorization_provider: AuthorizationProvider = _default_authorization,
         intent_binding_provider: IntentBindingProvider | None = None,
@@ -212,10 +210,11 @@ class AutonomousPaperOrchestrator:
 
     def tick(
         self,
-        instrument_id: str = "NIFTY",
+        instrument_id: str = "XAUUSD",
         mark: Decimal = Decimal("100"),
         at: UTCDateTime | None = None,
     ) -> dict[str, Any] | None:
+        require_xauusd(instrument_id)
         return self._process_event(
             RuntimeEventKind.TICK,
             instrument_id,
@@ -225,7 +224,7 @@ class AutonomousPaperOrchestrator:
 
     def bar(
         self,
-        instrument_id: str = "NIFTY",
+        instrument_id: str = "XAUUSD",
         close: Decimal = Decimal("100"),
         previous_close: Decimal | None = None,
         at: UTCDateTime | None = None,
@@ -233,6 +232,7 @@ class AutonomousPaperOrchestrator:
         payload: dict[str, Any] = {"close": str(close)}
         if previous_close is not None:
             payload["previous_close"] = str(previous_close)
+        require_xauusd(instrument_id)
         return self._process_event(
             RuntimeEventKind.BAR,
             instrument_id,
@@ -265,6 +265,7 @@ class AutonomousPaperOrchestrator:
 
         try:
             from ats.observability.jev_telemetry import invoke_jev_shadow_async
+
             invoke_jev_shadow_async(candidate, at)
         except Exception:
             pass  # Fail safe completely
@@ -339,9 +340,7 @@ class AutonomousPaperOrchestrator:
         for fill in fills:
             self._apply_entry_fill(fill, direction, at)
 
-    def _apply_entry_fill(
-        self, fill: Fill, direction: str, at: UTCDateTime
-    ) -> None:
+    def _apply_entry_fill(self, fill: Fill, direction: str, at: UTCDateTime) -> None:
         position_id = f"{fill.instrument_id}:{str(fill.fill_id)}"
         self.runtime.handle_fill(
             position_id=position_id,

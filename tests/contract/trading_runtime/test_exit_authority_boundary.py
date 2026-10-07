@@ -99,7 +99,7 @@ def test_broker_requires_real_upstream_binding() -> None:
 
     assert issubclass(UnboundOrderError, RuntimeError)
     request = OrderRequest(
-        instrument_id="NIFTY:CE",
+        instrument_id="XAUUSD",
         side="BUY",
         quantity=Decimal("50"),
         order_type="MARKET",
@@ -144,9 +144,9 @@ def test_autonomous_runtime_cannot_reach_the_test_fill_seeder() -> None:
 def test_fail_closed_default_is_not_a_permit() -> None:
     """Absence of a configured provider must resolve to UNKNOWN, never ALLOW."""
     request = ExitAuthorizationRequest(
-        position_key="NIFTY:CE:1",
+        position_key="XAUUSD:1",
         exit_intent_id=uuid4(),
-        instrument_id="NIFTY:CE",
+        instrument_id="XAUUSD",
         quantity=Decimal("50"),
         reason=ExitReason.RISK,
         reason_codes=("STOP_LOSS",),
@@ -236,9 +236,9 @@ def test_engine_never_reports_exit_authorized_without_durable_authority() -> Non
         broker=PaperBrokerAdapter(),
         # No authority wired: the default Noop must grant nothing.
     )
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), at)
-    result = runtime.request_exit("NIFTY:1", at, source="DASHBOARD")
+    runtime.handle_fill("SYMBOL:1", Decimal("100"), Decimal("75"), at, lot_size=Decimal("1"))
+    result = runtime.request_exit("SYMBOL:1", at, source="DASHBOARD")
     assert result["accepted"] is True
     assert result["authorized"] is False
     assert "EXIT_EVIDENCE_REQUIRED" in result["reasons"]
-    assert "NIFTY:1" in runtime.state.open_positions
+    assert "SYMBOL:1" in runtime.state.open_positions

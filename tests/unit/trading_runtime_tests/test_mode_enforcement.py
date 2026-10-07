@@ -35,21 +35,21 @@ def test_safe_mode_position_cap() -> None:
     now = datetime.now(UTC).replace(
         year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
     )
-    feed.set_mark("NIFTY", Decimal("103"), now)
+    feed.set_mark("XAUUSD", Decimal("103"), now)
 
     # In SAFE mode, max_concurrent_positions = 1
     runtime = TradingRuntime(
-        config=RuntimeConfig(calendar=cal, mode=TradingMode.SAFE),
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal, mode=TradingMode.SAFE),
         market_feed=feed,
         broker=broker,
     )
     # Fill 1 position
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("25"), now)
+    runtime.handle_fill("XAUUSD:1", Decimal("100"), Decimal("25"), now)
 
     # Attempting to enter another position on new bar is blocked
     event = RuntimeEvent(
         kind=RuntimeEventKind.BAR,
-        instrument_id="NIFTY",
+        instrument_id="XAUUSD",
         payload={"previous_close": "100"},
         at=now,
     )
@@ -65,10 +65,12 @@ def test_hwm_drawdown_deescalation_to_safe() -> None:
     now = datetime.now(UTC).replace(
         year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
     )
-    feed.set_mark("NIFTY", Decimal("103"), now)
+    feed.set_mark("XAUUSD", Decimal("103"), now)
 
     runtime = TradingRuntime(
-        config=RuntimeConfig(calendar=cal, mode=TradingMode.AGGRESSIVE),
+        config=RuntimeConfig(
+            default_lot_size=Decimal("1"), calendar=cal, mode=TradingMode.AGGRESSIVE
+        ),
         market_feed=feed,
         broker=broker,
     )
@@ -83,12 +85,12 @@ def test_hwm_drawdown_deescalation_to_safe() -> None:
         profit_protection=ProfitProtectionState.NONE,
         mode_hint=TradingMode.SAFE,
     )
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("25"), now)
+    runtime.handle_fill("XAUUSD:1", Decimal("100"), Decimal("25"), now)
 
     # De-escalated to SAFE, so max positions = 1 (blocked from entering 2nd position)
     event = RuntimeEvent(
         kind=RuntimeEventKind.BAR,
-        instrument_id="NIFTY",
+        instrument_id="XAUUSD",
         payload={"previous_close": "100"},
         at=now,
     )

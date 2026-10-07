@@ -41,7 +41,7 @@ def test_cursor_hides_all_future_data_until_advance() -> None:
 
 def test_snapshot_conversion_is_exact_and_canonically_hashed() -> None:
     snapshot = make_replay().advance()
-    assert (snapshot.exchange, snapshot.segment, snapshot.timeframe) == ("NSE", "CASH", "5m")
+    assert (snapshot.exchange, snapshot.segment, snapshot.timeframe) == ("OTC", "SPOT_METAL", "5m")
     assert snapshot.sequence == 1
     assert snapshot.received_at == snapshot.bar_timestamp + timedelta(milliseconds=250)
     assert snapshot.payload_hash == compute_payload_hash(snapshot)

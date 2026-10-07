@@ -1,41 +1,63 @@
-# ATS — Autonomous Trading System
+# ATS — XAUUSD Laboratory
 
-ATS is a deterministic, event-driven autonomous trading system. The architecture
-follows the principle **"AI proposes; deterministic ATS authorizes."** Research and
-advisory components propose, while the deterministic contracts/kernel layer is the
-sole authority for authorization and execution.
+ATS is a deterministic XAUUSD research and trading laboratory: AI and managed
+agents propose; the ATS authorization kernel and portfolio authority authorize.
+MetaTrader supplies broker observations through `market/metatrader/`. Step 1 adds
+encrypted multi-account connections and monitoring for demo and live accounts.
+Execution currently remains internal paper execution; external demo/live routing
+is scheduled for Step 3, through separate account-bound authority. MT4 authenticated
+account support remains NOT_CONFIGURED until a reliable bridge exists.
 
-## Repository layout
+The XAUUSD-specialized ATS currently has no repository evidence establishing profitability.
+Performance from removed markets does not transfer. Surviving strategies are research-only.
 
-- `backend/src/ats` — core system modules:
-  - `contracts/`, `kernel/` — the deterministic authorization core
-  - `market/` — market data feeds and derivatives acquisition (incl. Upstox V3 feed/codec)
-  - `forecast/`, `intelligence/` — features, regime, calibration, thesis, ensemble, strategy lab
-  - `execution/`, `portfolio/`, `governance/`, `events/`, `persistence/`, `observability/`
-  - `trading_runtime/` — runtime engine and broker adapters
-  - `api/` — service interface
-- `frontend/` — control center UI (`apps/control-center`, `packages/ui`, `packages/api-client`)
-- `tests/` — contract, integration, unit, property, acceptance, e2e, faults, smoke
-- `benchmarks/`, `scripts/`, `docs/`
+## Operator surfaces
 
-## Status
+Dashboard, Market, Research, Strategies, Agents, Accounts, Paper Trading, Datasets,
+System. The market is always XAUUSD. Broker suffixes and GOLD aliases map to that
+identity. With multiple connected accounts, select the data account explicitly
+on Market; quotes from different accounts are never blended.
 
-The modules above are implemented in this repository and covered by the test suite.
-Replay/backtest and paper/paper-testnet paths exist under `trading_runtime` and the
-strategy lab. Trading is NOT proven to be profitable by repository evidence, and no
-live-broker trading capability is asserted here. Treat all performance claims as
-development/experimental only.
+Accounts offers **Connect Only** and **Connect & Enable Execution**. The latter
+records operator consent in Step 1, while displaying that order routing is
+unavailable. Risk limits, strategy association and external authority remain
+required in Step 3. Connection mode alone never grants financial authority.
 
-## Bootstrap / validation
+Passwords and login values are encrypted with user-bound Windows DPAPI; the
+registry stores references. Concurrent MT5 accounts require separate terminal
+installations/data profiles. No SDK order functions exist in the current connector.
+
+## Market and dataset truth
+
+Live and CSV/Parquet replay use immutable canonical observations, UTC timestamps,
+versioned datasets and explicit quality reports. Future ticks, unclosed bars,
+unsupported symbols and unknown broker terms fail closed. Missing information
+stays unknown. Footprints are labelled BROKER_TICK_PROXY; tick volume is distinct
+from real broker-reported volume, and inferred direction is not exchange order flow.
+
+The local terminal currently reports ticks approximately three hours ahead of UTC.
+ATS rejects these observations; no guessed timezone correction is applied.
+
+## Validation
+
+Pinned: Python 3.11.15, Node 24.19.0, uv 0.12.1, pnpm 11.9.0.
 
 ```text
 uv sync --frozen
-uv run python -m pytest tests/smoke
-uv run ruff check backend
-uv run mypy backend/src
+uv run --no-sync ruff check backend tests
+uv run --no-sync mypy backend/src
+uv run --no-sync python -m pytest tests backend/tests -q
 pnpm install --frozen-lockfile
+pnpm format:check
+pnpm lint
 pnpm -r typecheck
-pnpm -r test --if-present
+pnpm -r test
+pnpm --filter @ats/control-center build
 ```
 
-Pinned toolchain: Python 3.11.15, Node 24.19.0, uv 0.12.1, pnpm 11.9.0.
+Set ATS_TEST_POSTGRES_DSN to an isolated test database to run durability tests.
+Tests redirect product writes to temporary roots and mock account transports.
+Port 3000 belongs to another application and must remain untouched.
+
+Architecture: [specialization](docs/architecture/XAUUSD_MT5_SPECIALIZATION.md)
+and [account foundation](docs/architecture/METATRADER_MULTI_ACCOUNT_EXECUTION.md).

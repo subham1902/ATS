@@ -34,8 +34,8 @@ def _calendar() -> SessionCalendar:
 def test_update_mark_pure_function() -> None:
     now = datetime.now(UTC)
     pos = MonitoredPosition(
-        position_id="NIFTY:1",
-        instrument_id="NIFTY",
+        position_id="XAUUSD:1",
+        instrument_id="XAUUSD",
         entry_price=Decimal("100"),
         current_mark=Decimal("100"),
         quantity=Decimal("25"),
@@ -77,24 +77,25 @@ def test_engine_live_mark_update_triggers_exit() -> None:
     now = datetime.now(UTC).replace(
         year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
     )
-    feed.set_mark("NIFTY", Decimal("100"), now)
+    feed.set_mark("XAUUSD", Decimal("100"), now)
     runtime = TradingRuntime(
         config=RuntimeConfig(
+            default_lot_size=Decimal("1"),
             calendar=cal,
             position_monitor=PositionMonitorConfig(hard_loss_fraction=Decimal("0.02")),
         ),
         market_feed=feed,
         broker=broker,
     )
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("25"), now)
-    assert runtime.state.open_positions["NIFTY:1"].current_mark == Decimal("100")
+    runtime.handle_fill("XAUUSD:1", Decimal("100"), Decimal("25"), now)
+    assert runtime.state.open_positions["XAUUSD:1"].current_mark == Decimal("100")
 
     # Feed price drops to 95 (5% loss, exceeding 2% hard stop)
     t1 = now + timedelta(minutes=1)
-    feed.set_mark("NIFTY", Decimal("95"), t1)
-    event = RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=t1)
+    feed.set_mark("XAUUSD", Decimal("95"), t1)
+    event = RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="XAUUSD", payload={}, at=t1)
     result = runtime.process_event(event)
 
     assert "exits" in result
-    assert result["exits"][0]["position_id"] == "NIFTY:1"
+    assert result["exits"][0]["position_id"] == "XAUUSD:1"
     assert "HARD_LOSS_BREACH" in result["exits"][0]["reasons"]

@@ -21,8 +21,8 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
 
   const quickPrompts = [
     {
-      label: "💰 ₹30k Capital Feasibility",
-      q: "I have ₹30,000. Show me available opportunities.",
+      label: "💰 USD 30k Capital Feasibility",
+      q: "I have USD 30,000. Show me available opportunities.",
       m: "Capital Advisor" as AIMode,
     },
     {
@@ -42,7 +42,7 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
 
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/v1/ai/query", {
+      const res = await fetch("/v1/ai/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -152,7 +152,7 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>ACCOUNT CAPITAL (₹)</span>
+            <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>ACCOUNT CAPITAL (USD )</span>
             <input
               type="number"
               value={capitalInput}
@@ -315,11 +315,11 @@ export function AICopilotPanel({ onClose }: { onClose?: () => void }) {
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: "#94a3b8", display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span>Req Margin: ₹{c.required_capital.toLocaleString()}</span>
+                      <span>Req Margin: USD {c.required_capital.toLocaleString()}</span>
                       <span>
                         Calibrated Prob: <strong>{(c.calibrated_win_prob * 100).toFixed(1)}%</strong>
                       </span>
-                      <span>Max Est Loss: ₹{c.estimated_max_loss.toLocaleString()}</span>
+                      <span>Max Est Loss: USD {c.estimated_max_loss.toLocaleString()}</span>
                       <span>R:R: {c.risk_reward_ratio}</span>
                     </div>
                   </div>

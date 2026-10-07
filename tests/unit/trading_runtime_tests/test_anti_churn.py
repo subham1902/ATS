@@ -9,7 +9,7 @@ def test_edge_below_threshold_blocked() -> None:
     result = evaluate_churn(
         config=AntiChurnConfig(minimum_expected_edge_r=0.5),
         facts=ChurnFacts(
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             direction="BULLISH",
             thesis_id=None,
             expected_edge_r=0.1,
@@ -27,7 +27,7 @@ def test_cooldown_blocks() -> None:
     result = evaluate_churn(
         config=AntiChurnConfig(cooldown_after_exit_bars=5),
         facts=ChurnFacts(
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             direction="BULLISH",
             thesis_id=None,
             expected_edge_r=1.0,
@@ -45,7 +45,7 @@ def test_allow_when_clean() -> None:
     result = evaluate_churn(
         config=AntiChurnConfig(),
         facts=ChurnFacts(
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             direction="BULLISH",
             thesis_id=None,
             expected_edge_r=1.0,

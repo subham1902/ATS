@@ -9,7 +9,9 @@ from ats.market.calendar.models import SessionCalendar
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
 
-from tests.unit.trading_runtime.exit_authorization_doubles import test_intent_binding
+from tests.unit.trading_runtime.exit_authorization_doubles import (
+    test_intent_binding as intent_binding_fixture,
+)
 
 
 def _calendar() -> SessionCalendar:
@@ -29,12 +31,23 @@ def test_large_event_burst_does_not_crash() -> None:
     cal = _calendar()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("100"), now)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
     for _ in range(500):
         runtime.process_event(
-            RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "99"}, at=now)
+            RuntimeEvent(
+                kind=RuntimeEventKind.BAR,
+                instrument_id="XAUUSD",
+                payload={"previous_close": "99"},
+                at=now,
+            )
         )
     summary = runtime.metrics.summary()
     assert summary["state_update"]["count"] == 500.0
@@ -44,10 +57,16 @@ def test_duplicate_broker_event_idempotent() -> None:
     cal = _calendar()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
-    event = RuntimeEvent(kind=RuntimeEventKind.FILL, instrument_id="NIFTY", payload={}, at=now)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("100"), now)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
+    event = RuntimeEvent(kind=RuntimeEventKind.FILL, instrument_id="XAUUSD", payload={}, at=now)
     r1 = runtime.process_event(event)
     r2 = runtime.process_event(event)
     assert r1["verdict"] == r2["verdict"]
@@ -55,19 +74,21 @@ def test_duplicate_broker_event_idempotent() -> None:
 
 def test_unknown_submit_holds_capital_semantics() -> None:
     broker = PaperBrokerAdapter(healthy=False)
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     from ats.trading_runtime.broker import OrderRequest
 
     result = broker.submit_order(
         OrderRequest(
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             side="BUY",
             quantity=Decimal("75"),
             order_type="MARKET",
             limit_price=None,
             idempotency_key="test-unknown-1",
             intent_id="11111111-1111-1111-1111-111111111112",
-            binding=test_intent_binding(),
+            binding=intent_binding_fixture(),
         ),
         now=now,
     )
@@ -78,11 +99,19 @@ def test_event_loop_lag_measurement() -> None:
     cal = _calendar()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("100"), now)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
     start = time.perf_counter_ns()
-    runtime.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=now))
+    runtime.process_event(
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="XAUUSD", payload={}, at=now)
+    )
     elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
     assert elapsed_ms < 100
 
@@ -91,33 +120,41 @@ def test_reservation_contention_no_double_spend() -> None:
     cal = _calendar()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
-    runtime.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
-    runtime.handle_fill("BANKNIFTY:1", Decimal("200"), Decimal("15"), now)
-    runtime.handle_fill("NIFTY:2", Decimal("100"), Decimal("75"), now)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("100"), now)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
+    runtime.handle_fill("XAUUSD:1", Decimal("100"), Decimal("75"), now)
+    runtime.handle_fill("XAUUSD:second-1", Decimal("200"), Decimal("15"), now)
+    runtime.handle_fill("XAUUSD:2", Decimal("100"), Decimal("75"), now)
     assert len(runtime.state.open_positions) == 3
-    runtime.handle_exit("NIFTY:1", now)
+    runtime.handle_exit("XAUUSD:1", now)
     assert len(runtime.state.open_positions) == 2
 
 
 def test_delayed_ack_still_reconciles() -> None:
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
     from ats.trading_runtime.broker import OrderRequest
 
     order = broker.submit_order(
         OrderRequest(
-            instrument_id="NIFTY",
+            instrument_id="XAUUSD",
             side="BUY",
             quantity=Decimal("75"),
             order_type="MARKET",
             limit_price=None,
             idempotency_key="delayed-ack-1",
-                intent_id="11111111-1111-1111-1111-111111111111",
-                binding=test_intent_binding(),
-            ),
+            intent_id="11111111-1111-1111-1111-111111111111",
+            binding=intent_binding_fixture(),
+        ),
         now=now,
     )
     assert order is not None
@@ -131,16 +168,32 @@ def test_halt_blocks_new_risk_but_allows_reduce() -> None:
     cal = _calendar()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("100"), now)
-    runtime = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("100"), now)
+    runtime = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+    )
     runtime.halt()
     result = runtime.process_event(
-        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "99"}, at=now)
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="XAUUSD",
+            payload={"previous_close": "99"},
+            at=now,
+        )
     )
     assert result["verdict"] == "HALT"
     runtime.resume()
     result2 = runtime.process_event(
-        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "99"}, at=now)
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="XAUUSD",
+            payload={"previous_close": "99"},
+            at=now,
+        )
     )
     assert result2["verdict"] != "HALT"

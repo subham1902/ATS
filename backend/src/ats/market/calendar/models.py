@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import model_validator
 
 from ats.contracts.common import ATSBaseModel, UTCDateTime
 from ats.contracts.domain.types import NonEmptyStr, SessionState, ensure_unique
-
-_INDIA_STANDARD_TIME = timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
 
 
 class SessionOverride(ATSBaseModel):
@@ -23,7 +22,7 @@ class SessionCalendar(ATSBaseModel):
 
     calendar_id: NonEmptyStr
     calendar_version: NonEmptyStr
-    timezone: Literal["Asia/Kolkata"]
+    timezone: str = "UTC"
     trading_dates: tuple[date, ...]
     preopen_start: time
     market_open: time
@@ -49,7 +48,7 @@ class SessionCalendar(ATSBaseModel):
         for item in self.overrides:
             if item.timestamp == timestamp:
                 return SessionState(item.state)
-        local = timestamp.astimezone(_INDIA_STANDARD_TIME)
+        local = timestamp.astimezone(ZoneInfo(self.timezone))
         if local.date() not in self.trading_dates:
             return SessionState.CLOSED
         local_time = local.timetz().replace(tzinfo=None)
@@ -71,7 +70,7 @@ class SessionCalendar(ATSBaseModel):
             return
         if actual not in (SessionState.PREOPEN, SessionState.OPEN):
             raise ValueError("CLOSED/HALTED bars require an explicit calendar override")
-        local = timestamp.astimezone(_INDIA_STANDARD_TIME)
+        local = timestamp.astimezone(ZoneInfo(self.timezone))
         if local.second or local.microsecond:
             raise ValueError("bar close must have zero seconds and microseconds")
         anchor_time = self.preopen_start if actual is SessionState.PREOPEN else self.market_open
@@ -81,18 +80,18 @@ class SessionCalendar(ATSBaseModel):
             raise ValueError("bar close is not aligned to the configured five-minute session")
 
 
-def nse_cash_alpha_v1_calendar() -> SessionCalendar:
+def xauusd_test_calendar() -> SessionCalendar:
     """Return the explicit calendar used by the committed Alpha replay fixture."""
     return SessionCalendar(
-        calendar_id="NSE_CASH_ALPHA",
+        calendar_id="XAUUSD_TEST",
         calendar_version="1.0.0",
-        timezone="Asia/Kolkata",
+        timezone="UTC",
         trading_dates=(date(2024, 6, 3),),
-        preopen_start=time(9, 0),
-        market_open=time(9, 15),
-        market_close=time(15, 30),
+        preopen_start=time(3, 30),
+        market_open=time(3, 45),
+        market_close=time(10, 0),
         overrides=(),
     )
 
 
-__all__ = ["SessionCalendar", "SessionOverride", "nse_cash_alpha_v1_calendar"]
+__all__ = ["SessionCalendar", "SessionOverride", "xauusd_test_calendar"]

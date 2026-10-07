@@ -18,6 +18,7 @@ from uuid import UUID
 from ats.contracts.common import UTCDateTime
 from ats.contracts.domain.types import LossState
 from ats.market.calendar.models import SessionCalendar
+from ats.market.domain import require_xauusd
 from ats.trading_runtime.anti_churn import AntiChurnConfig, ChurnFacts, evaluate_churn
 from ats.trading_runtime.authority_service import (
     NoopAuthorityService,
@@ -116,7 +117,7 @@ class RuntimeConfig:
     mode_envelopes: dict[TradingMode, ModeEnvelope] = field(
         default_factory=lambda: dict(DEFAULT_MODE_ENVELOPES)
     )
-    default_lot_size: int = 25
+    default_lot_size: Decimal | None = None
     authority_reservation_amount: Decimal = Decimal("50000")
 
 
@@ -185,6 +186,8 @@ class TradingRuntime:
         self._recover_durable_runtime_state()
 
     def process_event(self, event: RuntimeEvent) -> dict[str, Any]:
+        if event.instrument_id is not None:
+            require_xauusd(event.instrument_id)
         t0 = time.perf_counter_ns()
         self._event_log.append(event)
 
@@ -289,7 +292,7 @@ class TradingRuntime:
         signal: StrategySignal | None = None
         bar_kinds = (RuntimeEventKind.BAR, RuntimeEventKind.TICK, RuntimeEventKind.PRICE_SHOCK)
         if event.kind in bar_kinds:
-            instrument = event.instrument_id or "NIFTY"
+            instrument = event.instrument_id or "XAUUSD"
             mark = self.market_feed.latest_mark(instrument)
             prev = event.payload.get("previous_close")
             bar = BarFeatures(
@@ -436,12 +439,14 @@ class TradingRuntime:
         quantity: Decimal,
         at: UTCDateTime,
         *,
-        lot_size: int | None = None,
+        lot_size: Decimal | int | None = None,
         direction: str = "BULLISH",
         expected_edge_r: float = 0.0,
         entry_iv: float | None = None,
     ) -> None:
         effective_lot = lot_size if lot_size is not None else self.config.default_lot_size
+        if effective_lot is None:
+            raise ValueError("BROKER_VOLUME_METADATA_UNKNOWN")
         capital = mark * quantity
         self.state.open_positions[position_id] = MonitoredPosition(
             position_id=position_id,

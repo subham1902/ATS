@@ -171,8 +171,8 @@
     },
     {
       "path": "ATS_BASELINE_STATUS.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d58147975293453c0b1ccd9bd49e71eaa4cd5ae01d8ac639edebcd3d4be5b87c",
@@ -180,8 +180,8 @@
     },
     {
       "path": "ATS_FEED_RESILIENCE_REPORT.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -191,8 +191,8 @@
     },
     {
       "path": "ATS_HISTORY_LIVE_RECONCILIATION.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "7c224bcf7d5927ee5d8903749626504f612fe2dd52a40078fea90212516d9f00",
@@ -214,8 +214,8 @@
     },
     {
       "path": "ATS_LC1_BASELINE.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -227,8 +227,8 @@
     },
     {
       "path": "ATS_LC1_FINAL_REPORT.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -240,8 +240,8 @@
     },
     {
       "path": "ATS_LC1_MANIFEST.json",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -251,8 +251,8 @@
     },
     {
       "path": "ATS_LC1_SECURITY_REPORT.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -262,8 +262,8 @@
     },
     {
       "path": "ATS_LC1_TEST_REPORT.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "71bc14f7d39cdf683f5d49e9b069697b1d0af8e3f28a7e04c1a0d45afbc51495",
@@ -271,8 +271,8 @@
     },
     {
       "path": "ATS_LIVE_CANDLE_ENGINE_SPEC.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "5c48d1f2f74f54a938c70926976b8d6b0887664031f45672a86602de1bf6a0c0",
@@ -280,8 +280,8 @@
     },
     {
       "path": "ATS_LIVE_CHART_ACCEPTANCE.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "434c01da0360d4672586d9c001ae713d133ff1be2ba265547d87e583c8a81733",
@@ -289,8 +289,8 @@
     },
     {
       "path": "ATS_LIVE_PROVIDER_ARCHITECTURE.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -301,8 +301,8 @@
     },
     {
       "path": "ATS_MARKET_DATA_OBSERVABILITY.md",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "65314ad68d0f80426980bdebb734d3a56471ff85ecb1e0f3b3a8d83afad2210c",
@@ -310,8 +310,8 @@
     },
     {
       "path": "ATS_NORMALIZED_MARKET_EVENT_SPEC.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -322,8 +322,8 @@
     },
     {
       "path": "ATS_STREAM_HUB_SPEC.md",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -335,7 +335,7 @@
     {
       "path": "ATS_UPSTOX_V3_STREAM_REPORT.md",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -419,8 +419,8 @@
     },
     {
       "path": "backend/src/ats/agents/config.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "india",
@@ -432,8 +432,8 @@
     },
     {
       "path": "backend/src/ats/agents/costs.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "india",
         "mcx",
@@ -445,8 +445,8 @@
     },
     {
       "path": "backend/src/ats/agents/custom.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "958c74c6a3ac09b88de5d88952db757a7594a742a1e416ff206b826b3e593074",
@@ -454,8 +454,8 @@
     },
     {
       "path": "backend/src/ats/agents/deployment.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e4c903d2bd4077a7243248423f13e8bc19fd37e4d1bd92c625264376f4ed78e7",
@@ -463,8 +463,8 @@
     },
     {
       "path": "backend/src/ats/agents/edge.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "59a0580605c584e1299ba118084d0d6439fd2293b0063e3afa3af675401f13c8",
@@ -472,8 +472,8 @@
     },
     {
       "path": "backend/src/ats/agents/evolver.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "adb33f7dbb1f21a04ddf5c20bab2dcde7adb2fbc9e7e0ac0fb520b0c0d15e03f",
@@ -481,8 +481,8 @@
     },
     {
       "path": "backend/src/ats/agents/execution.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "7b371fa031ff7508b3ac70434f401eb1bb9d331d9fe5614796b863270a188631",
@@ -490,8 +490,8 @@
     },
     {
       "path": "backend/src/ats/agents/families.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "20641b0a323f6972f619e2442ce7c741ffd409706d10bf47c23d79f2369c6941",
@@ -499,8 +499,8 @@
     },
     {
       "path": "backend/src/ats/agents/features.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b8205896d20e7215a7d744376e45e910f7afa2c28d914ec1b70a27ebb8353880",
@@ -526,8 +526,8 @@
     },
     {
       "path": "backend/src/ats/agents/portfolio.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "india"
@@ -547,8 +547,8 @@
     },
     {
       "path": "backend/src/ats/agents/risk.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "5a7b60480e9c07587c98b9821c746f9ccbd58d2814668c5520137d96ee1c4ae2",
@@ -556,8 +556,8 @@
     },
     {
       "path": "backend/src/ats/agents/roster.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm"
       ],
@@ -567,8 +567,8 @@
     },
     {
       "path": "backend/src/ats/agents/router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "india",
@@ -581,8 +581,8 @@
     },
     {
       "path": "backend/src/ats/agents/strategies.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e142de774146a48a4e56e035e97023f9c3e6716119ae40a02d2c7b4b71d9423f",
@@ -590,8 +590,8 @@
     },
     {
       "path": "backend/src/ats/agents/trade_ledger.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "instrument_key",
@@ -605,8 +605,8 @@
     },
     {
       "path": "backend/src/ats/agents/worker.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "india",
@@ -629,8 +629,8 @@
     },
     {
       "path": "backend/src/ats/ai/capital_advisor.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -655,8 +655,8 @@
     },
     {
       "path": "backend/src/ats/ai/live_coach.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -795,8 +795,8 @@
     },
     {
       "path": "backend/src/ats/console/governance_router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -808,8 +808,8 @@
     },
     {
       "path": "backend/src/ats/console/imported_strategies_router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -819,8 +819,8 @@
     },
     {
       "path": "backend/src/ats/console/laya_router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm"
       ],
@@ -888,8 +888,8 @@
     },
     {
       "path": "backend/src/ats/console/settings_router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -899,8 +899,8 @@
     },
     {
       "path": "backend/src/ats/console/strategy_lab_router.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b98bddf2d6088ec177b16f4525f3f5b5bda24eb068b9c38f6e6f50a6d7d3116f",
@@ -2036,7 +2036,7 @@
     {
       "path": "backend/src/ats/market/data_acquisition/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2047,7 +2047,7 @@
     {
       "path": "backend/src/ats/market/data_acquisition/ingest_session.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -2059,7 +2059,7 @@
     {
       "path": "backend/src/ats/market/data_acquisition/upstox_client.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2070,8 +2070,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "24d7e647a13770e0181492bb0dfe1e9ace0bd8809039482140c78adb2f981a9c",
@@ -2079,8 +2079,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2090,8 +2090,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/client.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2102,8 +2102,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2113,8 +2113,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/parsers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -2126,8 +2126,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/plan.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "instrument_key",
@@ -2140,8 +2140,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/redaction.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "3ae024c4d3fd2d461416fd5d9307fe2eab8e1b40e652937f91b84ea72deb1e2e",
@@ -2149,8 +2149,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/acquisition/secrets.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2160,8 +2160,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/active_window/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "08179eb255c124d05500d671a3598829d691c5766f9c1b85202733db07768d01",
@@ -2169,8 +2169,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/active_window/cache.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b170e255ab52eeed58a35bc3729f681605067dc41b01456e70f3370ed7a4bdea",
@@ -2178,8 +2178,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/active_window/engine.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key"
       ],
@@ -2189,8 +2189,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/active_window/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key"
       ],
@@ -2200,8 +2200,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/artifacts/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "085711a98c2b366bd15e7e01d196467e2741ea21e7e754d8c2f774fbc41b2b3c",
@@ -2209,8 +2209,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/artifacts/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "050cc21c53e38706b3edff971634bd47996760013fdc061559e77414412847db",
@@ -2218,8 +2218,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/artifacts/provenance.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "fd4a1f5df5ce6d3fea93973af81077d517c994041b6e6706044de95cd81bf567",
@@ -2227,8 +2227,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/artifacts/store.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "546f6cfca45f532bee4a5dacfd557c54d2e8a4c9c1219584a49725a7598067cc",
@@ -2236,8 +2236,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d916b60aa1b0d8d6f8e17bd5005b49e274545c535c2bad2210b49897dfdaa0a6",
@@ -2245,8 +2245,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/errors.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "f0d721784b3b574e88468e5f547af0b7b76d6afa7e5881e0304fba3ee0652308",
@@ -2254,8 +2254,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/expiry.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e87c63a51306447c401830966c710c46e1be6cf777d52908af71d0dd1e9a9138",
@@ -2263,8 +2263,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -2276,8 +2276,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/normalization.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "05b4f375363d19ab9af8ceb894898c842161bc1415f7b6663fbcce0a36ce545f",
@@ -2285,8 +2285,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/contract_master/registry.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "285f3d0708e51aa58136d0d05011b33c9fb63022c1596dae97b19d8832f92957",
@@ -2294,8 +2294,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/normalization/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "20557499f2a7eadb186d24d619347ae14e791454e5e25c2409aef09693c9dea2",
@@ -2303,8 +2303,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/normalization/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key"
@@ -2315,8 +2315,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/normalization/normalizer.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -2328,8 +2328,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "42f86671f1ae787f8fb87165f3c07bd787e15f387b75dd6ef3ee4d44326451be",
@@ -2337,8 +2337,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/builder.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "fc15fd83ac917dcd82b1f1c8d2ee0ff01605c69f75b30c047855f4ff96758593",
@@ -2346,8 +2346,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/errors.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "95211a8c7d8f268ea14d544cf426af7eaec0f7312a5f4ec79bd3973078b1f900",
@@ -2355,8 +2355,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/features.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b5e8a1cd65bdcd86fab99ea0bf312d39bcee1e0c2bb5e98782a3a34d7556e5f2",
@@ -2364,8 +2364,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/greeks_calculator.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d0dd0cffdf7c8ddf417bbbe57514b44276d3212214ba62df27e79412c61770eb",
@@ -2373,8 +2373,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/option_chain/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "9b203f7212d93b3e28e0cee36a390a85880075a2be362b4c452d439999b933e3",
@@ -2382,8 +2382,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/providers/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "5ca874a28b69d191c53a1e287184ee48eb967a7fc64573ae80c68ded8be91536",
@@ -2391,8 +2391,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/providers/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "3a5f0c7ec68eb4dc6d675840bff43ed763de8ec65d45fc103b5d731b93ee2081",
@@ -2400,8 +2400,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/providers/protocols.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "f5fdeb6fa2310f333ae72107f37405171bf1bd781445be5cb51eea50bce2f7f5",
@@ -2409,8 +2409,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/replay_data/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "a84a44a74a047494840005cd1b555892ef21065e3e21753f09dd0d11093c929e",
@@ -2418,8 +2418,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/replay_data/builder.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d98593dd8fbc620ec3e872c86c5146c250a5cf42cf2165feffa9d5899f59a206",
@@ -2427,8 +2427,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/replay_data/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e4f1ca9dfa6895009e3a476f8d559c0c2f35e102d5b71e688549f7d9ee66ed37",
@@ -2436,8 +2436,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/replay_data/resampler.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e030e650678d8da1fbee691369af340064278cc11652753d0a79400c98b8f365",
@@ -2445,8 +2445,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/strike_window/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "62d8d256c99f8e10863da1a252abd874b601e288845b8d06963da3ba3ff1c625",
@@ -2454,8 +2454,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/strike_window/engine.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d431bf71828b0ec6caf32251e5e05e6db7896e6889405d4bb80898e6b76e1a76",
@@ -2463,8 +2463,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/strike_window/errors.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "1544d21bf67f513fbbc812708fa9643ec0e091a423f17888d31117a5b6d33bb6",
@@ -2472,8 +2472,8 @@
     },
     {
       "path": "backend/src/ats/market/derivatives/strike_window/models.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "4cd061869868c9445e3e041ba791702e2dd5b968f55768e63eae04bdffac1ddd",
@@ -2542,7 +2542,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "instrument_key",
@@ -2556,7 +2556,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/adapter.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2568,7 +2568,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/codec.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2580,7 +2580,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/config.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2591,7 +2591,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/errors.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2603,7 +2603,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/frames.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2615,7 +2615,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/freshness.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2627,7 +2627,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/instrument_keys.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "instrument_key",
@@ -2641,7 +2641,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/messages.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2653,7 +2653,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/proto/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2664,7 +2664,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/proto/MarketDataFeedV3.proto",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2675,7 +2675,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/proto/MarketDataFeedV3_pb2.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2686,7 +2686,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/proto/MarketDataFeedV3_pb2.pyi",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2697,7 +2697,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/proto/README.md",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2708,7 +2708,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/protobuf_codec.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2720,7 +2720,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/subscription.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2732,7 +2732,7 @@
     {
       "path": "backend/src/ats/market/feeds/upstox_v3/transport.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2937,8 +2937,8 @@
     },
     {
       "path": "backend/src/ats/market/live/subscriptions.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2950,7 +2950,7 @@
     {
       "path": "backend/src/ats/market/live/upstox_v3.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -2980,7 +2980,7 @@
     {
       "path": "backend/src/ats/market/providers/upstox/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -2991,7 +2991,7 @@
     {
       "path": "backend/src/ats/market/providers/upstox/catalogue.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -3002,7 +3002,7 @@
     {
       "path": "backend/src/ats/market/providers/upstox/models.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -3013,7 +3013,7 @@
     {
       "path": "backend/src/ats/market/providers/upstox/protocols.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -3025,7 +3025,7 @@
     {
       "path": "backend/src/ats/market/providers/upstox/rate_limit.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -3083,7 +3083,7 @@
     {
       "path": "backend/src/ats/market/strategy_import/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "397e3c62e5839496c54184d9a19dba6ea0c2b8f0fd85abe52317704000840fdc",
@@ -3092,7 +3092,7 @@
     {
       "path": "backend/src/ats/market/strategy_import/adapters.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key"
       ],
@@ -3103,7 +3103,7 @@
     {
       "path": "backend/src/ats/market/strategy_import/decoder.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "93457f4a68d6ca2e783527bca6d2dcb4c06ce28d2d39d0c00d890fb59edeac78",
@@ -3112,7 +3112,7 @@
     {
       "path": "backend/src/ats/market/strategy_import/models.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm"
       ],
@@ -3123,7 +3123,7 @@
     {
       "path": "backend/src/ats/market/strategy_import/tournament.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "mcx",
@@ -3154,7 +3154,7 @@
     {
       "path": "backend/src/ats/optimization/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "84ecdfd7734c8fea726964eae1c1f0e08bb68c750f703aa946025e10c294d312",
@@ -3163,7 +3163,7 @@
     {
       "path": "backend/src/ats/optimization/router.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "c6b499b8bb0d0bf3900ae2761e11399c0cd056aca3b9062356eb35208d058563",
@@ -3172,7 +3172,7 @@
     {
       "path": "backend/src/ats/optimization/worker.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "5bbd7b935a93acdfba5e4af9f53bcc2727e4b9db0f2d37de0fb193c502ffd66b",
@@ -3324,8 +3324,8 @@
     },
     {
       "path": "backend/src/ats/strategies/lab_service.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3588,7 +3588,7 @@
     {
       "path": "backend/src/data/market_journal/journal_upstox_20260924_07.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -3600,7 +3600,7 @@
     {
       "path": "backend/src/data/market_journal/journal_upstox_20260924_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -3611,8 +3611,8 @@
     },
     {
       "path": "backend/tests/test_agents_cost_gate.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -3633,8 +3633,8 @@
     },
     {
       "path": "backend/tests/test_agents_edge_portfolio_execution.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3654,8 +3654,8 @@
     },
     {
       "path": "backend/tests/test_agents_market_resolution.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "instrument_key"
@@ -3666,8 +3666,8 @@
     },
     {
       "path": "backend/tests/test_agents_playground.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "instrument_key",
@@ -3689,8 +3689,8 @@
     },
     {
       "path": "backend/tests/test_agents_risk_api.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3719,8 +3719,8 @@
     },
     {
       "path": "backend/tests/test_agents_worker_e2e.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3751,8 +3751,8 @@
     },
     {
       "path": "backend/tests/test_datasets_registry.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -3765,8 +3765,8 @@
     },
     {
       "path": "backend/tests/test_governance_router.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3797,8 +3797,8 @@
     },
     {
       "path": "backend/tests/test_live_streaming_engine.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "instrument_key",
@@ -3833,8 +3833,8 @@
     },
     {
       "path": "backend/tests/test_paper_control_center.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -3845,8 +3845,8 @@
     },
     {
       "path": "backend/tests/test_paper_tournament.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -3887,8 +3887,8 @@
     },
     {
       "path": "backend/tests/test_strategy_import.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "instrument_key",
@@ -3948,7 +3948,7 @@
     {
       "path": "data/agents/agents_config.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "india"
       ],
@@ -3959,7 +3959,7 @@
     {
       "path": "data/agents/roster.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm"
       ],
@@ -3970,7 +3970,7 @@
     {
       "path": "data/agents/upstox_live_trades_ledger.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -3981,7 +3981,7 @@
     {
       "path": "data/datasets/datasets_manifest.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "0a251dce35897e198b09d4f63bee8462cf8b77b2f16fb5787702a3d16908df33",
@@ -4008,7 +4008,7 @@
     {
       "path": "data/forward_validation/evidence_ledger.jsonl",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "dcdf8f795ef7d07f73d184409a27e38bbfaee3812478dabfa7ecde2533b960da",
@@ -4017,7 +4017,7 @@
     {
       "path": "data/historical/banknifty_options_a2_replay_v1/manifest.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -4030,7 +4030,7 @@
     {
       "path": "data/historical/banknifty_options_a2_replay_v1/observations.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -4043,7 +4043,7 @@
     {
       "path": "data/historical/banknifty_options_a2_replay_v1/policy.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty"
       ],
@@ -4054,7 +4054,7 @@
     {
       "path": "data/historical/banknifty_options_a2_replay_v1/records.sha256",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty"
       ],
@@ -4065,7 +4065,7 @@
     {
       "path": "data/historical/calibration_store_v1.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "02ca0dc75849e2c8cfe82d644efe49917fe4c57f63cabcedac0ff1b629f24e5f",
@@ -4074,7 +4074,7 @@
     {
       "path": "data/historical/calibration_stores/A1_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "c1a89ea9ab0a6858af8737a606cf68e771830f889c9344282a715f6b22bbb3f0",
@@ -4083,7 +4083,7 @@
     {
       "path": "data/historical/calibration_stores/A2_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "09b2f3503c1aec503f4ae0e65b5a98917f102af6bf6c38b3750c99134737b1a6",
@@ -4092,7 +4092,7 @@
     {
       "path": "data/historical/calibration_stores/A3_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "2ba57b220af346e70c0f6a9a0ebd231ce3ae787c7a5a858e4ceb5c88c709c0d2",
@@ -4101,7 +4101,7 @@
     {
       "path": "data/historical/calibration_stores/A4_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b083da66915193b64ec68658c5ba94764daf9022e9f71ecf0806ca1c945853ec",
@@ -4110,7 +4110,7 @@
     {
       "path": "data/historical/calibration_stores/C0_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "554ec454a2a3496dfd3aa5a5c025bb1b88b7bb4f4c99c4434e3f2f126932d26c",
@@ -4119,7 +4119,7 @@
     {
       "path": "data/historical/calibration_stores/C1_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "ab5747fee687dd5f56b006757a3850ee30cef3aae8453cf32e7ecf883fd30bc0",
@@ -4128,7 +4128,7 @@
     {
       "path": "data/historical/calibration_stores/C2_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "c28f71fbadef7b9b07e16b8f3ad67831fa747ed7a3ab19b7334e210b3a04060d",
@@ -4137,7 +4137,7 @@
     {
       "path": "data/historical/calibration_stores/C3_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "380e9f2bc6b00065421e51dedad02d6e92cea0cfdf04871c3dee28b599eebbf1",
@@ -4146,7 +4146,7 @@
     {
       "path": "data/historical/calibration_stores/C4_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "9b62a89466a38174b9f5c2fa4c2753669a8805903ad40f9109d16de2b68f3431",
@@ -4155,7 +4155,7 @@
     {
       "path": "data/historical/calibration_stores/C5_calibration_store.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "9b6c9e5ee25858765609ab2ee6d793780ef6fb5fae7b0bbc165d3c5d8eaeb827",
@@ -4164,7 +4164,7 @@
     {
       "path": "data/historical/nifty_options_a2_replay_v1/manifest.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -4176,7 +4176,7 @@
     {
       "path": "data/historical/nifty_options_a2_replay_v1/observations.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -4188,7 +4188,7 @@
     {
       "path": "data/historical/nifty_options_a2_replay_v1/policy.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -4199,7 +4199,7 @@
     {
       "path": "data/historical/nifty_options_a2_replay_v1/records.sha256",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -4210,7 +4210,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260923_18.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4222,7 +4222,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_04.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4234,7 +4234,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_05.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4246,7 +4246,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_06.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4258,7 +4258,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_07.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4270,7 +4270,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4282,7 +4282,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_16.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4294,7 +4294,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_17.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4306,7 +4306,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_18.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4318,7 +4318,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_19.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4330,7 +4330,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_20.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4342,7 +4342,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_21.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4354,7 +4354,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_22.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4366,7 +4366,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260924_23.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4378,7 +4378,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_03.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4390,7 +4390,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_04.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4402,7 +4402,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_05.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4414,7 +4414,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_06.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4426,7 +4426,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_07.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4438,7 +4438,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4450,7 +4450,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_09.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4462,7 +4462,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4474,7 +4474,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_11.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4486,7 +4486,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_12.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4498,7 +4498,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_13.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4510,7 +4510,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_14.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4522,7 +4522,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_15.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4534,7 +4534,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_16.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4546,7 +4546,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_17.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4558,7 +4558,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260925_22.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4570,7 +4570,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260926_06.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4582,7 +4582,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260926_16.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4594,7 +4594,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_02.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4606,7 +4606,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_09.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4618,7 +4618,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4630,7 +4630,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_14.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4642,7 +4642,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_16.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4654,7 +4654,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_17.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4666,7 +4666,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_18.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4678,7 +4678,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260927_19.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4690,7 +4690,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4702,7 +4702,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_09.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4714,7 +4714,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4726,7 +4726,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_11.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4738,7 +4738,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_12.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4750,7 +4750,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_13.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4762,7 +4762,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_14.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4774,7 +4774,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_15.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4786,7 +4786,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_16.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4798,7 +4798,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260928_17.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4810,7 +4810,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260929_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4822,7 +4822,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260929_09.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4834,7 +4834,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260929_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4846,7 +4846,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260930_05.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4858,7 +4858,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260930_06.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4870,7 +4870,7 @@
     {
       "path": "data/market_journal/journal_upstox_20260930_07.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4882,7 +4882,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_04.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4894,7 +4894,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_05.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4906,7 +4906,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_06.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4918,7 +4918,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_07.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4930,7 +4930,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_08.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4942,7 +4942,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_09.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4954,7 +4954,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261001_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4966,7 +4966,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261003_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4978,7 +4978,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261003_11.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -4990,7 +4990,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261004_11.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -5002,7 +5002,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261005_12.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -5014,7 +5014,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261005_13.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -5026,7 +5026,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261005_21.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -5038,7 +5038,7 @@
     {
       "path": "data/market_journal/journal_upstox_20261006_10.jsonl",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -5059,7 +5059,7 @@
     {
       "path": "data/raw/upstox/banknifty_option_chain.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "exchange_token",
@@ -5075,7 +5075,7 @@
     {
       "path": "data/raw/upstox/nifty_option_chain.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -5090,7 +5090,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-04/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5102,7 +5102,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-04/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5114,7 +5114,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-05/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5126,7 +5126,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-05/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5138,7 +5138,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-06/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5150,7 +5150,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-06/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5162,7 +5162,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-07/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5174,7 +5174,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-07/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5186,7 +5186,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-10/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5198,7 +5198,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-10/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5210,7 +5210,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-11/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5222,7 +5222,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-11/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5234,7 +5234,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-12/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5246,7 +5246,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-12/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5258,7 +5258,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-13/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5270,7 +5270,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-13/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5282,7 +5282,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-14/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5294,7 +5294,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-14/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5306,7 +5306,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-17/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5318,7 +5318,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-17/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5330,7 +5330,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-18/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5342,7 +5342,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-18/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5354,7 +5354,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-19/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5366,7 +5366,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-19/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5378,7 +5378,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-20/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5390,7 +5390,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-20/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5402,7 +5402,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-21/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5414,7 +5414,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-21/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5426,7 +5426,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-24/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5438,7 +5438,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-24/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5450,7 +5450,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69824.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5462,7 +5462,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69825.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5474,7 +5474,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69826.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5486,7 +5486,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69827.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5498,7 +5498,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69828.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5510,7 +5510,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69829.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5522,7 +5522,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69832.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5534,7 +5534,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69833.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5546,7 +5546,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69838.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5558,7 +5558,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_opt_NSE_FO_69839.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5570,7 +5570,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5582,7 +5582,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46989.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5594,7 +5594,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46990.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5606,7 +5606,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46991.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5618,7 +5618,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46992.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5630,7 +5630,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46993.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5642,7 +5642,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46994.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5654,7 +5654,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46995.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5666,7 +5666,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46996.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5678,7 +5678,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46997.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5690,7 +5690,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_opt_NSE_FO_46998.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5702,7 +5702,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5714,7 +5714,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-25/session_manifest.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "instrument_key",
@@ -5728,7 +5728,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-26/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5740,7 +5740,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-26/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5752,7 +5752,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-27/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5764,7 +5764,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-27/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5776,7 +5776,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-28/BANKNIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "upstox"
@@ -5788,7 +5788,7 @@
     {
       "path": "data/raw/upstox/sessions/2026-08-28/NIFTY_underlying.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -5800,7 +5800,7 @@
     {
       "path": "data/raw/upstox/upstox_bod_instruments_master.csv",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -5811,7 +5811,7 @@
     {
       "path": "data/replays/challenger_tournament_v1/tournament_summary.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "faafa53560c74ea4b959846a5320fcf171dffb283638c07a3c6fb482e760b85a",
@@ -5820,7 +5820,7 @@
     {
       "path": "data/replays/champion_replacement_tournament_v2/tournament_scorecard_v2.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "2214cda32490ffa6c3cb7a8bcf3dcf8dab88f9075983b6a42a169e67df5e6b38",
@@ -5829,7 +5829,7 @@
     {
       "path": "data/replays/micro_edge_discovery_v2/micro_edge_discovery_summary.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "1fdf6a484fcced357f538a26750f5b46c3588fd11e57414edc306c56cb8595ed",
@@ -5838,7 +5838,7 @@
     {
       "path": "data/replays/walk_forward_2026-08-04_to_2026-08-25/walk_forward_summary.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "ad0abf7725f4b33ebfc8513cdbf171eaea7222e3f4724dedef7e749d53f47110",
@@ -5847,7 +5847,7 @@
     {
       "path": "data/runtime/pre_market_acceptance.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -5857,8 +5857,8 @@
     },
     {
       "path": "dist/.gitignore",
-      "classification": "GENERATED/EPHEMERAL",
-      "reason": "Rebuild from specialized source.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
@@ -5866,8 +5866,8 @@
     },
     {
       "path": "dist/ats-0.0.0-py3-none-any.whl",
-      "classification": "GENERATED/EPHEMERAL",
-      "reason": "Rebuild from specialized source.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "0253bb66b334bb4cd743aff6f9ce78b3931fee97931ebb8a23bca13b2afb8653",
@@ -5875,8 +5875,8 @@
     },
     {
       "path": "dist/ats-0.0.0.tar.gz",
-      "classification": "GENERATED/EPHEMERAL",
-      "reason": "Rebuild from specialized source.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "3095588c2a28e5b1000bc6763a6047d05f5a7be799b01209be1ffa030791775f",
@@ -6907,7 +6907,7 @@
     {
       "path": "reports/ATS_BROKER_CAPABILITY_MATRIX.csv",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -6918,7 +6918,7 @@
     {
       "path": "reports/ATS_BROKER_CONNECTION_GUIDE.md",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -6929,7 +6929,7 @@
     {
       "path": "reports/ATS_BROKER_CONNECTOR_ARCHITECTURE.md",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -6940,7 +6940,7 @@
     {
       "path": "reports/ATS_BROKER_SECURITY_REPORT.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "33d4cf343afddfbe4845298fe4f444632005436d7f3a1d0b9993ae55b2a0c6c4",
@@ -6949,7 +6949,7 @@
     {
       "path": "reports/ATS_LIVE_MARKET_PAPER_REPORT.md",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -6960,7 +6960,7 @@
     {
       "path": "reports/ATS_LIVE_PAPER_BROWSER_ACCEPTANCE.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "d16c6001ba9bdc9e103b60f1d7a8c4d2318ced1e8fff47852d728c7f76b117dc",
@@ -6969,7 +6969,7 @@
     {
       "path": "reports/ATS_LIVE_PAPER_WIRING_MAP.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "9d7a04f0dffda9620b288994ae9fcd7bfef013d606da40899e1e230e7d8a82eb",
@@ -6978,7 +6978,7 @@
     {
       "path": "reports/ATS_PLATFORM_FULL_REGRESSION_REPORT.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "2760378b469a3f75552f204b8ed8e0c58dd672affe37fef3323f117f77978ff7",
@@ -6987,7 +6987,7 @@
     {
       "path": "reports/ATS_PRODUCT_READINESS_MANIFEST.json",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -6998,7 +6998,7 @@
     {
       "path": "reports/ATS_SETTINGS_CONTROL_PLANE_REPORT.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "fa37a0d10b1a69348190b0f569cfeac8611915422c78a844b373dffa703aa03c",
@@ -7007,7 +7007,7 @@
     {
       "path": "reports/ATS_SETTINGS_SCHEMA.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "0db8324f5856e8560572a849c1be56fe0112ea89eba8657bfa51428205c74ca5",
@@ -7016,7 +7016,7 @@
     {
       "path": "reports/ATS_STRATEGY_HISTORY_MIGRATION_REPORT.md",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "47b4eaabc8e5fdbc2d06770c27500d7be719fb202857b59b60bcd925277ec50b",
@@ -7025,7 +7025,7 @@
     {
       "path": "reports/ATS_USER_STARTUP_GUIDE.md",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -7036,7 +7036,7 @@
     {
       "path": "reports/operator-runtime/backend.err.log",
       "classification": "DELETE",
-      "reason": "Legacy market state",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -7047,7 +7047,7 @@
     {
       "path": "reports/operator-runtime/backend.log",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -7056,7 +7056,7 @@
     {
       "path": "reports/operator-runtime/frontend.err.log",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -7065,7 +7065,7 @@
     {
       "path": "reports/operator-runtime/frontend.log",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "b3097fb802b7993038973ec410302d9e23a2df07ae8eaa113cdd457e5f1ab81a",
@@ -7074,7 +7074,7 @@
     {
       "path": "reports/operator-runtime/processes.json",
       "classification": "DELETE",
-      "reason": "PROVENANCE_UNKNOWN - NOT ELIGIBLE; reset learned/performance/runtime state.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "3ffaa5cf1c4d557e85ebf5a6069cb39f0c4adfa7ca248d64d391aaf4e0ab52b4",
@@ -7149,8 +7149,8 @@
     },
     {
       "path": "scripts/baseline_research_nifty.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "upstox"
@@ -7170,8 +7170,8 @@
     },
     {
       "path": "scripts/comprehensive_ats_acceptance.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -7181,8 +7181,8 @@
     },
     {
       "path": "scripts/cost_stress_check.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -7193,8 +7193,8 @@
     },
     {
       "path": "scripts/evolve_families.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "41231a7c99dc2a61a3ee1e176cd04065c7979ac294fdbbe66a416bd317cecf83",
@@ -7202,8 +7202,8 @@
     },
     {
       "path": "scripts/probe_diverse_families.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "4ebb1fdac817afd957fb2c2ce32f792da40b4ccb77ed2cc44160c768c2ca5632",
@@ -7211,8 +7211,8 @@
     },
     {
       "path": "scripts/run_paper_sessions.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -7224,8 +7224,8 @@
     },
     {
       "path": "scripts/start_ats_a2_live_paper.ps1",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -7235,8 +7235,8 @@
     },
     {
       "path": "scripts/test_chart360_atomic_audit.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "goldm",
@@ -7251,8 +7251,8 @@
     },
     {
       "path": "scripts/test_dynamic_datasets_and_chart360.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx",
@@ -7264,8 +7264,8 @@
     },
     {
       "path": "scripts/test_laya_integration.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -7276,8 +7276,8 @@
     },
     {
       "path": "scripts/test_lc1_live_streaming_acceptance.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "mcx",
         "upstox"
@@ -7288,8 +7288,8 @@
     },
     {
       "path": "scripts/test_ui_interactions.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "mcx"
@@ -7300,8 +7300,8 @@
     },
     {
       "path": "scripts/validate_strategies.py",
-      "classification": "KEEP GENERIC",
-      "reason": "No legacy reference found; subject to dependency audit.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "0759650cf7c244c668965f91338a697202e7ed26f8a1048f003fb99908600121",
@@ -7644,8 +7644,8 @@
     },
     {
       "path": "tests/contract/market/derivatives/acquisition/test_d03_read_only_contract.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -7655,8 +7655,8 @@
     },
     {
       "path": "tests/contract/market/derivatives/normalization/test_d02_contract.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key"
@@ -7667,8 +7667,8 @@
     },
     {
       "path": "tests/contract/market/derivatives/providers/test_provider_boundary.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "aef1feb9b7220ec68b38bcfe187b49a7ebf913858c85d2e30e7ce39f538d2651",
@@ -7676,8 +7676,8 @@
     },
     {
       "path": "tests/contract/market/derivatives/test_contract_master_schema.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "4ed10d23325dac08d9ddc389ae80b3127b74f2d70d2915d6e275b0d1a3f250b3",
@@ -7685,8 +7685,8 @@
     },
     {
       "path": "tests/contract/market/derivatives/test_option_chain_contract.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "3f879a9e4d4c26c6fad81d4e07c6b142151f3e8e786603effbabaf4a7bbadf6c",
@@ -8038,8 +8038,8 @@
     },
     {
       "path": "tests/integration/market/derivatives/active_window/test_d02_d04_integration.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -8053,8 +8053,8 @@
     },
     {
       "path": "tests/integration/market/derivatives/fixtures/nse_index_derivatives_20260824.csv",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -8066,8 +8066,8 @@
     },
     {
       "path": "tests/integration/market/derivatives/test_contract_master_fixture.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -8079,8 +8079,8 @@
     },
     {
       "path": "tests/integration/market/derivatives/test_end_to_end_readiness.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "nifty",
@@ -8093,8 +8093,8 @@
     },
     {
       "path": "tests/integration/market/derivatives/test_option_chain_pipeline.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "9b5c55d3435af42041eee0a90a93b5cd689922581a1102c9803169b70c3bdeb2",
@@ -8455,8 +8455,8 @@
     },
     {
       "path": "tests/property/market/derivatives/active_window/test_d04_window_properties.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -8469,8 +8469,8 @@
     },
     {
       "path": "tests/property/market/derivatives/contract_master/test_contract_master_properties.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "4aaa4c405b9791793339cd98c5b559ed9a19b1dd1e81c32fa69a761db3b2515c",
@@ -8478,8 +8478,8 @@
     },
     {
       "path": "tests/property/market/derivatives/normalization/test_canonical_stability.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -8493,8 +8493,8 @@
     },
     {
       "path": "tests/property/market/derivatives/option_chain/test_option_chain_properties.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "6a01f4d04002c7cc66375ac9fa240cbac76b4a59cec9e2205dccc3e0bdfe2acf",
@@ -8502,8 +8502,8 @@
     },
     {
       "path": "tests/property/market/derivatives/replay_data/test_d03_temporal_properties.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e13abc57347c73d0542cd4c83394f07406eb1b171cc63006f2cdd46178f36174",
@@ -9222,8 +9222,8 @@
     },
     {
       "path": "tests/unit/market/data_acquisition/test_real_session_ingestion.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -9235,8 +9235,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "23d8274615e8e15515ed961276d8edad9718333fb4cf10b626898cbe0db90b22",
@@ -9244,8 +9244,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/acquisition/test_client.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "nifty",
@@ -9257,8 +9257,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/acquisition/test_parsers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "exchange_token",
@@ -9273,8 +9273,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/acquisition/test_plan.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "instrument_key",
@@ -9286,8 +9286,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/acquisition/test_redaction.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "07be97f43222f1a09cbd0a1d320102b76b68b910d7f2724b556adc9ca8bf8ca4",
@@ -9295,8 +9295,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/acquisition/test_secrets.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -9306,8 +9306,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/active_window/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "7d5cc3f7f443ea23db83c0f2677e4061748646a41c3be073af5c5523d86a74a9",
@@ -9315,8 +9315,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/active_window/test_cache.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -9326,8 +9326,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/active_window/test_engine.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "exchange_token",
         "instrument_key",
@@ -9340,8 +9340,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/artifacts/test_artifact_provenance.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse",
@@ -9353,8 +9353,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/artifacts/test_store.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9365,8 +9365,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "cd4148e84725de902aef97b67e4195f5bd27bf2654b9f7a756c816aafbb9e3f7",
@@ -9374,8 +9374,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/expiry_helpers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse"
@@ -9386,8 +9386,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/helpers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -9399,8 +9399,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/test_expiry_engine.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -9410,8 +9410,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/test_normalization.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "nifty",
@@ -9423,8 +9423,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/contract_master/test_registry.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -9434,8 +9434,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/normalization/test_normalizer.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "banknifty",
         "exchange_token",
@@ -9450,8 +9450,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/option_chain/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "1829c5b69a86c9aeda086a6dc4f076c073a0f6ebfe73f231dec1962ee8a8af7f",
@@ -9459,8 +9459,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/option_chain/helpers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse"
@@ -9471,8 +9471,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/option_chain/test_builder.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "361c29c87b19ad725253efe83aada6f92e6ed5ff0f3bda759c4a783c87c4d8b1",
@@ -9480,8 +9480,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/option_chain/test_features.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "bd73046aaa04c221e160480a69249a717e6bd52957ccae7950edab9d23d788f1",
@@ -9489,8 +9489,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/option_chain/test_greeks_calculator.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "10e829259ef7e9d838b885ee8cc4bd02663d6b16572a14e4a8f26741ef44c880",
@@ -9498,8 +9498,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/providers/test_provenance.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse"
@@ -9510,8 +9510,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/replay_data/test_builder.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse",
@@ -9523,8 +9523,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/replay_data/test_resampler.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -9534,8 +9534,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/strike_window/__init__.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [],
       "serialized_state": false,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -9543,8 +9543,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/strike_window/helpers.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty",
         "nse"
@@ -9555,8 +9555,8 @@
     },
     {
       "path": "tests/unit/market/derivatives/strike_window/test_strike_window.py",
-      "classification": "REVIEW",
-      "reason": "Trace core references; remove acquisition/options logic and replace runtime instrument seam.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "nifty"
       ],
@@ -9623,7 +9623,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/__init__.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -9634,7 +9634,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/helpers.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "nifty",
@@ -9647,7 +9647,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_adapter.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9659,7 +9659,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_codec.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9671,7 +9671,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_frames.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9683,7 +9683,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_freshness.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9695,7 +9695,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_protobuf_codec.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9707,7 +9707,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_subscription.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "nifty",
@@ -9720,7 +9720,7 @@
     {
       "path": "tests/unit/market/feeds/upstox_v3/test_transport.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "instrument_key",
         "upstox"
@@ -9861,7 +9861,7 @@
     {
       "path": "tests/unit/market/providers/upstox/test_capabilities.py",
       "classification": "DELETE",
-      "reason": "Obsolete provider implementation, fixtures, tests or provider documentation.",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "upstox"
       ],
@@ -10292,8 +10292,8 @@
     },
     {
       "path": "verify_all_features.py",
-      "classification": "REWRITE FOR XAUUSD",
-      "reason": "Legacy assumptions or identifiers; retain only useful generic behavior.",
+      "classification": "DELETE",
+      "reason": "Reviewed: obsolete connector/options/persona implementation or legacy/unknown data authority; recovered outside active product.",
       "legacy_terms": [
         "goldm",
         "upstox"

@@ -17,7 +17,8 @@ from ats.trading_runtime.authority_service import PortfolioAuthorityService
 from ats.trading_runtime.broker import InMemoryMarketFeed, PaperBrokerAdapter
 from ats.trading_runtime.engine import RuntimeConfig, RuntimeEvent, RuntimeEventKind, TradingRuntime
 
-from tests.unit.portfolio.runtime.helpers import NOW, PORTFOLIO_ID, FakeTransactionManager, policy
+from tests.unit.portfolio.runtime.helpers import NOW, PORTFOLIO_ID, FakeTransactionManager
+from tests.unit.trading_runtime.xauusd_authority import xauusd_policy
 
 
 def _cal() -> SessionCalendar:
@@ -35,8 +36,15 @@ def _cal() -> SessionCalendar:
 
 def _authority() -> PortfolioAuthorityService:
     tm = FakeTransactionManager()
-    auth = SerializedPortfolioAuthority(transaction_manager=tm, policy=policy(maximum=5))
-    auth.recover(PortfolioRecoveryEvidence(portfolio_id=PORTFOLIO_ID, reconciled_at=NOW, active_commands=(), reconciliation_complete=True))
+    auth = SerializedPortfolioAuthority(transaction_manager=tm, policy=xauusd_policy(maximum=5))
+    auth.recover(
+        PortfolioRecoveryEvidence(
+            portfolio_id=PORTFOLIO_ID,
+            reconciled_at=NOW,
+            active_commands=(),
+            reconciliation_complete=True,
+        )
+    )
     return PortfolioAuthorityService(portfolio_authority=auth)
 
 
@@ -45,13 +53,32 @@ def test_entry_through_production_authority() -> None:
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
     svc = _authority()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("101"), now)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker, authority=svc)
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("101"), now)
+    rt = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+        authority=svc,
+    )
+    result = rt.process_event(
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="XAUUSD",
+            payload={"previous_close": "100"},
+            at=now,
+        )
+    )
     # Even with real authority, candidate may succeed or be authority_blocked — both are valid
     assert result["session_phase"] == "ENTRY_ALLOWED"
-    assert "candidate" in result or "authority_blocked" in result or "churn_blocked" in result or "no_action" in result
+    assert (
+        "candidate" in result
+        or "authority_blocked" in result
+        or "churn_blocked" in result
+        or "no_action" in result
+    )
 
 
 def test_stale_data_blocks_new_risk_but_allows_fill_tracking() -> None:
@@ -59,25 +86,56 @@ def test_stale_data_blocks_new_risk_but_allows_fill_tracking() -> None:
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
     svc = _authority()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker, authority=svc)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    rt = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+        authority=svc,
+    )
     # No mark set -> stale
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
+    result = rt.process_event(
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="XAUUSD",
+            payload={"previous_close": "100"},
+            at=now,
+        )
+    )
     assert "blocked" in result or result["verdict"] in ("BLOCK_NEW_RISK", "REQUIRE_REDUCE_ONLY")
 
 
 def test_unknown_submit_holds_reservation_through_engine() -> None:
-
     cal = _cal()
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
     # Broker configured for UNKNOWN — engine authority still holds reservation
     svc = _authority()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("101"), now)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal, authority_reservation_amount=Decimal("10000")), market_feed=feed, broker=broker, authority=svc)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("101"), now)
+    rt = TradingRuntime(
+        config=RuntimeConfig(
+            default_lot_size=Decimal("1"),
+            calendar=cal,
+            authority_reservation_amount=Decimal("10000"),
+        ),
+        market_feed=feed,
+        broker=broker,
+        authority=svc,
+    )
     # First entry reserves
-    rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={"previous_close": "100"}, at=now))
+    rt.process_event(
+        RuntimeEvent(
+            kind=RuntimeEventKind.BAR,
+            instrument_id="XAUUSD",
+            payload={"previous_close": "100"},
+            at=now,
+        )
+    )
     snap = svc.snapshot()
     # Either reserved or blocked by churn — but if reserved, count is 1
     assert snap is not None
@@ -85,11 +143,18 @@ def test_unknown_submit_holds_reservation_through_engine() -> None:
 
 def test_partial_fill_capital_split() -> None:
     tm = FakeTransactionManager()
-    auth = SerializedPortfolioAuthority(transaction_manager=tm, policy=policy(maximum=5))
-    auth.recover(PortfolioRecoveryEvidence(portfolio_id=PORTFOLIO_ID, reconciled_at=NOW, active_commands=(), reconciliation_complete=True))
+    auth = SerializedPortfolioAuthority(transaction_manager=tm, policy=xauusd_policy(maximum=5))
+    auth.recover(
+        PortfolioRecoveryEvidence(
+            portfolio_id=PORTFOLIO_ID,
+            reconciled_at=NOW,
+            active_commands=(),
+            reconciliation_complete=True,
+        )
+    )
     from tests.unit.portfolio.runtime.helpers import command
 
-    r = auth.reserve(command(1, market="NIFTY", amount="100000"))
+    r = auth.reserve(command(1, market="XAUUSD", amount="100000"))
     snap = auth.snapshot()
     assert snap.inflight_capital == Decimal("100000")
     # Simulate partial fill: commit half, keep half reserved -> in real R17 this is two-phase
@@ -107,15 +172,26 @@ def test_multi_position_through_engine_real_authority() -> None:
     feed = InMemoryMarketFeed()
     broker = PaperBrokerAdapter()
     svc = _authority()
-    now = datetime.now(UTC).replace(year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0)
-    feed.set_mark("NIFTY", Decimal("101"), now)
-    feed.set_mark("BANKNIFTY", Decimal("201"), now)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal, authority_reservation_amount=Decimal("80000")), market_feed=feed, broker=broker, authority=svc)
-    rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now)
-    rt.handle_fill("BANKNIFTY:1", Decimal("200"), Decimal("15"), now)
+    now = datetime.now(UTC).replace(
+        year=2024, month=6, day=3, hour=5, minute=0, second=0, microsecond=0
+    )
+    feed.set_mark("XAUUSD", Decimal("101"), now)
+    feed.set_mark("XAUUSD", Decimal("201"), now)
+    rt = TradingRuntime(
+        config=RuntimeConfig(
+            default_lot_size=Decimal("1"),
+            calendar=cal,
+            authority_reservation_amount=Decimal("80000"),
+        ),
+        market_feed=feed,
+        broker=broker,
+        authority=svc,
+    )
+    rt.handle_fill("XAUUSD:1", Decimal("100"), Decimal("75"), now)
+    rt.handle_fill("XAUUSD:second-1", Decimal("200"), Decimal("15"), now)
     assert len(rt.state.open_positions) == 2
     # Third candidate denied by mode/capacity would be churn_blocked or authority_blocked
-    rt.handle_exit("NIFTY:1", now)
+    rt.handle_exit("XAUUSD:1", now)
     assert len(rt.state.open_positions) == 1
 
 
@@ -125,12 +201,19 @@ def test_session_flatten_through_engine_with_authority() -> None:
     broker = PaperBrokerAdapter()
     svc = _authority()
     now_open = datetime(2024, 6, 3, 5, 0, tzinfo=UTC)
-    feed.set_mark("NIFTY", Decimal("100"), now_open)
-    rt = TradingRuntime(config=RuntimeConfig(calendar=cal), market_feed=feed, broker=broker, authority=svc)
-    rt.handle_fill("NIFTY:1", Decimal("100"), Decimal("75"), now_open)
+    feed.set_mark("XAUUSD", Decimal("100"), now_open)
+    rt = TradingRuntime(
+        config=RuntimeConfig(default_lot_size=Decimal("1"), calendar=cal),
+        market_feed=feed,
+        broker=broker,
+        authority=svc,
+    )
+    rt.handle_fill("XAUUSD:1", Decimal("100"), Decimal("75"), now_open)
     flatten = datetime(2024, 6, 3, 9, 58, tzinfo=UTC)
-    feed.set_mark("NIFTY", Decimal("100"), flatten)
-    result = rt.process_event(RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="NIFTY", payload={}, at=flatten))
+    feed.set_mark("XAUUSD", Decimal("100"), flatten)
+    result = rt.process_event(
+        RuntimeEvent(kind=RuntimeEventKind.BAR, instrument_id="XAUUSD", payload={}, at=flatten)
+    )
     assert result["session_phase"] == "FLATTENING"
     assert "exits" in result
     for e in result["exits"]:

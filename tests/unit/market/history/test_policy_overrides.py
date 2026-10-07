@@ -91,7 +91,7 @@ def test_override_cannot_relax_quote_or_event_kinds() -> None:
     policy = HistoryValidationPolicy(
         instrument_overrides=(
             InstrumentPolicyOverride(
-                instrument="NIFTY",
+                instrument="PARTITION_A",
                 bar_minimum_availability_delay_ms=0,
                 bar_maximum_source_lag_ms=999_999_999,
             ),

@@ -30,7 +30,7 @@ def context() -> MarketContext:
         schema_version="1.0",
         market_context_id=UUID("00000000-0000-0000-0000-000000000802"),
         instrument_spec_id=UUID("00000000-0000-0000-0000-000000000803"),
-        instrument_id="NIFTY",
+        instrument_id="PARTITION_A",
         snapshot_id=UUID("00000000-0000-0000-0000-000000000804"),
         feature_bundle_id=FEATURE_ID,
         timeframe="5m",
@@ -83,7 +83,7 @@ def forecast(
         horizon_bars=2,
         event_definition_id="close-above-last-v1",
         raw_evidence={
-            "instrument_id": "NIFTY",
+            "instrument_id": "PARTITION_A",
             "timeframe": "5m",
             "as_of_time": AS_OF.isoformat(),
             "data_cutoff": CUTOFF.isoformat(),

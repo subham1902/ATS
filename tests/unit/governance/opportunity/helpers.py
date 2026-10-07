@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from decimal import Decimal
+from uuid import UUID
 
 from ats.contracts.domain.hashing import compute_payload_hash
 from ats.contracts.governance.models import TradingCampaign
@@ -13,19 +14,12 @@ from ats.governance.opportunity import (
     OpportunityConstructionConfiguration,
     OpportunityEconomicsFacts,
 )
-from ats.intelligence.instrument_selector import select_derivative_instruments
+from ats.governance.opportunity.instrument import InstrumentCandidate
 
-from tests.unit.intelligence.instrument_selector.helpers import (
-    chain,
-    distribution,
-    evaluation_time,
-    thesis,
-)
-from tests.unit.intelligence.instrument_selector.helpers import (
-    configuration as selector_configuration,
-)
+from tests.unit.intelligence.thesis.helpers import distribution
+from tests.unit.intelligence.thesis.test_synthesis import synthesize
 from tests.unit.kernel.fixtures import make_kernel_fixture
-from tests.unit.market.derivatives.option_chain.helpers import master
+from tests.unit.market.xauusd import AS_OF
 
 
 def _rehash(value: object, **updates: object):  # type: ignore[no-untyped-def]
@@ -36,19 +30,32 @@ def _rehash(value: object, **updates: object):  # type: ignore[no-untyped-def]
 
 
 def bound_inputs() -> dict[str, object]:
-    now = evaluation_time()
-    selected_thesis = thesis()
-    selected_distribution = distribution()
-    selection = select_derivative_instruments(
-        contract_master=master(),
-        option_chain=chain(),
-        thesis=selected_thesis,
-        distribution=selected_distribution,
-        configuration=selector_configuration(),
-        evaluation_time=now,
+    now = AS_OF + timedelta(seconds=30)
+    selected_distribution = _rehash(distribution(), instrument_id="XAUUSD")
+    selected_thesis = _rehash(
+        synthesize().thesis,
+        instrument_id="XAUUSD",
+        distribution_id=selected_distribution.distribution_id,
     )
-    assert selection.candidates
-    instrument = selection.candidates[0]
+    instrument = InstrumentCandidate(
+        schema_version="1.0",
+        instrument_candidate_id=UUID("00000000-0000-0000-0000-000000000703"),
+        thesis_id=selected_thesis.thesis_id,
+        thesis_version=selected_thesis.thesis_version,
+        distribution_id=selected_distribution.distribution_id,
+        quantity=Decimal("1"),
+        entry_ask=Decimal("101"),
+        expected_gross_pnl=Decimal("20"),
+        estimated_spread_cost=Decimal("2"),
+        estimated_slippage=Decimal("1"),
+        estimated_transaction_cost=Decimal("1"),
+        expected_net_pnl=Decimal("16"),
+        as_of_time=AS_OF,
+        data_cutoff=AS_OF,
+        method_version="SYNTHETIC-V1",
+        payload_hash="0" * 64,
+    )
+    instrument = instrument.model_copy(update={"payload_hash": compute_payload_hash(instrument)})
 
     kernel = make_kernel_fixture()
     raw_campaign = kernel["campaign"]

@@ -35,13 +35,7 @@
     {
       "name": "Intelligence",
       "owner_stream": "D",
-      "paths": [
-        "backend/src/ats/intelligence/**",
-        "backend/src/ats/ai/**",
-        "backend/src/ats/agents/**",
-        "backend/src/ats/strategies/**",
-        "backend/src/ats/optimization/**"
-      ]
+      "paths": ["backend/src/ats/intelligence/**", "backend/src/ats/agents/**", "backend/src/ats/strategies/**"]
     },
     {
       "name": "Dashboard",

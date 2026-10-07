@@ -9,7 +9,7 @@ from ats.market import (
     ApprovedFixture,
     ReplayConfiguration,
     approved_manifest,
-    nse_cash_alpha_v1_calendar,
+    xauusd_test_calendar,
 )
 from ats.market.fixtures.loader import _load_approved_fixture
 from ats.market.history import (
@@ -28,13 +28,13 @@ from ats.market.history import (
     require_available,
 )
 
-GOLDEN_DATASET_ID = "4e0745dc-0f7e-523e-9149-fe9721ae051a"
-GOLDEN_MANIFEST_HASH = "b2af57a4127491ab92ab07b07a6199940e46b49686e8fc78a2cf130dea81e40d"
+GOLDEN_DATASET_ID = "1e535f64-cc94-5e5d-90ba-becac7558862"
+GOLDEN_MANIFEST_HASH = "1c6c533b43a082a581d276775617da1f32a57181da6db25ed67f64e8425f04fa"
 GOLDEN_OBSERVATION_HASHES = (
-    "70ef2dd859f840a3f474769eee5194287ea5c8f0a32b55245e49ee6987bb3d17",
-    "e7d388299d12ea989957318492ed35aeac944205537070f976df60576a871b21",
-    "0975078b2b7b4f817407ba9bc2c2be8403d4ae02b871fe78414135c88a0f5be5",
-    "df4c2f048eef39937f54d037d0429ffe024721e542454442cdd5650a2cc405cc",
+    "bf5a13591a224b55185aa1caa79b0d0dfd79b35612bcd0e53bf7d54ccb33c8fe",
+    "db804c66a672bef9d5280a481b497413d301de11220044414ae3ed90649c3e21",
+    "564a209e8d216f75fc24af56a2b5ede3587f03f01b89d14760b3a80e5e3d9beb",
+    "ebb2703cc29b802307bb9071f97b78df35e349c07b7b05ae042c046a3ff40f40",
 )
 
 REALISTIC_SEMANTICS = HistoryTimeSemantics(
@@ -45,28 +45,26 @@ REALISTIC_SEMANTICS = HistoryTimeSemantics(
 
 
 def _approved_dataset():
-    calendar = nse_cash_alpha_v1_calendar()
-    return _load_approved_fixture(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1, calendar)
+    calendar = xauusd_test_calendar()
+    return _load_approved_fixture(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1, calendar)
 
 
 def _golden_configuration() -> ReplayConfiguration:
-    manifest = approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1)
+    manifest = approved_manifest(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1)
     return ReplayConfiguration(start_at=manifest.first_bar, received_delay_ms=2000)
 
 
 def _golden_history_dataset() -> HistoricalDataset:
     dataset = _approved_dataset()
-    manifest = approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1)
+    manifest = approved_manifest(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1)
     observations = historical_bar_observations(dataset, semantics=REALISTIC_SEMANTICS)
     return build_historical_dataset(
         observations,
-        source="ATS_APPROVED_NSE_CASH_FIXTURE",
+        source="ATS_SYNTHETIC_XAUUSD_FIXTURE",
         source_version="1.0.0",
         data_classification=DatasetSourceClass.RECORDED_PROVIDER_SHAPE,
-        contract_master_version="CASH_ONLY_NO_DERIVATIVES",
-        file_hashes=(
-            FileHashEntry(file_name="bars.json", content_sha256=manifest.content_sha256),
-        ),
+        contract_master_version="XAUUSD_SYNTHETIC_TERMS",
+        file_hashes=(FileHashEntry(file_name="bars.json", content_sha256=manifest.content_sha256),),
         transform_lineage=(
             TransformStep(
                 step_index=0,
@@ -105,7 +103,7 @@ def test_availability_gate_is_independent_of_replay_cursor() -> None:
         update={"strategy_visibility_delay_ms": 60_000}
     )
     configuration = ReplayConfiguration(
-        start_at=approved_manifest(ApprovedFixture.NSE_CASH_RELIANCE_5M_V1).first_bar,
+        start_at=approved_manifest(ApprovedFixture.XAUUSD_SYNTHETIC_5M_V1).first_bar,
         received_delay_ms=250,
     )
     session = create_history_gated_replay(dataset, configuration, semantics=delayed_visibility)
