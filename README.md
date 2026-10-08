@@ -11,6 +11,12 @@ account support remains NOT_CONFIGURED until a reliable bridge exists.
 The XAUUSD-specialized ATS currently has no repository evidence establishing profitability.
 Performance from removed markets does not transfer. Surviving strategies are research-only.
 
+Step 2 currently supplies immutable `XAU-###` lineages, versioned records,
+proposal schemas, research-agent templates and a persistent queue primitive.
+Continuous research workers, validated promotion, external execution and trade
+entry/exit intelligence are not implemented. See the
+[current system report](docs/architecture/ATS_SYSTEM_STATUS_2026-10-08.md).
+
 ## Operator surfaces
 
 Dashboard, Market, Research, Strategies, Agents, Accounts, Paper Trading, Datasets,

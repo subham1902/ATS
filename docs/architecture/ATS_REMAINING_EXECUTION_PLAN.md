@@ -2,7 +2,15 @@
 
 Date: 2026-10-07. Status: proposed sequence after the current Step 1 checkpoint.
 This plan replaces the older integration plan's parallel-provider and rollout
-assumptions. It does not begin Steps 2–4 or claim they are implemented.
+assumptions. Update October 8: Step 2 storage/schema/UI foundations are implemented;
+Step 2 acceptance remains open. Steps 3–4 remain unimplemented.
+
+Resume at the first unchecked integration: one supervised backtest worker over
+the existing engine, with exact dataset/recipe/agent verification, enforced
+budgets/timeouts and cadence dispatch. Reuse the committed lineage store, queue,
+templates and schema. Then complete the account authority/router/adapter slice;
+then the observation/forensics/manual-reduction slice. Do not repeat the registry
+or create separate demo/live, MT4/MT5 or per-agent research architectures.
 
 Use the existing MetaTrader package, account registry, canonical observations,
 fabric, strategy definitions, research engine, managed agents and deterministic

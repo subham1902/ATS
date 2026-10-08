@@ -1,6 +1,15 @@
 # ATS Implementation Report
 
-**Status: P4 COMPLETE; INTEGRITY HARDENING PASS DONE.** P4 baseline `220d292`
+**Current status, October 8, 2026:** XAUUSD/MetaTrader specialization and the Step 1
+software foundation are retained. Step 2 registry/queue/schema/UI foundations are
+tested; continuous research remains unwired. Steps 3–4 are unimplemented. Actual
+terminal freshness and concurrent-terminal acceptance remain open. See the
+[current system report](docs/architecture/ATS_SYSTEM_STATUS_2026-10-08.md).
+
+The following P4 history predates specialization; it is not current product
+acceptance or authorization for external execution.
+
+**Historical status: P4 COMPLETE; INTEGRITY HARDENING PASS DONE.** P4 baseline `220d292`
 plus its two CI fixes (`c12d708`) is remotely green (run `36827915472`: all jobs
 success except Dependency Review, which is PR-only and skipped on push; PostgreSQL
 durability ran 110 tests, none skipped). The hardening commits after it are
@@ -726,7 +735,8 @@ Actual terminal: pinned SDK imports, IPC initializes and an authenticated DEMO a
 supplies XAUUSD metadata/quotes. Its tick epoch is approximately three hours ahead of
 verified UTC; the connector rejects it. Real concurrent account-worker acceptance has
 not been demonstrated. No orders were sent; no strategy edge or calibration is claimed.
-**Step 2 has not started.** Resolve physical acceptance before advancing.
+At that checkpoint Step 2 had not started. The newer October 8 request explicitly
+authorized proceeding with Steps 2–4; physical acceptance gaps remain unresolved.
 
 Architecture: [specialization](docs/architecture/XAUUSD_MT5_SPECIALIZATION.md),
 [account foundation](docs/architecture/METATRADER_MULTI_ACCOUNT_EXECUTION.md), and
@@ -735,3 +745,33 @@ Generated checkpoint reports: ATS_XAUUSD_MT5_MIGRATION_REPORT.md,
 ATS_METATRADER_STEP1_REPORT.md and ATS_MT5_00_ENVIRONMENT_REPORT.md.
 
 CI portability correction: preserved raw hashed fixture bytes across Git checkouts and guarded the DPAPI loader for Linux typing. The initial remote run exposed these defects; gates were retained. Final cleanup also removed an obsolete forward-readiness report and specialized the synthetic benchmark. See the generated Step 1 report for final exact-HEAD CI.
+
+## October 8, 2026 — Strategy OS foundation checkpoint
+
+**Steps 2–4 are not complete.** Step 2 storage/schema/UI foundations are implemented;
+the supervised research worker, scheduling and independent evidence verifier are
+not wired. Steps 3 and 4 remain unimplemented. Production remains paper-only;
+execution connection consent still does not route orders.
+
+Implemented: 17 frozen XAU lineage allocations; transactional never-reused IDs;
+immutable hashed versions and optimistic conflicts; pause/retire; fail-closed
+promotion/evidence writes; generated strategy workspace; canonical API and shared
+compatibility registry projection; queue storage with exact job provenance,
+idempotency, single claims, nonces, result hashes and explicit interrupted recovery;
+strict signal schema with UNKNOWN empirical probability; ten proposal-only templates;
+Strategies/Agents UI and corrected registry client types. Fixed a SQLite handle
+leak found on Windows. No trusted-core changes or broker orders.
+
+Local full suite: 1,522 passed, 0 failed, 0 skipped, PostgreSQL active. Ruff and
+strict mypy pass (237 modules). Frontend tests: 58 passed; build, lint (three existing
+copilot warnings), format and type checks pass. Frozen Python/Node installs pass;
+orphan local metadata was preserved outside the virtualenv, then `uv pip check`
+reported all installed packages compatible. Remote exact-HEAD CI is recorded in
+the generated boundary report; do not infer it from the prior Step 1 run.
+
+Detailed status: [system report](docs/architecture/ATS_SYSTEM_STATUS_2026-10-08.md),
+[Strategy OS](docs/architecture/STRATEGY_OPERATING_SYSTEM.md),
+[agent research](docs/architecture/AGENT_RESEARCH_SYSTEM.md), and the updated
+[remaining execution plan](docs/architecture/ATS_REMAINING_EXECUTION_PLAN.md).
+Next integration: one bounded supervised worker over the existing research engine,
+verified dataset/recipe/agent binding and enforced scheduling/resource bounds.

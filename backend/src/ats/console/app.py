@@ -26,6 +26,7 @@ from ats.console.datasets_router import router as datasets_router
 from ats.console.market_router import router as market_router
 from ats.console.providers import LiveControlPlaneReader
 from ats.console.runtime_router import router as runtime_router
+from ats.console.strategy_os_router import router as strategy_os_router
 from ats.console.strategy_registry import router as strategy_router
 from ats.market.domain import XauUsdDomain
 from ats.market.fabric import MarketDataFabric
@@ -42,6 +43,7 @@ CONSOLE_ROUTERS = (
     market_router,
     datasets_router,
     strategy_router,
+    strategy_os_router,
     managed_router,
     ai_router,
 )

@@ -468,24 +468,41 @@ export interface BestPerformanceSnapshot {
 
 export interface StrategyRegistryEntry {
   strategy_id: string;
+  version: number;
+  definition_id: string;
   name: string;
-  family: string;
-  hypothesis: string;
-  badge: StrategyBadge;
-  classification: StrategyClassification;
-  classification_reason: string;
-  evidence_tier: EvidenceTier;
+  canonical_symbol: "XAUUSD";
+  status: "DRAFT" | "RESEARCH" | "CANDIDATE" | "PAPER" | "DEMO" | "MICRO_LIVE" | "ACTIVE" | "PAUSED" | "RETIRED";
+  hypothesis: string | null;
+  direction: "LONG" | "SHORT" | "BOTH" | null;
+  trade_horizon: "SCALP" | "INTRADAY" | "SWING" | "POSITION" | null;
+  timeframes: string[];
+  entry_rules: string | null;
+  exit_rules: string | null;
+  stop_loss_logic: string | null;
+  take_profit_logic: string | null;
+  position_sizing: string | null;
+  sessions: string[];
+  required_features: string[];
+  required_data: string[];
+  known_failure_modes: string[];
+  datasets_tested: string[];
+  backtest_results: string[];
+  walk_forward_results: string[];
+  holdout_results: string[];
+  paper_results: string[];
+  demo_results: string[];
+  live_results: string[];
+  entry_quality_stats: Record<string, number> | null;
+  exit_quality_stats: Record<string, number> | null;
+  last_validated_at: string | null;
+  compatible_symbols: ["XAUUSD"];
   implementation_status: string;
-  rating: StrategyRating;
-  best_performance: BestPerformanceSnapshot | null;
-  performance_records: PerformanceRecord[];
-  data_blocked: boolean;
-  blocker_reason: string;
-  shadow_status: string;
-  paper_readiness: string;
-  total_trades: number;
-  total_net_pnl: string;
-  avg_win_rate: string;
+  latest_research_run: string | null;
+  out_of_sample_status: string;
+  cost_stress_status: string;
+  paper_forward_status: string;
+  promotion_status: string;
 }
 
 export interface LeaderboardEntry {
@@ -507,13 +524,7 @@ export interface LeaderboardEntry {
 }
 
 export interface StrategyRegistryOverview {
-  total_strategies: number;
-  rated_count: number;
-  data_blocked_count: number;
-  rejected_count: number;
-  validated_count: number;
-  avg_rating: string;
-  top_badge_distribution: Record<string, number>;
+  canonical_symbol: "XAUUSD";
   strategies: StrategyRegistryEntry[];
 }
 
