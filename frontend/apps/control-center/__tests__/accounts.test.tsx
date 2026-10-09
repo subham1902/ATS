@@ -36,7 +36,7 @@ describe("MetaTrader Accounts", () => {
     expect(await screen.findByText("Broker account")).toBeInTheDocument();
     expect(screen.getByText(/LIVE ACCOUNT/)).toBeInTheDocument();
     expect(screen.getAllByText("N/A / N/A", { selector: "dd" })).toHaveLength(4);
-    expect(screen.getByText(/External order routing is unavailable until Step 3/)).toBeInTheDocument();
+    expect(screen.getByText(/External execution is awaiting commissioning/)).toBeInTheDocument();
   });
 
   it("connects only by default and clears credentials after submission", async () => {

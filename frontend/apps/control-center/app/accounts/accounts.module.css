@@ -1,6 +1,17 @@
 .page {
   line-height: 1.5;
 }
+.section {
+  margin-top: 16px;
+  border-top: 1px solid #d5dce2;
+  padding-top: 16px;
+}
+.section summary {
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 600;
+  color: #142331;
+}
 .heading {
   display: flex;
   flex-wrap: wrap;

@@ -170,8 +170,8 @@ export default function AccountsPage() {
         </form>
       )}
       <p className={styles.notice}>
-        Step 1: market data and account monitoring. External order routing is unavailable until Step 3. Enabling
-        execution records your consent; it does not place orders or grant authority.
+        Account monitoring is available. External execution is awaiting commissioning. Execution consent and effective
+        authorization are separate; check account readiness before expecting trades.
       </p>
       {error && (
         <p role="alert" className={styles.error}>
@@ -259,9 +259,6 @@ export default function AccountsPage() {
               <strong>Execution consent: {view.account.execution_enabled ? "ENABLED" : "DISABLED"}</strong>
             </p>
             <p>Routing: unavailable · Risk: {view.risk_state}</p>
-            <AccountConfiguration accountId={view.account.account_id} />
-            <LotPreview accountId={view.account.account_id} />
-            <NativeObserver accountId={view.account.account_id} />
             <dl className={styles.metrics}>
               <dt>Balance / equity</dt>
               <dd>
@@ -294,6 +291,18 @@ export default function AccountsPage() {
               <dt>Reconciliation</dt>
               <dd>{view.reconciliation_state}</dd>
             </dl>
+            <details className={styles.section} open>
+              <summary>Risk limits, strategy assignments & execution readiness</summary>
+              <AccountConfiguration accountId={view.account.account_id} />
+            </details>
+            <details className={styles.section}>
+              <summary>Calculate lots from entry and stop</summary>
+              <LotPreview accountId={view.account.account_id} />
+            </details>
+            <details className={styles.section}>
+              <summary>MetaTrader expert status & diagnostics</summary>
+              <NativeObserver accountId={view.account.account_id} />
+            </details>
             <div className={styles.actions}>
               <button disabled={busy} onClick={() => void command(view.account.account_id, "connect")}>
                 Reconnect Only

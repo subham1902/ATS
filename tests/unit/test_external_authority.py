@@ -39,6 +39,7 @@ def inputs(account="ACC-1", mode="DEMO", key="one"):
         snapshot_time=now,
         free_margin=1000,
         daily_loss=0,
+        monthly_loss=0,
         open_risk=0,
         strategy_risk=0,
         positions=0,
@@ -53,6 +54,7 @@ def inputs(account="ACC-1", mode="DEMO", key="one"):
         version="R1",
         max_trade_risk=100,
         max_daily_loss=100,
+        max_monthly_loss=300,
         max_open_risk=200,
         max_volume=1,
         max_positions=2,
@@ -104,6 +106,7 @@ def test_same_pipeline_distinct_external_scope(tmp_path, mode):
         {"broker_symbol": "OTHER"},
         {"positions": 2},
         {"daily_loss": Decimal(100)},
+        {"monthly_loss": Decimal(201)},
         {"free_margin": Decimal(1)},
         {"observed_risk_cash": Decimal(101)},
         {"observed_margin_cash": Decimal(51)},
@@ -199,3 +202,29 @@ def test_accepted_or_ambiguous_sibling_blocks_preexisting_reservation(tmp_path):
     with pytest.raises(ValueError, match="RECONCILIATION_REQUIRED"):
         ledger.dispatch(second, facts, risk, now, adapter)
     assert adapter.calls == 1
+
+
+def test_monthly_reservations_and_dispatch_recheck(tmp_path):
+    intent, facts, risk, now = inputs(mode="LIVE")
+    risk = risk.model_copy(
+        update={"max_daily_loss": Decimal(1000), "max_monthly_loss": Decimal(150)}
+    )
+    ledger = ExternalLedger(tmp_path / "e.db")
+    execution = ledger.reserve(intent, facts, risk, now)
+    with pytest.raises(ValueError, match="RESERVATION_LIMIT"):
+        ledger.reserve(intent.model_copy(update={"idempotency": "second"}), facts, risk, now)
+    adapter = Adapter()
+    with pytest.raises(ValueError, match="ACCOUNT_RISK_LIMIT"):
+        ledger.dispatch(
+            execution, facts.model_copy(update={"monthly_loss": Decimal(51)}), risk, now, adapter
+        )
+    assert adapter.calls == 0
+
+
+def test_unknown_monthly_budget_rejected():
+    _, facts, risk, _ = inputs()
+    for model, field in ((facts, "monthly_loss"), (risk, "max_monthly_loss")):
+        document = model.model_dump()
+        document.pop(field)
+        with pytest.raises(ValueError):
+            type(model).model_validate(document)

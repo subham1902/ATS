@@ -245,6 +245,7 @@ def commissioned_risk(
         version=approval.approval_id,
         max_trade_risk=maximum_risk,
         max_daily_loss=account.daily_loss + daily_remaining,
+        max_monthly_loss=account.monthly_loss + monthly_remaining,
         max_open_risk=maximum_risk,
         max_volume=approval.maximum_volume,
         max_positions=1,

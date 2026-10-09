@@ -42,3 +42,13 @@ Frontend62 tests passed: control-center45, API client10, UI7. Recursive typechec
 9. MT4 authenticated transport and physical multi-account acceptance.
 
 Do not label this checkpoint trading-ready. Software foundation checks and a current market-data connection do not substitute for external execution commissioning or strategy validation.
+
+## Live execution request follow-up
+
+External authority now requires explicit monthly cash loss/budget inputs, checks them at assessment and dispatch, and reserves pending risk against the monthly envelope. Missing monthly inputs fail validation; existing callers must supply them. The demo supervisor derives the monthly cash envelope from its verified period proof, preserving net realized P&L against start-of-month equity semantics. This does not commission broker period collection or impose a guaranteed realized-loss cap against gaps/slippage.
+
+Accounts now prioritizes observed balances, quotes, freshness and reconciliation above configuration. Risk/readiness stays expanded; sizing and native diagnostics use accessible disclosure controls. Removed obsolete numbered-step copy.
+
+Focused Python and contract verification: 202 passed. Frontend/type validation results recorded at completion. No account consent changed and no broker order submitted. External routing remains uncommissioned; trusted account-wide period accounting, reconciliation, eligibility and authenticated operator control remain prerequisites. This is a tested increment toward the requested live system, not trading-readiness acceptance.
+
+Follow-up validation: 202 Python/contract tests passed, 45 control-center tests passed, TypeScript typecheck passed, execution-package mypy passed, and Ruff passed. One UI assertion initially referenced the removed numbered-step wording; updated to assert the current commissioning warning and reran the full control-center suite successfully. Production rebuild/live browser acceptance and remote CI for this increment have not run.

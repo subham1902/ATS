@@ -25,6 +25,7 @@ class RiskProfile(BaseModel):
     version: str = Field(min_length=1)
     max_trade_risk: Decimal = Field(gt=0)
     max_daily_loss: Decimal = Field(gt=0)
+    max_monthly_loss: Decimal = Field(gt=0)
     max_open_risk: Decimal = Field(gt=0)
     max_volume: Decimal = Field(gt=0)
     max_positions: int = Field(gt=0)
@@ -78,6 +79,7 @@ class AccountFacts(BaseModel):
     snapshot_time: datetime
     free_margin: Decimal = Field(ge=0)
     daily_loss: Decimal = Field(ge=0)
+    monthly_loss: Decimal = Field(ge=0)
     open_risk: Decimal = Field(ge=0)
     strategy_risk: Decimal = Field(ge=0)
     positions: int = Field(ge=0)
@@ -123,6 +125,7 @@ def assess(intent: ExternalIntent, facts: AccountFacts, risk: RiskProfile, now: 
     if (
         intent.risk_cash > risk.max_trade_risk
         or facts.daily_loss + intent.risk_cash > risk.max_daily_loss
+        or facts.monthly_loss + intent.risk_cash > risk.max_monthly_loss
         or facts.open_risk + intent.risk_cash > risk.max_open_risk
         or facts.strategy_risk + intent.risk_cash > risk.max_strategy_risk
         or facts.positions >= risk.max_positions
@@ -219,6 +222,10 @@ class ExternalLedger:
                 + sum((r.risk_cash for r in reserved), Decimal(0))
                 + intent.risk_cash
                 > risk.max_daily_loss
+                or facts.monthly_loss
+                + sum((r.risk_cash for r in reserved), Decimal(0))
+                + intent.risk_cash
+                > risk.max_monthly_loss
             ):
                 raise ValueError("RESERVATION_LIMIT")
             execution_id = "EXE-" + uuid4().hex
