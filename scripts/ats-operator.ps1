@@ -3,7 +3,7 @@ param(
     [ValidateSet('Start', 'Status', 'Restart', 'Stop', 'Open')]
     [string]$Action = 'Start',
     [ValidateRange(1024, 65535)][int]$FrontendPort = 3001,
-    [ValidateRange(1024, 65535)][int]$BackendPort = 8000,
+    [ValidateRange(1024, 65535)][int]$BackendPort = 8100,
     [switch]$NoOpen,
     [switch]$VerboseOutput
 )
@@ -154,6 +154,7 @@ $backendSrcDir = Join-Path $repo 'backend\src'
 $env:PYTHONPATH = $backendSrcDir
 
 $env:ATS_BACKEND_URL = "http://127.0.0.1:$BackendPort"
+$env:ATS_BACKEND_ORIGIN = $env:ATS_BACKEND_URL
 $env:ATS_FRONTEND_URL = "http://127.0.0.1:$FrontendPort"
 $env:NEXT_PUBLIC_API_URL = $env:ATS_BACKEND_URL
 
@@ -192,6 +193,18 @@ do {
 
 if (-not ($frontendReady -and $backendReady)) {
     throw 'ATS operator runtime did not become ready within 45 seconds. Inspect reports/operator-runtime.'
+}
+
+# A listening legacy ATS process is not the current account/market console.
+# Also verify the frontend BFF: rewrites are fixed when Next is built.
+foreach ($origin in @($env:ATS_BACKEND_URL, $env:ATS_FRONTEND_URL)) {
+    try {
+        $response = Invoke-WebRequest -Uri "$origin/v1/accounts" -TimeoutSec 10
+        $accounts = ConvertFrom-Json -InputObject $response.Content -NoEnumerate
+        if ($accounts -isnot [array]) { throw 'Unexpected account response' }
+    } catch {
+        throw "ATS console acceptance failed at $origin/v1/accounts. Check the selected backend and rebuild the frontend with ATS_BACKEND_ORIGIN=$($env:ATS_BACKEND_URL)."
+    }
 }
 
 $frontendPid = (Get-Listener $FrontendPort).OwningProcess

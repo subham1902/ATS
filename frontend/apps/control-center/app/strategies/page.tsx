@@ -36,42 +36,49 @@ export default function Strategies() {
         calibration remain unavailable.
       </p>
       {error && <p role="alert">{error}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>ID / version</th>
-            <th>Status</th>
-            <th>Direction / horizon</th>
-            <th>Datasets</th>
-            <th>Backtests</th>
-            <th>Walk forward / holdout</th>
-            <th>Paper forward</th>
-          </tr>
-        </thead>
-        <tbody>
-          {strategies.map((s) => (
-            <tr key={s.strategy_id}>
-              <td>
-                {s.strategy_id}
-                <br />
-                {s.version}
-                <br />
-                Definition: {s.definition_id}
-              </td>
-              <td>{s.status}</td>
-              <td>
-                {s.direction ?? "UNKNOWN"} / {s.trade_horizon ?? "UNKNOWN"}
-              </td>
-              <td>{s.datasets_tested.join(", ") || "None"}</td>
-              <td>{s.backtest_results.join(", ") || "NOT_RUN"}</td>
-              <td>
-                {s.walk_forward_results.join(", ") || "NOT_RUN"} / {s.holdout_results.join(", ") || "NOT_RUN"}
-              </td>
-              <td>{s.paper_results.join(", ") || "NOT_RUN"}</td>
+      <div
+        role="region"
+        aria-label="Strategy evidence table"
+        tabIndex={0}
+        style={{ maxWidth: "100%", overflowX: "auto" }}
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>ID / version</th>
+              <th>Status</th>
+              <th>Direction / horizon</th>
+              <th>Datasets</th>
+              <th>Backtests</th>
+              <th>Walk forward / holdout</th>
+              <th>Paper forward</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {strategies.map((s) => (
+              <tr key={s.strategy_id}>
+                <td>
+                  {s.strategy_id}
+                  <br />
+                  {s.version}
+                  <br />
+                  Definition: {s.definition_id}
+                </td>
+                <td>{s.status}</td>
+                <td>
+                  {s.direction ?? "UNKNOWN"} / {s.trade_horizon ?? "UNKNOWN"}
+                </td>
+                <td>{s.datasets_tested.join(", ") || "None"}</td>
+                <td>{s.backtest_results.join(", ") || "NOT_RUN"}</td>
+                <td>
+                  {s.walk_forward_results.join(", ") || "NOT_RUN"} / {s.holdout_results.join(", ") || "NOT_RUN"}
+                </td>
+                <td>{s.paper_results.join(", ") || "NOT_RUN"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

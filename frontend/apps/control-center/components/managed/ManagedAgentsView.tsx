@@ -45,8 +45,8 @@ export function ManagedAgentsView(props: { api: ManagedApi; onCreated?: (agent: 
     <div style={{ padding: 24 }}>
       <h1>Managed Agents</h1>
       <p style={{ opacity: 0.8 }}>
-        Configurable research agents. They can analyze and propose; they cannot authorize or execute trades. The
-        trading-persona runtime lives in the <Link href="/agents">Agents Playground</Link>, a separate system.
+        Configurable research agents. They can analyze and propose; they cannot authorize or execute trades. The{" "}
+        <Link href="/agents">Agents Playground</Link> provides these same research templates and bounded quote jobs.
       </p>
 
       {adding ? (

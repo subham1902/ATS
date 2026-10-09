@@ -84,13 +84,19 @@ export function ResearchJobs() {
     }
   }
   return (
-    <section aria-label="Bounded research jobs">
+    <section id="research-jobs" aria-label="Bounded research jobs">
       <h2>Run quote research</h2>
       <p>
         Research only. Observed bid/ask ticks required. Costs use price units, not broker lots. No strategy promotion.
         Scheduling, holdout and probability calibration remain unavailable.
       </p>
       {error && <p role="alert">{error}</p>}
+      {!agents.some((agent) => agent.enabled && agent.capabilities.includes("RUN_BACKTEST")) && (
+        <p>Create and enable a backtest agent before running a job.</p>
+      )}
+      {!datasets.some((dataset) => dataset.status === "RESEARCH_ONLY") && (
+        <p>Import an eligible observed bid/ask tick dataset before running a job.</p>
+      )}
       <form onSubmit={submit}>
         <label>
           Enabled backtest agent{" "}
@@ -145,7 +151,15 @@ export function ResearchJobs() {
             {label} <input name={name} type="number" step="any" min="0" required />
           </label>
         ))}
-        <button disabled={busy}>{busy ? "Running bounded research…" : "Run Backtest Agent"}</button>
+        <button
+          disabled={
+            busy ||
+            !agents.some((agent) => agent.enabled && agent.capabilities.includes("RUN_BACKTEST")) ||
+            !datasets.some((dataset) => dataset.status === "RESEARCH_ONLY")
+          }
+        >
+          {busy ? "Running bounded research…" : "Run Backtest Agent"}
+        </button>
       </form>
       {jobs.map((job) => (
         <article key={job.run_id}>

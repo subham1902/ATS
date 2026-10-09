@@ -12,7 +12,9 @@ export default function System() {
     <>
       <h1>System</h1>
       <p>XAUUSD only · MetaTrader data only · PaperBroker only. Financial authority remains deterministic.</p>
-      <pre>{state ? JSON.stringify(state, null, 2) : "System state unknown"}</pre>
+      <pre style={{ maxWidth: "100%", overflowX: "auto" }}>
+        {state ? JSON.stringify(state, null, 2) : "System state unknown"}
+      </pre>
     </>
   );
 }
