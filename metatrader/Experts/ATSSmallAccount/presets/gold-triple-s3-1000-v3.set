@@ -1,0 +1,27 @@
+; ATS V3 research observer preset; execution authority NONE
+ATSAccountId=ACC-1fc15e3b5ea64c70be10de314dd55ca2
+BrokerSymbol=XAUUSD
+ResearchPresetHash=9752cab9441c424b946949f2ed9b814e23a4b5b3b3655bb3d7bc623b94209f7e
+Strategy1Id=XAU-018
+Strategy2Id=XAU-019
+Strategy3Id=XAU-020
+StrategyVersion=1
+RequireDemoAccount=true
+PublishSeconds=2
+ResearchRiskFraction=0.015
+RequestedDailyLossFraction=0.03
+RequestedMonthlyLossFraction=0.08
+ClockProfileCsv=
+ClockProfileHash=
+HistoryWarmupDays=120
+TacticalSeconds=300
+TacticalLookback=1
+EnabledStrategyMask=4
+TargetR=2.0
+EnableProfitProtection=false
+MaximumHoldMinutes=120
+EstimatedRoundTripCostPerLot=44.0
+MinimumEntryHourUTC=12
+MaximumEntryHourUTC=17
+AllowedWeekdayMask=28
+AllowedDirectionMask=1

@@ -1,0 +1,216 @@
+{
+  "version": "GOLD-TRIPLE-SMALL-ACCOUNT-V2",
+  "status": "RESEARCH_ONLY_NOT_READY",
+  "execution_enabled": false,
+  "canonical_symbol": "XAUUSD",
+  "account_currency": "USD",
+  "account_balance_range": [500, 1000],
+  "instrument_metadata_hash": "cb91a0bf24d7903c582252c4141c8f64e79ea8aea469526f15f52ddfa6c70423",
+  "engine_hash": "f03068045d3966a944b6a278b29c2a74b52ec4aacfa0ecf80ed54a93f26e70e2",
+  "dataset_hashes": {
+    "bid": "95b8c21d46fc8e064bb114b48363c5bdc366d08e5b2ccf581c46b94cba530a80",
+    "ask": "5e3217a2b9a8d322938d09dfba3602d8b5bcb056494d7873fe469aaa42bd9dcf"
+  },
+  "daily_net_booked_loss_cap": 0.03,
+  "monthly_net_booked_loss_cap": 0.08,
+  "equity_reference": "START_OF_PERIOD",
+  "timezone": "UTC",
+  "internal_daily_budget": 0.025,
+  "internal_monthly_budget": 0.06,
+  "maximum_planned_risk_per_trade": 0.01,
+  "maximum_concurrent_positions": 1,
+  "maximum_entries_per_day": 3,
+  "halt_after_losing_trades_in_day": 2,
+  "minimum_reentry_delay_seconds": 900,
+  "maximum_margin_fraction": 0.3,
+  "volume_policy": "ROUND_DOWN_TO_OBSERVED_GRID_OR_REJECT",
+  "stop_policy": "COMPLETED_M1_OR_M5_STRUCTURAL_INVALIDATION_NEVER_TRUNCATED",
+  "strategy_execution_eligibility": {
+    "S1": false,
+    "S2": false,
+    "S3": false
+  },
+  "qualification": [
+    {
+      "account": 500.0,
+      "strategy": "S1",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 500.0,
+      "strategy": "S2",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 500.0,
+      "strategy": "S3",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 500.0,
+      "strategy": "PORTFOLIO",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 750.0,
+      "strategy": "S1",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 750.0,
+      "strategy": "S2",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 750.0,
+      "strategy": "S3",
+      "status": "FORWARD_RESEARCH_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "BASE_AND_STRESS_ACCEPTANCE_FAILED",
+      "exploratory_settings": {
+        "bar_seconds": 300,
+        "lookback": 1,
+        "risk": 0.0075,
+        "rr": 2.0,
+        "protect": true,
+        "hold": 120
+      },
+      "later_period_results": [
+        {
+          "split": "TEST",
+          "cost": "BASE",
+          "trades": 7,
+          "realized_return_pct": -0.24159999999995296,
+          "equity_return_pct": -0.24159999999995296,
+          "max_drawdown_pct": 3.3373951707100016,
+          "worst_day_pct": -0.7167781058820054,
+          "worst_month_pct": -1.28626666666659,
+          "daily_breach": false,
+          "monthly_breach": false,
+          "win_rate": 28.57142857142857,
+          "profit_factor": 0.9135166093929205,
+          "rejected": [1, 17, 0, 0, 16, 0],
+          "open_position": false
+        },
+        {
+          "split": "TEST",
+          "cost": "STRESS",
+          "trades": 5,
+          "realized_return_pct": 0.535166666666731,
+          "equity_return_pct": 0.535166666666731,
+          "max_drawdown_pct": 1.3131666666665902,
+          "worst_day_pct": -0.7031666666666375,
+          "worst_month_pct": -0.7031666666666375,
+          "daily_breach": false,
+          "monthly_breach": false,
+          "win_rate": 40.0,
+          "profit_factor": 1.2760251010058048,
+          "rejected": [4, 20, 0, 0, 16, 0],
+          "open_position": false
+        }
+      ]
+    },
+    {
+      "account": 750.0,
+      "strategy": "PORTFOLIO",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 1000.0,
+      "strategy": "S1",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 1000.0,
+      "strategy": "S2",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    },
+    {
+      "account": 1000.0,
+      "strategy": "S3",
+      "status": "FAILED_LATER_PERIOD_ACCEPTANCE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "BASE_AND_STRESS_ACCEPTANCE_FAILED",
+      "exploratory_settings": {
+        "bar_seconds": 300,
+        "lookback": 1,
+        "risk": 0.005,
+        "rr": 2.0,
+        "protect": true,
+        "hold": 240
+      },
+      "later_period_results": [
+        {
+          "split": "TEST",
+          "cost": "BASE",
+          "trades": 5,
+          "realized_return_pct": -0.6616999999998652,
+          "equity_return_pct": -0.6616999999998652,
+          "max_drawdown_pct": 1.9261211351646226,
+          "worst_day_pct": -0.48172283902066915,
+          "worst_month_pct": -0.7722217909698563,
+          "daily_breach": false,
+          "monthly_breach": false,
+          "win_rate": 20.0,
+          "profit_factor": 0.5760235791632785,
+          "rejected": [1, 20, 0, 0, 16, 0],
+          "open_position": false
+        },
+        {
+          "split": "TEST",
+          "cost": "STRESS",
+          "trades": 1,
+          "realized_return_pct": -0.41275000000000617,
+          "equity_return_pct": -0.41275000000000617,
+          "max_drawdown_pct": 0.4127500000000055,
+          "worst_day_pct": -0.41275,
+          "worst_month_pct": -0.41275,
+          "daily_breach": false,
+          "monthly_breach": false,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "rejected": [4, 25, 0, 0, 16, 0],
+          "open_position": false
+        }
+      ]
+    },
+    {
+      "account": 1000.0,
+      "strategy": "PORTFOLIO",
+      "status": "NO_VALIDATION_ELIGIBLE_CANDIDATE",
+      "execution_enabled": false,
+      "qualification": "NOT_READY",
+      "reason": "NO_VALIDATION_ELIGIBLE_CANDIDATE"
+    }
+  ],
+  "warning": "Offline preset only; standalone terminal EA and ATS account routing were not modified."
+}

@@ -1,10 +1,13 @@
 # ATS Implementation Report
 
-**Current status, October 8, 2026:** XAUUSD/MetaTrader specialization and the Step 1
-software foundation are retained. Step 2 registry/queue/schema/UI foundations are
-tested; continuous research remains unwired. Steps 3–4 are unimplemented. Actual
-terminal freshness and concurrent-terminal acceptance remain open. See the
-[current system report](docs/architecture/ATS_SYSTEM_STATUS_2026-10-08.md).
+**Current status, October 9, 2026:** XAUUSD/MetaTrader specialization and the Step 1
+software foundation are retained. Bounded quote research, external authority
+development and pure entry/exit diagnostics are implemented and tested. The
+small-account S3 observer is physically running on the $1,000 DEMO terminal;
+two historical candidate presets have been implemented. Autonomous external
+execution remains unrouted and uncommissioned. See the
+[current progress report](docs/research/SMALL_ACCOUNT_IMPLEMENTATION_PROGRESS_2026-10-09.md)
+for completed work, exact tests, conditional results and remaining acceptance.
 
 The following P4 history predates specialization; it is not current product
 acceptance or authorization for external execution.

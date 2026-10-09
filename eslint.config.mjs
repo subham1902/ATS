@@ -16,6 +16,8 @@ export default tseslint.config(
       "tools/**",
       "worktrees/**",
       "toolchains/**",
+      "reports/**",
+      "**/.venv/**",
     ],
   },
   js.configs.recommended,
