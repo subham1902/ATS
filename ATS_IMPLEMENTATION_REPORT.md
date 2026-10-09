@@ -778,3 +778,7 @@ Detailed status: [system report](docs/architecture/ATS_SYSTEM_STATUS_2026-10-08.
 [remaining execution plan](docs/architecture/ATS_REMAINING_EXECUTION_PLAN.md).
 Next integration: one bounded supervised worker over the existing research engine,
 verified dataset/recipe/agent binding and enforced scheduling/resource bounds.
+
+## 2026-10-09 execution-control foundation
+
+Added durable account-wide period accounting and pure external reconciliation comparators, plus a read-only budget projection in Accounts. Net realized period budgets include costs/swap and exclude cash flows from profit. Immutable evidence, UTC coverage, explicit baselines, account identity, freshness and balance consistency are prerequisites. Corrected monthly aggregate reservation rechecks before dispatch. Snapshot matching never releases reservations or grants execution authority. Broker collection, strategy eligibility, authenticated operator sessions and physical execution commissioning remain incomplete; autonomous real-money execution was not activated.

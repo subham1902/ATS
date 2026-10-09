@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { NativeObserver } from "../../components/NativeObserver";
 import { LotPreview } from "../../components/LotPreview";
 import { AccountConfiguration } from "../../components/AccountConfiguration";
+import { LossBudget } from "../../components/LossBudget";
 import styles from "./accounts.module.css";
 
 type AccountView = {
@@ -294,6 +295,7 @@ export default function AccountsPage() {
             <details className={styles.section} open>
               <summary>Risk limits, strategy assignments & execution readiness</summary>
               <AccountConfiguration accountId={view.account.account_id} />
+              <LossBudget accountId={view.account.account_id} />
             </details>
             <details className={styles.section}>
               <summary>Calculate lots from entry and stop</summary>

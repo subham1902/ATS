@@ -308,3 +308,34 @@ def test_clock_refresh_requires_unexpired_account_evidence(service):
     target.write_text(evidence.model_copy(update={"server": "another-server"}).model_dump_json())
     with pytest.raises(ValueError, match="CLOCK_SERVER_MISMATCH"):
         service.refresh_clock(account_id)
+
+
+def test_loss_budget_projection_cannot_inject_evidence(service):
+    from ats.market.metatrader.control_config import AccountControlConfig
+
+    result = service.connect_new(request())
+    account_id = result["account"]["account_id"]
+    with TestClient(create_console_app(account_service=service)) as client:
+        path = f"/v1/accounts/{account_id}/loss-budget"
+        empty = client.get(path).json()
+        assert empty["state"] == "UNKNOWN"
+        assert empty["reason_codes"] == ["RISK_CONFIGURATION_REQUIRED"]
+        config = AccountControlConfig(
+            revision=1,
+            risk_per_trade=".005",
+            daily_loss_fraction=".03",
+            monthly_loss_fraction=".08",
+            max_open_risk_fraction=".01",
+            max_strategy_risk_fraction=".01",
+            max_volume=".1",
+            max_positions=1,
+            margin_fraction=".30",
+        )
+        service.registry.configure(account_id, config, 0)
+        data = client.get(path).json()
+        assert data["state"] == "UNKNOWN"
+        assert data["monthly_remaining"] is None
+        assert data["grants_authority"] is False
+        assert client.post(path, json={"monthly_remaining": 80}).status_code == 405
+        assert client.get("/v1/accounts/ACC-missing/loss-budget").status_code == 404
+        assert not service.registry.get(account_id).execution_enabled

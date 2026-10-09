@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Request
@@ -167,6 +168,32 @@ async def account_readiness(account_id: str, request: Request) -> dict[str, Any]
         "reason_codes": reasons,
         "configuration_revision": config.revision if config else None,
     }
+
+
+@router.get("/{account_id}/loss-budget")
+async def account_loss_budget(account_id: str, request: Request) -> dict[str, Any]:
+    """Projection only. No request body can inject broker evidence or baselines."""
+    from ats.execution.period_ledger import BrokerPeriodLedger, PeriodBudget
+
+    service = service_of(request)
+    await _call(service.registry.get, account_id)
+    config = await _call(service.registry.control_config, account_id)
+    if config is None:
+        return PeriodBudget(
+            account_id=account_id,
+            state="UNKNOWN",
+            reason_codes=("RISK_CONFIGURATION_REQUIRED",),
+            evidence_hash=None,
+        ).model_dump(mode="json")
+    ledger = BrokerPeriodLedger(service.root / "system" / "accounts" / "periods.sqlite3")
+    result = await _call(
+        ledger.budget,
+        account_id,
+        datetime.now(UTC),
+        config.daily_loss_fraction,
+        config.monthly_loss_fraction,
+    )
+    return dict(result.model_dump(mode="json"))
 
 
 class SizingPreview(BaseModel):

@@ -52,3 +52,14 @@ Accounts now prioritizes observed balances, quotes, freshness and reconciliation
 Focused Python and contract verification: 202 passed. Frontend/type validation results recorded at completion. No account consent changed and no broker order submitted. External routing remains uncommissioned; trusted account-wide period accounting, reconciliation, eligibility and authenticated operator control remain prerequisites. This is a tested increment toward the requested live system, not trading-readiness acceptance.
 
 Follow-up validation: 202 Python/contract tests passed, 45 control-center tests passed, TypeScript typecheck passed, execution-package mypy passed, and Ruff passed. One UI assertion initially referenced the removed numbered-step wording; updated to assert the current commissioning warning and reran the full control-center suite successfully. Production rebuild/live browser acceptance and remote CI for this increment have not run.
+
+## Execution controls: accounting and reconciliation
+
+Internal, test-validated components added after b43dced:
+
+- `execution/period_ledger.py`: durable immutable UTC boundary equity/balance observations and account-wide deal-history snapshots. Uses net realized profit, commission, swap and fees; cash flows remain separate from trading profit. Checks full-month coverage, source timezone evidence, account/session/currency identity, day/month balance reconciliation and freshness. Duplicate, changed, removed or regressing history cannot silently rewrite risk evidence. Unknown data never becomes a zero-loss budget. Negative remaining budgets are preserved.
+- `execution/account_reconciliation.py`: pure comparison of expected ATS-owned positions/pending exposure with a complete authenticated broker snapshot. Detects partial volume/protection changes, unowned exposure in every symbol, missing positions, stale snapshots and identity/mode mismatch. A snapshot match grants no authority, proves no closed trade and releases no reservation. Unknown acknowledgements stay unresolved.
+- Corrected monthly dispatch reservation accounting: every pending reservation counts at both reserve and dispatch; demo commissioning checks monthly loss against its period proof.
+- Read-only `/v1/accounts/{account_id}/loss-budget` projection and Accounts budget panel. No API accepts historical evidence or baseline mutation. Expired/missing/failed observations display UNKNOWN. UI reads cannot grant authority.
+
+These are verified internal foundations, not a commissioned physical broker collector. The ledger requires independently verified UTC histories and actual start-of-period observations; current broker data cannot retroactively invent them. Live autonomous routing remains unavailable. No financial action, account enablement, strategy promotion or terminal order was performed.
