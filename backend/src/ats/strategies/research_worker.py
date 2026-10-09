@@ -30,9 +30,8 @@ def supervisor_lock(path: Path) -> Any:
             stream.flush()
         stream.seek(0)
         if os.name == "nt":
-            import msvcrt
-
-            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            windows_locking: Any = importlib.import_module("msvcrt")
+            windows_locking.locking(stream.fileno(), windows_locking.LK_NBLCK, 1)
         else:
             locking: Any = importlib.import_module("fcntl")
             locking.flock(stream.fileno(), locking.LOCK_EX | locking.LOCK_NB)
@@ -41,7 +40,7 @@ def supervisor_lock(path: Path) -> Any:
         finally:
             stream.seek(0)
             if os.name == "nt":
-                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+                windows_locking.locking(stream.fileno(), windows_locking.LK_UNLCK, 1)
             else:
                 locking.flock(stream.fileno(), locking.LOCK_UN)
 

@@ -190,9 +190,13 @@ and a faithful original-strategy hypothetical continuation.
 
 Research environment and optional compiled numerical fixtures live in ignored
 reports storage; standard CI does not certify the native terminal or an empirical
-strategy edge. Source changes were uncommitted at report preparation. Exact-HEAD
-remote CI for this implementation must be checked after its coherent commits;
-the earlier green baseline `da040e3` is not evidence for the new working tree.
+strategy edge. Implementation was committed as `782c2f9`, `05057de`, `86077d7`
+and `c9138d3` and pushed to main. CI run 37907325926 passed unit, contract,
+smoke/governance, coverage, frontend, property, PostgreSQL durability/fault and
+secret-scan jobs. Linux mypy found Windows-only file-lock attributes; the follow-up
+fix uses a platform-selected dynamic import while preserving lock behavior.
+Dependency Review was skipped for the push event. Exact follow-up HEAD CI must
+be checked; the earlier green baseline `da040e3` does not certify this work.
 
 Port 3000 was not touched. AI/agents remain proposal-only. ATS has no repository
 evidence establishing future profitability or guaranteed daily/monthly loss bounds.
