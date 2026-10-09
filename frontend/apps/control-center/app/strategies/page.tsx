@@ -31,7 +31,10 @@ export default function Strategies() {
         Immutable XAUUSD lineages. Prior market performance carries no authority. All definitions remain research only;
         independent validation is required for promotion.
       </p>
-      <p>Research scheduling and execution are not connected. Empirical probabilities: UNKNOWN.</p>
+      <p>
+        Bounded quote backtests are available in Agent Playground. Scheduled research and empirical probability
+        calibration remain unavailable.
+      </p>
       {error && <p role="alert">{error}</p>}
       <table>
         <thead>

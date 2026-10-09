@@ -22,6 +22,9 @@ DEFINITIONS = (
     "vwap_trend",
     "zscore",
     "S5_ORB_XAUUSD",
+    "gold_triple_s1_intraday_retest",
+    "gold_triple_s2_intraday_retest",
+    "gold_triple_s3_h4_close_retest",
 )
 
 

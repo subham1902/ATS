@@ -147,6 +147,23 @@ class ResearchQueue:
             )
             return cursor.rowcount
 
+    def cancel(self, run_id: str) -> None:
+        with self._connect() as db:
+            cursor = db.execute(
+                "UPDATE jobs SET status='CANCELLED',finished_at=?,error='OPERATOR_CANCELLED' "
+                "WHERE run_id=? AND status IN ('QUEUED','RUNNING')",
+                (datetime.now(UTC).isoformat(), run_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError("RESEARCH_RUN_NOT_CANCELLABLE")
+
+    def is_running(self, run_id: str, nonce: str) -> bool:
+        with self._connect() as db:
+            return db.execute(
+                "SELECT 1 FROM jobs WHERE run_id=? AND claim=? AND status='RUNNING'",
+                (run_id, nonce),
+            ).fetchone() is not None
+
     def list(self) -> list[dict[str, Any]]:
         with self._connect() as db:
             rows = db.execute("SELECT * FROM jobs ORDER BY rowid DESC LIMIT 100").fetchall()

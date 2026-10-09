@@ -14,9 +14,12 @@ from pydantic import ValidationError
 
 def test_bootstrap_and_restart_keep_exact_ids(tmp_path):
     store = bootstrap_store(tmp_path / "strategies.db")
-    assert len(store.list()) == 17
+    assert len(store.list()) == 20
     assert [r.definition_id for r in store.list()] == list(DEFINITIONS)
     assert store.get("XAU-017").definition_id == "S5_ORB_XAUUSD"
+    assert store.get("XAU-018").definition_id == "gold_triple_s1_intraday_retest"
+    assert store.get("XAU-019").definition_id == "gold_triple_s2_intraday_retest"
+    assert store.get("XAU-020").definition_id == "gold_triple_s3_h4_close_retest"
     assert bootstrap_store(store.path).list() == store.list()
     for invalid in ("XAU", "XAU-01", "S5_ORB_XAUUSD", "XAU-001_extra"):
         with pytest.raises(KeyError):
@@ -172,7 +175,7 @@ def test_api_exact_ids_and_templates_use_isolated_root(tmp_path):
     client = TestClient(create_console_app())
     response = client.get("/v1/strategy-os")
     assert response.status_code == 200
-    assert response.json()["research_worker"] == "NOT_IMPLEMENTED"
+    assert response.json()["research_worker"] == "BOUNDED_MANUAL_QUOTE_REPLAY"
     assert response.json()["strategies"][0]["strategy_id"] == "XAU-001"
     assert client.get("/v1/strategy-os/XAU-001?version=1").status_code == 200
     assert client.get("/v1/strategy-os/XAU-01").status_code == 404
