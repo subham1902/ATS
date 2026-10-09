@@ -201,3 +201,110 @@ def test_dpapi_vault_persists_ciphertext_only(tmp_path: Path):
     with pytest.raises(ValueError):
         vault.load("../../outside")
     vault.delete(reference)
+
+
+def test_registered_disconnected_account_does_not_fall_back(service):
+    result = service.connect_new(request())
+    account_id = result["account"]["account_id"]
+    service.disconnect(account_id)
+    with pytest.raises(ValueError, match="REGISTERED_ACCOUNT_CONNECTION_REQUIRED"):
+        service.market_connection()
+
+
+def test_unregistered_offline_mode_can_use_standalone(service):
+    assert service.market_connection() is None
+
+
+def test_control_configuration_versions_and_consent_reset(service):
+    from ats.market.metatrader.control_config import AccountControlConfig
+
+    result = service.connect_new(request(action="CONNECT_AND_ENABLE_EXECUTION"))
+    account_id = result["account"]["account_id"]
+    config = AccountControlConfig(
+        revision=1,
+        risk_per_trade="0.005",
+        daily_loss_fraction="0.03",
+        monthly_loss_fraction="0.08",
+        max_open_risk_fraction="0.01",
+        max_strategy_risk_fraction="0.01",
+        max_volume="0.1",
+        max_positions=1,
+        margin_fraction="0.30",
+    )
+    service.registry.configure(account_id, config, 0)
+    assert service.registry.control_config(account_id) == config
+    assert not service.registry.get(account_id).execution_enabled
+    with pytest.raises(ValueError, match="CONFIGURATION_REVISION_CONFLICT"):
+        service.registry.configure(account_id, config, 0)
+    with pytest.raises(ValueError):
+        AccountControlConfig.model_validate(
+            {**config.model_dump(), "monthly_loss_fraction": "0.09"}
+        )
+
+
+def test_readiness_does_not_treat_consent_as_authority(service):
+    result = service.connect_new(request(action="CONNECT_AND_ENABLE_EXECUTION"))
+    app = create_console_app(account_service=service)
+    with TestClient(app) as client:
+        response = client.get(f"/v1/accounts/{result['account']['account_id']}/readiness")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["effective_execution_enabled"] is False
+        assert "EXTERNAL_ROUTING_NOT_COMMISSIONED" in data["reason_codes"]
+        assert "RISK_CONFIGURATION_REQUIRED" in data["reason_codes"]
+
+
+def test_native_state_is_observation_only_and_checks_identity(service):
+    result = service.connect_new(request())
+    account_id = result["account"]["account_id"]
+    connection = service._connections[account_id]
+    profile = service.root / "fake-profile"
+    connection.snapshot["terminal_profile"] = str(profile)
+    target = profile / "MQL5/Files/ATS/SmallAccount" / account_id / "account-state.json"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        json.dumps(
+            {
+                "account_id": account_id,
+                "canonical_symbol": "XAUUSD",
+                "source_server": "TestServer",
+                "identity_matches": True,
+                "execution_authority": "NONE",
+                "signal_status": "CLOCK_PROFILE_REQUIRED",
+            }
+        )
+    )
+    state = service.native_observer(account_id)
+    assert state["state"] == "OBSERVING"
+    assert state["observations"]["execution_authority"] == "NONE"
+    target.write_text(json.dumps({"account_id": "other"}))
+    assert service.native_observer(account_id)["state"] == "UNKNOWN"
+
+
+def test_clock_refresh_requires_unexpired_account_evidence(service):
+    from ats.market.metatrader.clock import BrokerClockEvidence
+
+    result = service.connect_new(request())
+    account_id = result["account"]["account_id"]
+    now = datetime.now(UTC)
+    epoch = int(now.timestamp())
+    evidence = BrokerClockEvidence(
+        server="TestServer",
+        terminal_gmt_epoch=epoch,
+        terminal_server_epoch=epoch,
+        tick_epoch_ms=epoch * 1000,
+        independent_utc_epoch=epoch,
+        captured_at=now,
+        probe_hash="a" * 64,
+        independent_source="unit-test",
+        valid_seconds=900,
+    )
+    target = service.clock_evidence_path(account_id)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(evidence.model_dump_json())
+    refreshed = service.refresh_clock(account_id)
+    assert refreshed["scope"] == "LIVE_ONLY_NOT_HISTORICAL_TIMEZONE"
+    assert not service.registry.get(account_id).execution_enabled
+    target.write_text(evidence.model_copy(update={"server": "another-server"}).model_dump_json())
+    with pytest.raises(ValueError, match="CLOCK_SERVER_MISMATCH"):
+        service.refresh_clock(account_id)

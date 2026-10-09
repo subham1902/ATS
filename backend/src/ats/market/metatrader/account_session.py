@@ -34,8 +34,8 @@ def _safe_snapshot(sdk: Any, symbol: str, login: int, server: str) -> dict[str, 
         raise ValueError("ACCOUNT_SESSION_DISCONNECTED")
     if account.login != login or account.server != server:
         raise ValueError("AUTHENTICATED_ACCOUNT_MISMATCH")
-    positions = sdk.positions_get(symbol=symbol)
-    orders = sdk.orders_get(symbol=symbol)
+    positions = sdk.positions_get()
+    orders = sdk.orders_get()
     if positions is None or orders is None:
         raise ValueError("ACCOUNT_STATE_UNKNOWN")
     mode = {sdk.ACCOUNT_TRADE_MODE_DEMO: "DEMO", sdk.ACCOUNT_TRADE_MODE_REAL: "LIVE"}.get(
@@ -94,6 +94,86 @@ def _safe_snapshot(sdk: Any, symbol: str, login: int, server: str) -> dict[str, 
     }
 
 
+def _sizing_quote(
+    sdk: Any,
+    symbol: str,
+    login: int,
+    server: str,
+    side: str,
+    entry: float,
+    stop: float,
+    risk: float,
+    costs: float,
+    maximum: float,
+) -> dict[str, Any]:
+    import math
+    from decimal import ROUND_FLOOR, Decimal
+
+    snapshot = _safe_snapshot(sdk, symbol, login, server)
+    if side not in {"BUY", "SELL"} or not all(
+        math.isfinite(x) for x in (entry, stop, risk, costs, maximum)
+    ):
+        raise ValueError("INVALID_SIZING_INPUT")
+    if (
+        risk <= 0
+        or costs < 0
+        or maximum <= 0
+        or not (0 < stop < entry if side == "BUY" else 0 < entry < stop)
+    ):
+        raise ValueError("INVALID_SIZING_GEOMETRY")
+    info = sdk.symbol_info(symbol)
+    if info is None:
+        raise ValueError("BROKER_METADATA_UNKNOWN")
+    minimum, step, upper = (
+        Decimal(str(info.volume_min)),
+        Decimal(str(info.volume_step)),
+        min(Decimal(str(info.volume_max)), Decimal(str(maximum))),
+    )
+    if not all(x.is_finite() and x > 0 for x in (minimum, step, upper)):
+        raise ValueError("BROKER_VOLUME_METADATA_UNKNOWN")
+    kind = sdk.ORDER_TYPE_BUY if side == "BUY" else sdk.ORDER_TYPE_SELL
+    raw = sdk.order_calc_profit(kind, symbol, float(minimum), entry, stop)
+    if raw is None or not math.isfinite(raw) or raw >= 0:
+        raise ValueError("BROKER_LOSS_CALCULATION_UNKNOWN")
+    unit_loss = -Decimal(str(raw)) / minimum + Decimal(str(costs))
+    volume = (min(Decimal(str(risk)) / unit_loss, upper) / step).to_integral_value(
+        rounding=ROUND_FLOOR
+    ) * step
+    if volume < minimum:
+        return {
+            "state": "REJECTED",
+            "reason": "MINIMUM_LOT_EXCEEDS_RISK",
+            "minimum_volume": str(minimum),
+            "volume_step": str(step),
+            "minimum_risk_cash": str(unit_loss * minimum),
+        }
+    loss = sdk.order_calc_profit(kind, symbol, float(volume), entry, stop)
+    margin = sdk.order_calc_margin(kind, symbol, float(volume), entry)
+    if (
+        loss is None
+        or margin is None
+        or not all(math.isfinite(x) for x in (loss, margin))
+        or margin <= 0
+        or loss >= 0
+    ):
+        raise ValueError("BROKER_SIZING_UNKNOWN")
+    planned = -Decimal(str(loss)) + Decimal(str(costs)) * volume
+    if planned > Decimal(str(risk)):
+        raise ValueError("CALCULATED_RISK_EXCEEDS_PREVIEW_BUDGET")
+    return {
+        "state": "PROVISIONAL",
+        "volume": str(volume),
+        "risk_cash": str(planned),
+        "margin_cash": str(margin),
+        "free_margin": snapshot["free_margin"],
+        "minimum_volume": str(minimum),
+        "maximum_volume": str(upper),
+        "volume_step": str(step),
+        "costs_per_lot": str(costs),
+        "grants_authority": False,
+    }
+
+
 def _worker(pipe: _ConnectionBase, settings: dict[str, Any]) -> None:
     transport = Mt5Transport(settings=settings)
     try:
@@ -122,6 +202,14 @@ def _worker(pipe: _ConnectionBase, settings: dict[str, Any]) -> None:
                     transport.shutdown()
                     pipe.send((True, None))
                     break
+                elif command == "sizing_quote":
+                    result = _sizing_quote(
+                        transport.sdk,
+                        settings["symbol"],
+                        settings["login"],
+                        settings["server"],
+                        *arguments,
+                    )
                 elif command in {
                     "symbol_info",
                     "latest_tick",
@@ -211,6 +299,14 @@ class Mt5AccountSession:
     ) -> list[Mapping[str, Any]]:
         result: list[Mapping[str, Any]] = self._request(
             "historical_bars", symbol, timeframe, start, end
+        )
+        return result
+
+    def sizing_quote(
+        self, side: str, entry: float, stop: float, risk: float, costs: float, maximum: float
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = self._request(
+            "sizing_quote", side, entry, stop, risk, costs, maximum
         )
         return result
 

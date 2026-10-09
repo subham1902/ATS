@@ -41,7 +41,12 @@ export function useMetaTraderFeed(interval = "5m", accountId = "") {
           fetch(`/v1/market/candles?interval=${interval}&${accountQuery}`, { signal: controller.signal }),
           fetch(`/v1/market/footprint?${accountQuery}`, { signal: controller.signal }),
         ]);
-        if (responses.some((response) => !response.ok)) throw new Error("MARKET_API_UNAVAILABLE");
+        if (responses.some((response) => !response.ok)) {
+          const failed = responses.find((response) => !response.ok)!;
+          if (failed.status === 409)
+            throw new Error("Connect and select a MetaTrader account to view its market data.");
+          throw new Error("Market data service unavailable. Observations have been cleared.");
+        }
         const [q, c, f] = await Promise.all(responses.map((response) => response.json()));
         if (!controller.signal.aborted) {
           setQuote(q);
@@ -49,9 +54,9 @@ export function useMetaTraderFeed(interval = "5m", accountId = "") {
           setFootprint(f);
           setError(null);
         }
-      } catch {
+      } catch (failure) {
         if (!controller.signal.aborted) {
-          setError("MARKET_API_UNAVAILABLE");
+          setError(failure instanceof Error ? failure.message : "MARKET_API_UNAVAILABLE");
           setQuote(null);
           setCandles([]);
           setFootprint(null);

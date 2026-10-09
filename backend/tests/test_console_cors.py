@@ -55,3 +55,14 @@ def test_preflight_allows_listed_origin_and_denies_others(monkeypatch):
     assert ok.headers.get("access-control-allow-credentials") == "true"
     bad = client.options("/health/live", headers={**headers, "Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+def test_unrelated_origin_cannot_issue_operator_mutation():
+    client = TestClient(create_console_app())
+    response = client.post(
+        "/v1/runtime/command",
+        headers={"Origin": "http://localhost:3000"},
+        json={"command": "HALT_SYSTEM"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "OPERATOR_ORIGIN_REJECTED"

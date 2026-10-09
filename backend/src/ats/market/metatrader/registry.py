@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ats.market.metatrader.accounts import MetaTraderAccount
+from ats.market.metatrader.control_config import AccountControlConfig
 
 
 class AccountRegistry:
@@ -20,6 +21,11 @@ class AccountRegistry:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, "
                 "terminal_key TEXT UNIQUE, record TEXT NOT NULL)"
+            )
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS control_configs (account_id TEXT NOT NULL, "
+                "revision INTEGER NOT NULL, document TEXT NOT NULL, "
+                "PRIMARY KEY(account_id,revision))"
             )
             db.execute(
                 "CREATE TABLE IF NOT EXISTS audit (sequence INTEGER PRIMARY KEY, "
@@ -73,3 +79,55 @@ class AccountRegistry:
         if row is None:
             raise KeyError("ACCOUNT_NOT_FOUND")
         return MetaTraderAccount.model_validate_json(row[0])
+
+    def control_config(self, account_id: str) -> AccountControlConfig | None:
+        self.get(account_id)
+        with self._transaction() as db:
+            row = db.execute(
+                "SELECT document FROM control_configs WHERE account_id=? "
+                "ORDER BY revision DESC LIMIT 1",
+                (account_id,),
+            ).fetchone()
+        return AccountControlConfig.model_validate_json(row[0]) if row else None
+
+    def configure(
+        self, account_id: str, config: AccountControlConfig, expected_revision: int
+    ) -> None:
+        with self._transaction() as db:
+            row = db.execute("SELECT record FROM accounts WHERE id=?", (account_id,)).fetchone()
+            if row is None:
+                raise KeyError("ACCOUNT_NOT_FOUND")
+            latest = (
+                db.execute(
+                    "SELECT MAX(revision) FROM control_configs WHERE account_id=?", (account_id,)
+                ).fetchone()[0]
+                or 0
+            )
+            if latest != expected_revision or config.revision != latest + 1:
+                raise ValueError("CONFIGURATION_REVISION_CONFLICT")
+            account = MetaTraderAccount.model_validate_json(row[0])
+            account = account.model_copy(
+                update={
+                    "allowed_strategy_ids": tuple(
+                        a.strategy_id for a in config.assignments if a.enabled
+                    ),
+                    "risk_profile_id": f"{account_id}:risk:{config.revision}",
+                    "execution_enabled": False,
+                    "updated_at": datetime.now(UTC),
+                }
+            )
+            record = account.model_dump(mode="json")
+            record["credential_reference"] = account.credential_reference
+            db.execute(
+                "INSERT INTO control_configs VALUES (?,?,?)",
+                (account_id, config.revision, config.model_dump_json()),
+            )
+            db.execute("UPDATE accounts SET record=? WHERE id=?", (json.dumps(record), account_id))
+            db.execute(
+                "INSERT INTO audit(account_id,action,occurred_at) VALUES (?,?,?)",
+                (
+                    account_id,
+                    f"CONFIGURATION_REVISION_{config.revision}",
+                    datetime.now(UTC).isoformat(),
+                ),
+            )

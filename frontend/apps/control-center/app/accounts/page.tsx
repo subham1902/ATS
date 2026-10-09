@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { NativeObserver } from "../../components/NativeObserver";
+import { LotPreview } from "../../components/LotPreview";
+import { AccountConfiguration } from "../../components/AccountConfiguration";
 import styles from "./accounts.module.css";
 
 type AccountView = {
@@ -256,6 +259,9 @@ export default function AccountsPage() {
               <strong>Execution consent: {view.account.execution_enabled ? "ENABLED" : "DISABLED"}</strong>
             </p>
             <p>Routing: unavailable · Risk: {view.risk_state}</p>
+            <AccountConfiguration accountId={view.account.account_id} />
+            <LotPreview accountId={view.account.account_id} />
+            <NativeObserver accountId={view.account.account_id} />
             <dl className={styles.metrics}>
               <dt>Balance / equity</dt>
               <dd>

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import RLock
@@ -93,7 +93,10 @@ def create_console_app(
                 await asyncio.sleep(1)
 
         account_task = asyncio.create_task(poll_accounts())
-        if os.environ.get("ATS_OFFLINE_RESEARCH", "0") != "1":
+        if (
+            os.environ.get("ATS_OFFLINE_RESEARCH", "0") != "1"
+            and not application.state.account_service.registry.list()
+        ):
             worker.start()
         try:
             yield
@@ -114,6 +117,20 @@ def create_console_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def operator_origin_guard(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        origin = request.headers.get("origin")
+        if (
+            request.method in {"POST", "PUT", "PATCH", "DELETE"}
+            and origin is not None
+            and origin not in resolve_cors_origins(os.environ)
+        ):
+            return JSONResponse(status_code=403, content={"detail": "OPERATOR_ORIGIN_REJECTED"})
+        return await call_next(request)
+
     app.state.account_service = account_service
     app.state.account_admin_lock = RLock()
     app.state.market_fabric = market_fabric
