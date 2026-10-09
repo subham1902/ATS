@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { ServiceSummary } from "./ServiceSummary";
 export function NativeObserver({ accountId }: { accountId: string }) {
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const refresh = useCallback(async () => {
@@ -31,7 +32,14 @@ export function NativeObserver({ accountId }: { accountId: string }) {
       </p>
       <button onClick={() => void refresh()}>Refresh observer</button>
       <button onClick={() => void reloadClock()}>Reload verified live clock evidence</button>
-      {state && <pre>{JSON.stringify(state, null, 2)}</pre>}
+      <ServiceSummary state={state} />
+      <ServiceSummary state={state?.observations} />
+      {state && (
+        <details>
+          <summary>Observer diagnostics</summary>
+          <pre>{JSON.stringify(state, null, 2)}</pre>
+        </details>
+      )}
     </details>
   );
 }

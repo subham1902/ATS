@@ -449,7 +449,9 @@ class AccountService:
             "market": connected.connector.health() if connected else {"state": "DISCONNECTED"},
             "quote": quote.model_dump(mode="json") if quote else None,
             "execution_gate": "EXTERNAL_ROUTING_NOT_IMPLEMENTED",
-            "risk_state": "RISK_PROFILE_REQUIRED" if account.risk_profile_id is None else "UNKNOWN",
+            "risk_state": "CONFIGURED_NOT_COMMISSIONED"
+            if self.registry.control_config(account_id) is not None
+            else "RISK_PROFILE_REQUIRED",
             "reconciliation_state": "BROKER_SNAPSHOT_ONLY" if snapshot else "UNKNOWN",
         }
 
