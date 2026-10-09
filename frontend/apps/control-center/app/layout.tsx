@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import "./globals.css";
 import { ShellWrapper } from "./ShellWrapper";
 
 export const metadata: Metadata = {

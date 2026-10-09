@@ -17,27 +17,29 @@ const navigation = [
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   return (
-    <div style={{ minHeight: "100vh", background: "#f7f8fa", color: "#142331", fontFamily: "system-ui,sans-serif" }}>
-      <header style={{ padding: "20px 28px", background: "#142331", color: "white" }}>
-        <strong>ATS · XAUUSD Laboratory</strong>
-        <span style={{ marginLeft: 24 }}>Paper only · AI proposes; deterministic ATS authorizes</span>
+    <div className="operator-shell">
+      <a className="skip-link" href="#workspace">
+        Skip to workspace
+      </a>
+      <header className="operator-header">
+        <Link href="/" className="brand">
+          <span className="brand-mark">A</span>
+          <span>
+            ATS<small>XAUUSD LABORATORY</small>
+          </span>
+        </Link>
+        <span className="authority-note">Paper only / AI proposes; deterministic ATS authorizes</span>
       </header>
-      <nav
-        aria-label="Primary navigation"
-        style={{ display: "flex", flexWrap: "wrap", gap: 20, padding: "18px 28px", borderBottom: "1px solid #ddd" }}
-      >
+      <nav aria-label="Primary navigation" className="operator-navigation">
         {navigation.map(([href, label]) => (
-          <Link
-            key={href}
-            href={href}
-            aria-current={path === href ? "page" : undefined}
-            style={{ color: path === href ? "#8a6115" : "#142331" }}
-          >
+          <Link key={href} href={href} aria-current={path === href ? "page" : undefined}>
             {label}
           </Link>
         ))}
       </nav>
-      <main style={{ maxWidth: 1440, margin: "0 auto", padding: 28 }}>{children}</main>
+      <main id="workspace" className="operator-workspace">
+        {children}
+      </main>
     </div>
   );
 }

@@ -27,7 +27,14 @@ export default function Market() {
   const { quote, candles, footprint, error } = useMetaTraderFeed(interval, accountId);
   return (
     <>
+      <p className="eyebrow">Observed broker data</p>
       <h1>XAUUSD market</h1>
+      {quote?.state !== "LIVE" && (
+        <p className="notice" role="note">
+          Feed is not live. Any quotes and chart bars below are retained observations; check the UTC timestamp before
+          using them.
+        </p>
+      )}
       <label>
         Data account{" "}
         <select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
@@ -65,7 +72,10 @@ export default function Market() {
           ))}
         </select>
       </label>
-      <XauUsdChart candles={candles} />
+      {candles.length === 0 && <p className="panel">No observed candles available for this account and timeframe.</p>}
+      <div className="panel">
+        <XauUsdChart candles={candles} />
+      </div>
       <FootprintProxy data={footprint} />
     </>
   );

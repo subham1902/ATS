@@ -36,8 +36,9 @@ export function fmtTime(iso: string | null | undefined): string {
 
 export const box: React.CSSProperties = {
   border: "1px solid var(--border, #d0d7de)",
-  borderRadius: 8,
-  padding: 16,
+  background: "white",
+  borderRadius: 10,
+  padding: 24,
   marginBottom: 16,
 };
 export const fieldStyle: React.CSSProperties = { display: "block", width: "100%", padding: 6, marginTop: 4 };

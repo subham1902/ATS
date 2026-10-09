@@ -43,23 +43,20 @@ export function Dashboard() {
   ];
   return (
     <>
+      <p className="eyebrow">Operator overview</p>
       <h1>XAUUSD dashboard</h1>
       <p>The XAUUSD-specialized ATS currently has no repository evidence establishing profitability.</p>
+      {quote?.state !== "LIVE" && (
+        <p className="notice">
+          Feed is not live. Any available metrics are retained observations, not current tradable quotes.
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
-      <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 16 }}>
+      <dl className="metric-grid">
         {metrics.map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              background: "white",
-              padding: 20,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              overflowWrap: "anywhere",
-            }}
-          >
+          <div key={label} className="metric-card">
             <dt>{label}</dt>
-            <dd style={{ margin: "10px 0 0", fontWeight: 600 }}>{value}</dd>
+            <dd>{value}</dd>
           </div>
         ))}
       </dl>

@@ -15,6 +15,7 @@ interface Strategy {
 }
 export default function Strategies() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     fetch("/v1/strategy-os")
@@ -35,6 +36,25 @@ export default function Strategies() {
         Bounded quote backtests are available in Agent Playground. Scheduled research and empirical probability
         calibration remain unavailable.
       </p>
+      <div className="toolbar">
+        <label>
+          Find strategy
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="ID, definition or status"
+          />
+        </label>
+        <span>
+          {
+            strategies.filter((s) =>
+              `${s.strategy_id} ${s.definition_id} ${s.status}`.toLowerCase().includes(query.toLowerCase()),
+            ).length
+          }{" "}
+          strategies
+        </span>
+      </div>
       {error && <p role="alert">{error}</p>}
       <div
         role="region"
@@ -55,27 +75,31 @@ export default function Strategies() {
             </tr>
           </thead>
           <tbody>
-            {strategies.map((s) => (
-              <tr key={s.strategy_id}>
-                <td>
-                  {s.strategy_id}
-                  <br />
-                  {s.version}
-                  <br />
-                  Definition: {s.definition_id}
-                </td>
-                <td>{s.status}</td>
-                <td>
-                  {s.direction ?? "UNKNOWN"} / {s.trade_horizon ?? "UNKNOWN"}
-                </td>
-                <td>{s.datasets_tested.join(", ") || "None"}</td>
-                <td>{s.backtest_results.join(", ") || "NOT_RUN"}</td>
-                <td>
-                  {s.walk_forward_results.join(", ") || "NOT_RUN"} / {s.holdout_results.join(", ") || "NOT_RUN"}
-                </td>
-                <td>{s.paper_results.join(", ") || "NOT_RUN"}</td>
-              </tr>
-            ))}
+            {strategies
+              .filter((s) =>
+                `${s.strategy_id} ${s.definition_id} ${s.status}`.toLowerCase().includes(query.toLowerCase()),
+              )
+              .map((s) => (
+                <tr key={s.strategy_id}>
+                  <td>
+                    {s.strategy_id}
+                    <br />
+                    {s.version}
+                    <br />
+                    Definition: {s.definition_id}
+                  </td>
+                  <td>{s.status}</td>
+                  <td>
+                    {s.direction ?? "UNKNOWN"} / {s.trade_horizon ?? "UNKNOWN"}
+                  </td>
+                  <td>{s.datasets_tested.join(", ") || "None"}</td>
+                  <td>{s.backtest_results.join(", ") || "NOT_RUN"}</td>
+                  <td>
+                    {s.walk_forward_results.join(", ") || "NOT_RUN"} / {s.holdout_results.join(", ") || "NOT_RUN"}
+                  </td>
+                  <td>{s.paper_results.join(", ") || "NOT_RUN"}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
