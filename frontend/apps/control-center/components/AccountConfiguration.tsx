@@ -43,15 +43,19 @@ export function AccountConfiguration({ accountId }: { accountId: string }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`/v1/accounts/${encodeURIComponent(accountId)}/readiness`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw Error();
-        const state = await response.json();
-        setReadiness(Array.isArray(state.reason_codes) ? state.reason_codes : ["READINESS_UNAVAILABLE"]);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setReadiness(["READINESS_UNAVAILABLE"]);
-      });
+    const refreshReadiness = () =>
+      fetch(`/v1/accounts/${encodeURIComponent(accountId)}/readiness`, { signal: controller.signal })
+        .then(async (response) => {
+          if (!response.ok) throw Error();
+          const state = await response.json();
+          if (!controller.signal.aborted)
+            setReadiness(Array.isArray(state.reason_codes) ? state.reason_codes : ["READINESS_UNAVAILABLE"]);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setReadiness(["READINESS_UNAVAILABLE"]);
+        });
+    void refreshReadiness();
+    const readinessTimer = window.setInterval(refreshReadiness, 5000);
     Promise.all([
       fetch(`/v1/accounts/${encodeURIComponent(accountId)}/configuration`, { signal: controller.signal }),
       fetch("/v1/strategy-os", { signal: controller.signal }),
@@ -77,7 +81,10 @@ export function AccountConfiguration({ accountId }: { accountId: string }) {
       .catch(() => {
         if (!controller.signal.aborted) setMessage("Configuration unavailable. Reload before making changes.");
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      window.clearInterval(readinessTimer);
+    };
   }, [accountId]);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
