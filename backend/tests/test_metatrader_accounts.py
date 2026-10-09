@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from ats.console.app import create_console_app
 from ats.market.metatrader.account_service import AccountService
-from ats.market.metatrader.accounts import ConnectAccount
+from ats.market.metatrader.accounts import AdoptAccount, ConnectAccount
 from ats.market.metatrader.credentials import WindowsCredentialVault
 from ats.market.metatrader.registry import AccountRegistry
 from fastapi.testclient import TestClient
@@ -64,6 +64,31 @@ def request(login="1", **changes):
         terminal_path=f"C:/terminal-{login}/terminal64.exe",
         **changes,
     )
+
+
+def test_adoption_private_identity_handoff_and_monitor_only(service, monkeypatch):
+    class AdoptionProbe:
+        def __init__(self, settings):
+            assert "password" not in settings and "login" not in settings
+
+        def initialize(self):
+            return True
+
+        def authenticated_reference(self):
+            return "1", "TestServer"
+
+        def shutdown(self):
+            pass
+
+    monkeypatch.setattr("ats.market.metatrader.account_service.Mt5AccountSession", AdoptionProbe)
+    service.factory = lambda account, login, password: FakeSession(account, login, "test-password")
+    result = service.adopt_authenticated(
+        AdoptAccount(display_name="Cached session", terminal_path="C:/terminal-1/terminal64.exe")
+    )
+    assert result["account"]["connection_state"] == "CONNECTED"
+    assert not result["account"]["execution_enabled"]
+    assert "credential_reference" not in result["account"]
+    assert next(iter(service.vault.values.values())) == ("1", "")
 
 
 @pytest.fixture

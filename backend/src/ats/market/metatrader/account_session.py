@@ -43,6 +43,11 @@ def _safe_snapshot(sdk: Any, symbol: str, login: int, server: str) -> dict[str, 
     )
     return {
         "account_mode": mode,
+        "terminal_connected": bool(terminal.connected),
+        "terminal_algo_trading_allowed": getattr(terminal, "trade_allowed", None),
+        "terminal_python_trading_disabled": getattr(terminal, "tradeapi_disabled", None),
+        "account_trading_allowed": getattr(account, "trade_allowed", None),
+        "account_expert_trading_allowed": getattr(account, "trade_expert", None),
         "balance": str(account.balance),
         "equity": str(account.equity),
         "margin": str(account.margin),
@@ -98,11 +103,21 @@ def _worker(pipe: _ConnectionBase, settings: dict[str, Any]) -> None:
                 if command == "initialize":
                     if not transport.initialize():
                         raise ValueError("ACCOUNT_INITIALIZATION_FAILED")
+                    if settings.get("_adopt"):
+                        observed = transport.sdk.account_info()
+                        if observed is None:
+                            raise ValueError("AUTHENTICATED_SESSION_REQUIRED")
+                        settings["login"], settings["server"] = observed.login, observed.server
                     # Initialization may attach to the wrong cached terminal account.
                     _safe_snapshot(
                         transport.sdk, settings["symbol"], settings["login"], settings["server"]
                     )
                     result: Any = True
+                elif command == "_authenticated_reference" and settings.get("_adopt"):
+                    _safe_snapshot(
+                        transport.sdk, settings["symbol"], settings["login"], settings["server"]
+                    )
+                    result = (str(settings["login"]), settings["server"])
                 elif command == "shutdown":
                     transport.shutdown()
                     pipe.send((True, None))
@@ -171,6 +186,11 @@ class Mt5AccountSession:
             self._process.start()
             child.close()
             return bool(self._request("initialize"))
+
+    def authenticated_reference(self) -> tuple[str, str]:
+        """Private vault handoff for adoption; never an API response or log."""
+        result: tuple[str, str] = self._request("_authenticated_reference")
+        return result
 
     def symbol_info(self, symbol: str) -> Mapping[str, Any] | None:
         result: Mapping[str, Any] | None = self._request("symbol_info", symbol)

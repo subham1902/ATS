@@ -7,6 +7,7 @@ import inspect
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from threading import RLock
 
 from fastapi import FastAPI, Request
@@ -31,6 +32,7 @@ from ats.console.strategy_registry import router as strategy_router
 from ats.market.domain import XauUsdDomain
 from ats.market.fabric import MarketDataFabric
 from ats.market.metatrader.account_service import AccountService
+from ats.market.metatrader.clock import load_clock_evidence
 from ats.market.metatrader.connector import MetaTraderConnector
 from ats.market.metatrader.mt4 import Mt4Transport
 from ats.market.metatrader.mt5 import Mt5Transport
@@ -57,7 +59,11 @@ def create_console_app(
 ) -> FastAPI:
     domain = XauUsdDomain.from_environment()
     terminal = connector or MetaTraderConnector(
-        domain, Mt5Transport() if domain.provider == "MT5" else Mt4Transport()
+        domain,
+        Mt5Transport() if domain.provider == "MT5" else Mt4Transport(),
+        clock_evidence=load_clock_evidence(Path(os.environ["ATS_MT5_CLOCK_EVIDENCE_FILE"]))
+        if os.environ.get("ATS_MT5_CLOCK_EVIDENCE_FILE")
+        else None,
     )
     market_fabric = fabric or MarketDataFabric(
         source_label=domain.provider,

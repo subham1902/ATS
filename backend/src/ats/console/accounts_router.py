@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ats.datasets.ingestion import data_root
 from ats.market.metatrader.account_service import AccountService
-from ats.market.metatrader.accounts import ConnectAccount
+from ats.market.metatrader.accounts import AdoptAccount, ConnectAccount
 from ats.market.metatrader.credentials import WindowsCredentialVault
 from ats.market.metatrader.registry import AccountRegistry
 
@@ -57,6 +57,15 @@ async def connect_account(body: ConnectAccount, request: Request) -> dict[str, A
     if worker is not None:
         await worker.stop()
     result: dict[str, Any] = await _call(service_of(request).connect_new, body)
+    return result
+
+
+@router.post("/adopt", status_code=201)
+async def adopt_account(body: AdoptAccount, request: Request) -> dict[str, Any]:
+    worker = getattr(request.app.state, "standalone_market_worker", None)
+    if worker is not None:
+        await worker.stop()
+    result: dict[str, Any] = await _call(service_of(request).adopt_authenticated, body)
     return result
 
 

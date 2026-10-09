@@ -23,6 +23,13 @@ class AccountMode(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class AdoptAccount(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    display_name: str = Field(min_length=1, max_length=80)
+    terminal_path: str = Field(min_length=1, max_length=512)
+    broker_symbol: str = Field(default="XAUUSD", min_length=1, max_length=64)
+
+
 class ConnectAccount(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     platform: Literal["MT5", "MT4"] = "MT5"

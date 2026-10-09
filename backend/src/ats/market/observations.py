@@ -28,6 +28,8 @@ class MarketObservation(ATSBaseModel):
     dataset_id: str | None = None
     provenance: Literal["BROKER_TICK_PROXY", "BROKER_BAR", "UNKNOWN"] = "UNKNOWN"
     timestamp_provenance: str = "SOURCE_UTC"
+    raw_source_epoch_ms: int | None = Field(default=None, ge=0)
+    clock_evidence_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     bid: Decimal | None = Field(default=None, gt=0)
     ask: Decimal | None = Field(default=None, gt=0)
     last: Decimal | None = Field(default=None, gt=0)

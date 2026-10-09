@@ -38,6 +38,7 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [adopting, setAdopting] = useState(false);
   const [platform, setPlatform] = useState("MT5");
   const refresh = useCallback(async () => {
     try {
@@ -100,6 +101,29 @@ export default function AccountsPage() {
       setBusy(false);
     }
   }
+  async function adopt(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      const response = await fetch("/v1/accounts/adopt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          display_name: String(data.get("display_name")),
+          terminal_path: String(data.get("terminal_path")),
+          broker_symbol: String(data.get("broker_symbol")),
+        }),
+      });
+      if (!response.ok) throw new Error();
+      await refresh();
+      setAdopting(false);
+    } catch {
+      setError("Authenticated terminal adoption failed. Verify the isolated terminal and logged-in session.");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function command(id: string, operation: string, enabled?: boolean) {
     setBusy(true);
     try {
@@ -124,7 +148,24 @@ export default function AccountsPage() {
           <p>XAUUSD connections with separate account health and execution consent.</p>
         </div>
         <button onClick={() => setAdding(!adding)}>+ Connect Account</button>
+        <button onClick={() => setAdopting(!adopting)}>Use authenticated MT5 session</button>
       </div>
+      {adopting && (
+        <form onSubmit={adopt}>
+          <p>Monitor only. Reuses the terminal credential cache. Execution stays disabled.</p>
+          <label>
+            Display name <input name="display_name" required />
+          </label>
+          <label>
+            Terminal executable{" "}
+            <input name="terminal_path" defaultValue="C:\\Program Files\\MetaTrader 5\\terminal64.exe" required />
+          </label>
+          <label>
+            Broker symbol <input name="broker_symbol" defaultValue="XAUUSD" required />
+          </label>
+          <button disabled={busy}>Connect Only</button>
+        </form>
+      )}
       <p className={styles.notice}>
         Step 1: market data and account monitoring. External order routing is unavailable until Step 3. Enabling
         execution records your consent; it does not place orders or grant authority.

@@ -21,7 +21,12 @@ class Mt5Transport:
     def initialize(self) -> bool:
         self._terminal = importlib.import_module("MetaTrader5")
         if self._settings is not None:
-            options = {key: value for key, value in self._settings.items() if key != "symbol"}
+            options = {
+                key: value
+                for key, value in self._settings.items()
+                if key in {"path", "login", "password", "server", "portable", "timeout"}
+                and value not in (None, "")
+            }
             return bool(self._terminal.initialize(**options))
         options = {"timeout": 5000}
         for key, env in (
@@ -47,6 +52,10 @@ class Mt5Transport:
         if tick is None:
             return None
         result = dict(tick._asdict())
+        account = self._terminal.account_info()
+        if account is None:
+            raise ValueError("AUTHENTICATED_SESSION_REQUIRED")
+        result["server"] = account.server
         # The terminal's tick volume is broker reported; zero alone cannot prove a trade.
         if result.get("volume", 0) == 0:
             result.pop("volume", None)

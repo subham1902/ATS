@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -15,10 +16,12 @@ from ats.market.fabric import MarketDataFabric
 from ats.market.metatrader.account_session import AccountSession, Mt5AccountSession
 from ats.market.metatrader.accounts import (
     AccountMode,
+    AdoptAccount,
     ConnectAccount,
     ConnectionState,
     MetaTraderAccount,
 )
+from ats.market.metatrader.clock import load_clock_evidence
 from ats.market.metatrader.connector import MetaTraderConnector
 from ats.market.metatrader.credentials import CredentialVault
 from ats.market.metatrader.journal import ObservationJournal
@@ -102,6 +105,46 @@ class AccountService:
                 raise
             return self.connect(account_id, enable=request.action == "CONNECT_AND_ENABLE_EXECUTION")
 
+    def adopt_authenticated(self, request: AdoptAccount) -> dict[str, Any]:
+        """Reuse terminal credential cache; adoption always starts monitor-only."""
+        with self._lock:
+            probe = Mt5AccountSession(
+                {
+                    "path": request.terminal_path,
+                    "symbol": request.broker_symbol,
+                    "timeout": 5000,
+                    "_adopt": True,
+                }
+            )
+            try:
+                probe.initialize()
+                login, server = probe.authenticated_reference()
+            finally:
+                probe.shutdown()
+            reference = self.vault.store(login, "")
+            now = datetime.now(UTC)
+            account_id = "ACC-" + uuid4().hex
+            account = MetaTraderAccount(
+                account_id=account_id,
+                display_name=request.display_name,
+                platform="MT5",
+                broker="",
+                server=server,
+                login_reference="vault:" + account_id,
+                credential_reference=reference,
+                terminal_path=request.terminal_path,
+                portable=False,
+                broker_symbol=request.broker_symbol,
+                created_at=now,
+                updated_at=now,
+            )
+            try:
+                self.registry.save(account, "AUTHENTICATED_SESSION_ADOPTED_MONITOR_ONLY")
+            except Exception:
+                self.vault.delete(reference)
+                raise
+            return self.connect(account_id)
+
     def connect(self, account_id: str, *, enable: bool = False) -> dict[str, Any]:
         with self._lock:
             account = self.registry.get(account_id)
@@ -125,7 +168,13 @@ class AccountService:
                 login, password = self.vault.load(account.credential_reference)
                 session = self.factory(account, login, password)
                 connector = MetaTraderConnector(
-                    XauUsdDomain(broker_symbol=account.broker_symbol), session
+                    XauUsdDomain(broker_symbol=account.broker_symbol),
+                    session,
+                    clock_evidence=load_clock_evidence(
+                        Path(os.environ["ATS_MT5_CLOCK_EVIDENCE_FILE"])
+                    )
+                    if os.environ.get("ATS_MT5_CLOCK_EVIDENCE_FILE")
+                    else None,
                 )
                 if not connector.connect():
                     raise ValueError("CONNECTION_FAILED")

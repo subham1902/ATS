@@ -9,6 +9,7 @@ from enum import StrEnum
 from typing import Any, Protocol
 
 from ats.market.domain import InstrumentMetadata, XauUsdDomain, require_xauusd
+from ats.market.metatrader.clock import BrokerClockEvidence
 from ats.market.observations import MarketObservation, VolumeProvenance
 
 
@@ -40,10 +41,12 @@ class MetaTraderConnector:
         domain: XauUsdDomain,
         transport: TerminalTransport,
         clock: Callable[[], datetime] | None = None,
+        clock_evidence: BrokerClockEvidence | None = None,
     ) -> None:
         self.domain = domain
         self.transport = transport
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.clock_evidence = clock_evidence
         self.state = FeedState.DISCONNECTED
         self.reason = "TERMINAL_NOT_CONNECTED"
         self.metadata: InstrumentMetadata | None = None
@@ -114,6 +117,15 @@ class MetaTraderConnector:
             float(raw_timestamp) / (1000 if millis is not None else 1), UTC
         )
         now = self.clock()
+        evidence = self.clock_evidence
+        if evidence is not None:
+            if timeframe or raw.get("_historical"):
+                raise ValueError("HISTORICAL_CLOCK_PROFILE_REQUIRED")
+            stamp = evidence.normalize(
+                int(float(raw_timestamp) * (1 if millis is not None else 1000)),
+                raw.get("server"),
+                now,
+            )
         if stamp > now:
             raise ValueError("FUTURE_SOURCE_TIMESTAMP")
         fields: dict[str, Any] = {}
@@ -146,7 +158,11 @@ class MetaTraderConnector:
             received_at=now,
             source=self.domain.provider,
             provenance="BROKER_BAR" if timeframe else "BROKER_TICK_PROXY",
-            timestamp_provenance=str(raw.get("timestamp_provenance", "SOURCE_UTC")),
+            timestamp_provenance="VERIFIED_SERVER_WALL_LIVE_ONLY"
+            if evidence
+            else str(raw.get("timestamp_provenance", "SOURCE_UTC")),
+            raw_source_epoch_ms=int(float(raw_timestamp) * (1 if millis is not None else 1000)),
+            clock_evidence_hash=evidence.evidence_hash if evidence else None,
             flags=raw.get("flags"),
             timeframe=timeframe,
             volume_provenance=volume_kind,
@@ -184,6 +200,8 @@ class MetaTraderConnector:
                     "SOURCE_TIMESTAMP_MISSING",
                     "BROKER_SYMBOL_MISMATCH",
                     "BAR_NOT_CLOSED",
+                    "CLOCK_SERVER_MISMATCH",
+                    "CLOCK_EVIDENCE_EXPIRED",
                 }
                 else "MALFORMED_OR_UNAVAILABLE_TICK"
             )
@@ -193,7 +211,7 @@ class MetaTraderConnector:
     def historical_ticks(self, start: datetime, end: datetime) -> tuple[MarketObservation, ...]:
         self._validate_range(start, end)
         return tuple(
-            self.normalize(row)
+            self.normalize({**row, "_historical": True})
             for row in self.transport.historical_ticks(self.domain.broker_symbol, start, end)
         )
 
