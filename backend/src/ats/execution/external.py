@@ -303,6 +303,10 @@ class ExternalLedger:
                 + intent.risk_cash
                 + sum((other.risk_cash for other in reserved), Decimal(0))
                 > risk.max_daily_loss
+                or facts.monthly_loss
+                + intent.risk_cash
+                + sum((other.risk_cash for other in reserved), Decimal(0))
+                > risk.max_monthly_loss
                 or facts.free_margin
                 < intent.margin_cash + sum((other.margin_cash for other in reserved), Decimal(0))
                 or facts.positions + len(reserved) + 1 > risk.max_positions

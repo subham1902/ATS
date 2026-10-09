@@ -228,3 +228,19 @@ def test_unknown_monthly_budget_rejected():
         document.pop(field)
         with pytest.raises(ValueError):
             type(model).model_validate(document)
+
+
+def test_dispatch_counts_other_reservations_against_monthly_budget(tmp_path):
+    intent, facts, risk, now = inputs(mode="LIVE")
+    risk = risk.model_copy(
+        update={"max_daily_loss": Decimal(1000), "max_monthly_loss": Decimal(250)}
+    )
+    ledger = ExternalLedger(tmp_path / "e.db")
+    first = ledger.reserve(intent, facts, risk, now)
+    ledger.reserve(intent.model_copy(update={"idempotency": "second"}), facts, risk, now)
+    adapter = Adapter()
+    with pytest.raises(ValueError, match="RESERVATION_LIMIT"):
+        ledger.dispatch(
+            first, facts.model_copy(update={"monthly_loss": Decimal(51)}), risk, now, adapter
+        )
+    assert adapter.calls == 0

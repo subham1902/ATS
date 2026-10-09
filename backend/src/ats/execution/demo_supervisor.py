@@ -206,6 +206,7 @@ def commissioned_risk(
         or account.open_risk != 0
         or account.strategy_risk != 0
         or account.daily_loss != max(Decimal(0), -periods.net_booked_day)
+        or account.monthly_loss != max(Decimal(0), -periods.net_booked_month)
         or periods.utc_day != now.strftime("%Y-%m-%d")
         or periods.utc_month != now.strftime("%Y-%m")
         or periods.observed_at.tzinfo is None
