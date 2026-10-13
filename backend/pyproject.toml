@@ -10,7 +10,7 @@ requires-python = "==3.11.15"
 dependencies = [
   "fastapi==0.141.1",
   "httpx==0.28.1",
-  "pydantic==2.13.4",
+  "pydantic==2.14.0",
   "MetaTrader5==5.0.5735; sys_platform == 'win32'",
   "pyarrow==23.0.1",
   "uvicorn[standard]==0.38.0",
