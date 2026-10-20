@@ -13,7 +13,7 @@ dependencies = [
   "pydantic==2.13.4",
   "MetaTrader5==5.0.5735; sys_platform == 'win32'",
   "pyarrow==23.0.1",
-  "uvicorn[standard]==0.38.0",
+  "uvicorn[standard]==0.54.0",
 ]
 
 [tool.hatch.build.targets.wheel]
