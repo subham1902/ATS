@@ -40,6 +40,8 @@ MAX_ABS_OFFSET_SECONDS: Final[int] = 14 * 3600
 MAX_SEGMENTS: Final[int] = 1024
 MAX_PROFILE_BYTES: Final[int] = 1024 * 1024
 OFFSET_GRANULARITY_SECONDS: Final[int] = 60
+# Measurement slack between a broker reading and its independent UTC reading.
+ANCHOR_TOLERANCE_SECONDS: Final[int] = 5
 
 # Default XAUUSD weekend closure, in UTC. Friday 21:00 to Sunday 22:00 is the
 # widest window that every broker surveyed keeps shut; narrow it per broker with
@@ -295,7 +297,9 @@ def verify_bar_times(segments: Sequence[Segment], broker_times: Sequence[int]) -
 
 
 def check_anchors(
-    segments: Sequence[Segment], anchors: Sequence[tuple[int, int, str]]
+    segments: Sequence[Segment],
+    anchors: Sequence[tuple[int, int, str]],
+    tolerance_seconds: int = ANCHOR_TOLERANCE_SECONDS,
 ) -> None:
     """Cross-check the declared offsets against attested simultaneous readings.
 
@@ -303,7 +307,14 @@ def check_anchors(
     writes these into clock-probe.json as `server_time` and `gmt`, but its own
     comment warns that TimeGMT requires independent validation -- so the UTC side
     must be attested by something other than the terminal before it is used here.
+
+    A real anchor pairs a broker reading with an NTP reading taken a moment later,
+    so exact-second equality is unattainable. Offsets are whole minutes, so a wrong
+    offset misses by at least 60s; a few seconds of tolerance absorbs measurement
+    latency without admitting a wrong offset.
     """
+    if not 0 <= tolerance_seconds < 30:
+        raise ClockProfileError("anchor tolerance must be in [0, 30) seconds")
     for broker_epoch, attested_utc, source in anchors:
         resolved = verified_utc(segments, broker_epoch)
         if resolved < 0:
@@ -311,12 +322,13 @@ def check_anchors(
                 f"anchor from {source}: broker time {_iso(broker_epoch)} does not "
                 "resolve to exactly one UTC instant under this profile"
             )
-        if resolved != attested_utc:
+        if abs(resolved - attested_utc) > tolerance_seconds:
             drift = resolved - attested_utc
             raise ClockProfileError(
                 f"anchor from {source}: profile maps broker {_iso(broker_epoch)} "
                 f"to {_iso(resolved)} but the attested UTC is {_iso(attested_utc)} "
-                f"({drift:+d}s). The declared offset is wrong, or the attestation is."
+                f"({drift:+d}s, tolerance {tolerance_seconds}s). The declared offset "
+                "is wrong, or the attestation is."
             )
 
 
