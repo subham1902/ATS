@@ -60,3 +60,7 @@ coverage.xml
 data/system/credentials/
 data/system/accounts/
 data/xauusd/
+
+# clock-profile capture artifacts (record hash/count in metatrader/clock/README.md instead)
+metatrader/clock/observed-m1-epochs.txt
+.venv-mt5/

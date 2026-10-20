@@ -1,0 +1,30 @@
+{
+  "_README": [
+    "Broker clock profile for MetaQuotes-Demo (ATS account ACC-1fc15e3b5ea64c70be10de314dd55ca2).",
+    "ONE segment only, ending 2026-10-25T00:00:00Z (Sunday of the EU DST change, inside the weekend closure).",
+    "The evidence (see metatrader/clock/README.md) cannot establish which DST schedule this server follows after",
+    "that date, so the profile deliberately stops there. It MUST be re-captured and extended after the",
+    "2026-10-24/25 weekend, or the observer returns to an unresolvable clock."
+  ],
+
+  "server": "MetaQuotes-Demo",
+  "account_id": "ACC-1fc15e3b5ea64c70be10de314dd55ca2",
+
+  "anchors": [
+    {
+      "broker_epoch": 1792521577,
+      "attested_utc": "2026-10-20T15:39:38Z",
+      "attested_by": "SNTP time.google.com via capture_clock_evidence.py (round trip 75 ms)",
+      "evidence": "metatrader/clock/evidence/anchor-capture-2026-10-20.txt: clock-probe.json server=MetaQuotes-Demo observed offset +10799.2s, nearest minute +10800s, captured 2026-10-20T15:39:39Z"
+    }
+  ],
+
+  "segments": [
+    {
+      "begin_utc": "2026-06-12T12:40:00Z",
+      "end_utc": "2026-10-25T00:00:00Z",
+      "offset_seconds": 10800,
+      "basis": "Anchor 2026-10-20T15:39:38Z (SNTP) observed +10800s. infer_offsets.py over the 120,986 exported M1 bars (2026-06-12..2026-10-20, sha256 9b9879354bc6...) found 73 daily-break gaps; 72 start at 23:00 broker time (2 h break) on every trading day 2026-06-15..2026-10-19 and one is a US Labor Day early close (2026-09-07, 21:30). The break never moved, so the offset was constant across the window and equals the anchor. Neither US nor EU DST changes inside this window; both schedules keep UTC+3 until at least 2026-10-25, where this segment ends. (infer_offsets.py's 17:00-New-York reference reads this as +7200 because this server's break starts at 16:00 New York; see README.)"
+    }
+  ]
+}

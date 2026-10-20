@@ -1,0 +1,11 @@
+Anchor for the declaration's "anchors" array:
+
+{
+  "broker_epoch": 1792521577,
+  "attested_utc": "2026-10-20T15:39:38Z",
+  "attested_by": "SNTP time.google.com via capture_clock_evidence.py (round trip 75 ms)",
+  "evidence": "clock-probe.json server=MetaQuotes-Demo observed offset +10799.2s, nearest minute +10800s, captured 2026-10-20T15:39:39Z"
+}
+
+Observed broker offset now: +10800s (+3.00h)
+Exported 120986 M1 bar times to metatrader\clock\observed-m1-epochs.txt
