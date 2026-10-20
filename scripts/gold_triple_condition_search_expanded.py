@@ -24,7 +24,7 @@ def main():
         sigs[(resolution, look)], updates[resolution] = small.tactical(b, parents, look, resolution)
     meta = json.loads((small.OUT / "broker-metadata.json").read_text())
     idx = b.index
-    t = idx.astype("int64").to_numpy() // 10**9
+    t = idx.as_unit("ns").astype("int64").to_numpy() // 10**9
     price_b = b[["open", "high", "low", "close"]].to_numpy()
     price_a = a[["open", "high", "low", "close"]].to_numpy()
     cuts = (

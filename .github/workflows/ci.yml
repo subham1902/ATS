@@ -375,11 +375,20 @@ jobs:
       # mechanical evidence that MQL and research agree on the rules.
       # ziglang is deliberately isolated: it is not in uv.lock and must not be.
       - name: Compile and run the native parity fixture
+        env:
+          # gold_triple_risk_research reads this at import time to locate raw
+          # broker data. The parity harness uses synthetic fixtures only and
+          # never opens it; a deliberately nonexistent path proves that.
+          ATS_GOLD_TRIPLE_SOURCE: /nonexistent/parity-uses-synthetic-fixtures-only
+        # pandas is intentionally unpinned. pandas 3 infers microsecond datetime
+        # resolution, which silently zeroed every tactical signal while the
+        # research scripts assumed nanoseconds. Running against the current
+        # release is what surfaced that; pinning would hide the next one.
         run: |
           uv venv /tmp/parity
           uv pip install --python /tmp/parity/bin/python \
-            "ziglang==0.13.0" numpy pandas
-          /tmp/parity/bin/python scripts/test_gold_triple_native_parity.py
+            "ziglang==0.13.0" numpy pandas numba
+          /tmp/parity/bin/python scripts/test_gold_triple_native_parity.py -v
       - name: Assert tests preserve tracked inputs
         run: git diff --exit-code
 

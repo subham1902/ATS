@@ -30,10 +30,11 @@ import csv
 import hashlib
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final
 
 MAX_ABS_OFFSET_SECONDS: Final[int] = 14 * 3600
 MAX_SEGMENTS: Final[int] = 1024
@@ -96,7 +97,7 @@ class DeadZone:
 
 
 def _iso(epoch: int) -> str:
-    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(epoch, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _hours(seconds: int) -> str:
@@ -115,7 +116,7 @@ def _parse_utc(value: str) -> int:
         raise ClockProfileError(
             f"timestamp {value!r} has no timezone; declare UTC explicitly"
         )
-    if parsed.utcoffset() != timezone.utc.utcoffset(None):
+    if parsed.utcoffset() != UTC.utcoffset(None):
         raise ClockProfileError(
             f"timestamp {value!r} is not UTC; the profile is defined in UTC only"
         )
@@ -176,7 +177,8 @@ def find_dead_zones(segments: Sequence[Segment]) -> list[DeadZone]:
     ordered = sorted(boundaries)
 
     dead: list[DeadZone] = []
-    for left, right in zip(ordered, ordered[1:]):
+    # Pairwise over sorted boundaries; the lengths differ by design.
+    for left, right in zip(ordered, ordered[1:], strict=False):
         midpoint = left + (right - left) // 2
         matches = sum(
             1
@@ -194,7 +196,7 @@ def find_dead_zones(segments: Sequence[Segment]) -> list[DeadZone]:
 
 
 def _weekday_second(epoch: int) -> tuple[int, int]:
-    moment = datetime.fromtimestamp(epoch, tz=timezone.utc)
+    moment = datetime.fromtimestamp(epoch, tz=UTC)
     second = moment.hour * 3600 + moment.minute * 60 + moment.second
     return moment.weekday(), second
 

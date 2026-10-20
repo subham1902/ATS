@@ -20,7 +20,7 @@ def main():
     b, a, quality = base.load()
     parents, _ = base.signals(b)
     idx = b.index
-    times = idx.astype("int64").to_numpy() // 10**9
+    times = idx.as_unit("ns").astype("int64").to_numpy() // 10**9
     meta = json.loads((small.OUT / "broker-metadata.json").read_text())
     price_b = b[["open", "high", "low", "close"]].to_numpy()
     price_a = a[["open", "high", "low", "close"]].to_numpy()

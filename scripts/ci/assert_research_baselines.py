@@ -26,9 +26,10 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final
 
 RESULTS_HEADING: Final[str] = "## Later-period results"
 LIFECYCLE_RE: Final[re.Pattern[str]] = re.compile(

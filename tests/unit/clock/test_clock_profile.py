@@ -9,7 +9,7 @@ show for it.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -34,7 +34,7 @@ HOUR = 3600
 
 
 def epoch(text: str) -> int:
-    return int(datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp())
+    return int(datetime.fromisoformat(text).replace(tzinfo=UTC).timestamp())
 
 
 # Boundaries sit at 00:00 UTC on a Sunday, inside the weekend closure.

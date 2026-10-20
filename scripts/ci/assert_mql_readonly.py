@@ -16,9 +16,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final
 
 # Any one of these in a source file means the EA can reach the order subsystem.
 FORBIDDEN_TRADE_SYMBOLS: Final[tuple[str, ...]] = (
