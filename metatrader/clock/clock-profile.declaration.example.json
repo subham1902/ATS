@@ -1,0 +1,56 @@
+{
+  "_README": [
+    "Template for the broker clock profile declaration. Copy this to",
+    "clock-profile.declaration.json, replace EVERY placeholder with dated",
+    "evidence, then run:",
+    "  uv run python scripts/clock/clock_profile.py build \\",
+    "    metatrader/clock/clock-profile.declaration.json \\",
+    "    --out metatrader/clock/clock-profile.csv \\",
+    "    --bars metatrader/clock/observed-m1-epochs.txt",
+    "",
+    "The offsets below are NOT this account's offsets. They are the common",
+    "EET/EEST broker pattern (UTC+2 winter, UTC+3 summer) shown so the shape is",
+    "obvious. The repository README records that the local terminal reports ticks",
+    "approximately three hours ahead of UTC, which is consistent with EEST but",
+    "does not establish the historical rule. Attest it before trusting it.",
+    "",
+    "Segment boundaries are deliberately placed at 00:00 UTC on the SUNDAY of the",
+    "EU DST change, not at the 01:00 UTC change instant. The offset change creates",
+    "a one-hour window the EA cannot resolve to exactly one UTC instant; parking",
+    "that window inside the weekend closure means no real M1 bar ever lands in it.",
+    "The build command fails if any dead zone falls while the market is open."
+  ],
+
+  "server": "REPLACE-WITH-ACCOUNT-SERVER-STRING",
+  "account_id": "REPLACE-WITH-DURABLE-ATS-REGISTRY-ID",
+
+  "anchors": [
+    {
+      "broker_epoch": 0,
+      "attested_utc": "REPLACE-2026-10-20T12:00:00Z",
+      "attested_by": "REPLACE: independent UTC source, e.g. ats-backend NTP reading taken in the same second. The terminal's own TimeGMT is NOT acceptable here and is rejected.",
+      "evidence": "REPLACE: path to the clock-probe.json capture and the attesting log line"
+    }
+  ],
+
+  "segments": [
+    {
+      "begin_utc": "2025-10-26T00:00:00Z",
+      "end_utc": "2026-03-29T00:00:00Z",
+      "offset_seconds": 7200,
+      "basis": "REPLACE: dated evidence that this server ran UTC+2 across this window"
+    },
+    {
+      "begin_utc": "2026-03-29T00:00:00Z",
+      "end_utc": "2026-10-25T00:00:00Z",
+      "offset_seconds": 10800,
+      "basis": "REPLACE: dated evidence that this server ran UTC+3 across this window"
+    },
+    {
+      "begin_utc": "2026-10-25T00:00:00Z",
+      "end_utc": "2027-03-28T00:00:00Z",
+      "offset_seconds": 7200,
+      "basis": "REPLACE: dated evidence that this server runs UTC+2 across this window"
+    }
+  ]
+}

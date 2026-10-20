@@ -40,8 +40,8 @@ def tactical(b, parents, lookback, bar_seconds=300):
     update[dest[valid]] = m[["high", "low", "close", "atr"]].to_numpy()[valid]
     lower = (m.low.rolling(lookback).min() - 0.1 * m.atr).to_numpy()
     upper = (m.high.rolling(lookback).max() + 0.1 * m.atr).to_numpy()
-    end_ns = m.end.astype("int64").to_numpy()
-    epoch = b.index.astype("int64").to_numpy()
+    end_ns = m.end.dt.as_unit("ns").astype("int64").to_numpy()
+    epoch = b.index.as_unit("ns").astype("int64").to_numpy()
     for strategy in range(3):
         indices = np.flatnonzero(parents[:, strategy, 0])
         for j, pi in enumerate(indices):
@@ -405,7 +405,7 @@ def main():
     )
     (OUT / "quality.json").write_text(json.dumps(quality, indent=2))
     idx = b.index
-    t = idx.astype("int64").to_numpy() // 10**9
+    t = idx.as_unit("ns").astype("int64").to_numpy() // 10**9
     arrays = (
         b[["open", "high", "low", "close"]].to_numpy(),
         a[["open", "high", "low", "close"]].to_numpy(),

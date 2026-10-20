@@ -591,7 +591,7 @@ def main():
     (OUT / "quality.json").write_text(json.dumps(quality, indent=2))
     print("QUALITY", json.dumps(quality), flush=True)
     idx = b.index
-    seconds = idx.astype("int64").to_numpy() // 10**9
+    seconds = idx.as_unit("ns").astype("int64").to_numpy() // 10**9
     days = seconds // 86400
     months = (idx.year * 12 + idx.month).to_numpy()
     weekday = idx.dayofweek.to_numpy()
