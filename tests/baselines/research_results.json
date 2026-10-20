@@ -1,0 +1,102 @@
+{
+  "_note": "Frozen later-period research results. Regenerating this file is a reviewed act: it records that the project's only evidence about whether anything works has deliberately changed.",
+  "source": "docs/research/GOLD_TRIPLE_WINNING_CONDITIONS_2026-10-08.md",
+  "rows": {
+    "$1,000|Portfolio|BASE": {
+      "trades": "1",
+      "net_return_pct": "2.5085",
+      "drawdown_pct": "0.7789",
+      "worst_day_pct": "-0.0110",
+      "worst_month_pct": "-0.0110",
+      "profit_factor": "N/A"
+    },
+    "$1,000|Portfolio|STRESS": {
+      "trades": "1",
+      "net_return_pct": "2.5090",
+      "drawdown_pct": "0.7824",
+      "worst_day_pct": "-0.0220",
+      "worst_month_pct": "-0.0220",
+      "profit_factor": "N/A"
+    },
+    "$1,000|S2|BASE": {
+      "trades": "7",
+      "net_return_pct": "0.1923",
+      "drawdown_pct": "4.4816",
+      "worst_day_pct": "-1.7283",
+      "worst_month_pct": "-2.7724",
+      "profit_factor": "1.0521"
+    },
+    "$1,000|S2|STRESS": {
+      "trades": "7",
+      "net_return_pct": "0.0159",
+      "drawdown_pct": "4.6242",
+      "worst_day_pct": "-1.7986",
+      "worst_month_pct": "-2.8768",
+      "profit_factor": "1.0042"
+    },
+    "$1,000|S3|BASE": {
+      "trades": "5",
+      "net_return_pct": "3.3295",
+      "drawdown_pct": "1.5276",
+      "worst_day_pct": "-1.4619",
+      "worst_month_pct": "-1.3919",
+      "profit_factor": "2.1381"
+    },
+    "$1,000|S3|STRESS": {
+      "trades": "5",
+      "net_return_pct": "6.5215",
+      "drawdown_pct": "1.5322",
+      "worst_day_pct": "-1.4885",
+      "worst_month_pct": "-0.0433",
+      "profit_factor": "5.0519"
+    },
+    "$500|S3|BASE": {
+      "trades": "3",
+      "net_return_pct": "-0.4205",
+      "drawdown_pct": "1.6581",
+      "worst_day_pct": "-1.3073",
+      "worst_month_pct": "-1.1360",
+      "profit_factor": "0.8272"
+    },
+    "$500|S3|STRESS": {
+      "trades": "3",
+      "net_return_pct": "2.0152",
+      "drawdown_pct": "1.6102",
+      "worst_day_pct": "-1.3485",
+      "worst_month_pct": "-0.0440",
+      "profit_factor": "2.4451"
+    },
+    "$750|Portfolio|BASE": {
+      "trades": "0",
+      "net_return_pct": "0.0000",
+      "drawdown_pct": "0.0000",
+      "worst_day_pct": "0.0000",
+      "worst_month_pct": "0.0000",
+      "profit_factor": "N/A"
+    },
+    "$750|Portfolio|STRESS": {
+      "trades": "0",
+      "net_return_pct": "0.0000",
+      "drawdown_pct": "0.0000",
+      "worst_day_pct": "0.0000",
+      "worst_month_pct": "0.0000",
+      "profit_factor": "N/A"
+    },
+    "$750|S3|BASE": {
+      "trades": "4",
+      "net_return_pct": "0.4540",
+      "drawdown_pct": "1.4617",
+      "worst_day_pct": "-1.4617",
+      "worst_month_pct": "-1.4761",
+      "profit_factor": "1.1811"
+    },
+    "$750|S3|STRESS": {
+      "trades": "4",
+      "net_return_pct": "3.7613",
+      "drawdown_pct": "1.2086",
+      "worst_day_pct": "-1.0235",
+      "worst_month_pct": "-0.0577",
+      "profit_factor": "4.5054"
+    }
+  }
+}

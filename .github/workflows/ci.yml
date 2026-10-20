@@ -350,3 +350,114 @@ jobs:
         if: steps.capability.outputs.supported == 'true'
         with:
           fail-on-severity: high
+
+  mql-governance:
+    name: MQL Governance & Native Parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      # The observer's read-only guarantee was enforced by a source comment and
+      # by review. This makes a reintroduced order path a build failure.
+      - name: Assert MQL sources stay read-only
+        run: uv run python scripts/ci/assert_mql_readonly.py metatrader connectors
+      # scripts/test_gold_triple_native_parity.py has never been executed by CI.
+      # It compiles the shared numerical core through its `#ifdef __cplusplus`
+      # branch and checks it against the Python implementation -- the only
+      # mechanical evidence that MQL and research agree on the rules.
+      # ziglang is deliberately isolated: it is not in uv.lock and must not be.
+      - name: Compile and run the native parity fixture
+        run: |
+          uv venv /tmp/parity
+          uv pip install --python /tmp/parity/bin/python \
+            "ziglang==0.13.0" numpy pandas
+          /tmp/parity/bin/python scripts/test_gold_triple_native_parity.py
+      - name: Assert tests preserve tracked inputs
+        run: git diff --exit-code
+
+  mql-compile:
+    name: MetaEditor Compile (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MetaTrader 5 silently
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installer = Join-Path $env:RUNNER_TEMP "mt5setup.exe"
+          Invoke-WebRequest -Uri "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe" `
+            -OutFile $installer -UseBasicParsing -TimeoutSec 300
+          Start-Process -FilePath $installer -ArgumentList "/auto" -Wait -NoNewWindow
+          # No silent skip: if MetaEditor is absent the job fails and says so,
+          # rather than reporting green for a compile that never happened.
+          $editor = Get-ChildItem -Path "C:\Program Files\MetaTrader 5","${env:APPDATA}\MetaQuotes" `
+            -Filter "MetaEditor64.exe" -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $editor) {
+            Write-Error "MetaEditor64.exe not found after install. If MetaQuotes downloads are unreliable on hosted runners, move this job to a self-hosted Windows runner rather than relaxing the gate."
+          }
+          "METAEDITOR=$($editor.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Compile the observer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $source = Join-Path $PWD "metatrader\Experts\ATSSmallAccount\ATSSmallAccountObserver.mq5"
+          $log    = Join-Path $env:RUNNER_TEMP "compile.log"
+          # MetaEditor on this toolchain returns process status 1 even when its
+          # diagnostic log reports zero errors and the executable is produced.
+          # The log and the binary are therefore authoritative, not the exit code.
+          $process = Start-Process -FilePath $env:METAEDITOR `
+            -ArgumentList "/compile:`"$source`"","/log:`"$log`"" -Wait -PassThru -NoNewWindow
+          Write-Host "MetaEditor process status: $($process.ExitCode)"
+          if (-not (Test-Path $log)) { Write-Error "No diagnostic log was produced." }
+          # MetaEditor writes the log as UTF-16LE.
+          $text = Get-Content -Path $log -Encoding Unicode -Raw
+          Write-Host "----- MetaEditor log -----"
+          Write-Host $text
+          if ($text -notmatch "0\s+error") { Write-Error "Compiler log does not report zero errors." }
+          $binary = [System.IO.Path]::ChangeExtension($source, ".ex5")
+          if (-not (Test-Path $binary)) { Write-Error "No .ex5 was produced." }
+          $hash = (Get-FileHash -Path $binary -Algorithm SHA256).Hash
+          Write-Host "source sha256:  $((Get-FileHash -Path $source -Algorithm SHA256).Hash)"
+          Write-Host "ex5 sha256:     $hash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metaeditor-compile-log
+          path: ${{ runner.temp }}/compile.log
+      - name: Assert the build left no tracked artifact
+        shell: pwsh
+        run: git diff --exit-code
+
+  research-baselines:
+    name: Research Baselines & Promotion Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      # The later-period results are the only evidence this project has about
+      # whether anything works, and they live in editable markdown. This freezes
+      # them against a committed baseline so an unfavourable number cannot
+      # quietly become favourable, and refuses any documented lifecycle above
+      # RESEARCH whose VALIDATION.md still records absent evidence.
+      - name: Assert recorded research results and lifecycles
+        run: uv run python scripts/ci/assert_research_baselines.py
+      - name: Assert the check preserved tracked inputs
+        run: git diff --exit-code
